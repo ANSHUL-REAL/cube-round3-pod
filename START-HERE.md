@@ -32,13 +32,13 @@ Final Commerce Outcome
 
 This is the expected end-to-end commerce journey. Your Pod may design the internal orchestration differently where justified: a unit takes **one** route (FBA goes through Prep, merchant-fulfilled through Pack), and Returns only exists if something came back. What does not change is the common contract every agent speaks, and the fact that one **orchestrator owns the workflow state**.
 
-| Member | Agent | Folder |
-|---|---|---|
-| 1 | Receiving Manager | `agents/receiving/` |
-| 2 | Prep Manager | `agents/prep/` |
-| 3 | Pack Manager | `agents/pack/` |
-| 4 | Returns Manager | `agents/returns/` |
-| 5 | Recovery Manager | `agents/recovery/` |
+| Member | Agent | What it does | Folder |
+|---|---|---|---|
+| 1 | Receiving Manager | Checks what arrived from the supplier against the purchase order: identity, quantity, damage, quality. The only point where a supplier claim is still possible. | `agents/receiving/` |
+| 2 | Prep Manager | Checks a unit is prepped correctly for Amazon (polybag, warnings, labels, handling marks) so wrongly charged defect fees can be disputed. FBA units only. | `agents/prep/` |
+| 3 | Pack Manager | Checks the open box matches the order before it is sealed: right items, right quantities, nothing extra. Merchant-fulfilled / 3PL units only. | `agents/pack/` |
+| 4 | Returns Manager | Checks a returned item: is it what was sold, is it complete, what condition (Amazon's scale), and what to do with it (restock, refurbish, liquidate, dispose). | `agents/returns/` |
+| 5 | Recovery Manager | Has no camera. Reads everyone's evidence against the channel's fee reports and decides, charge by charge, whether the evidence contradicts it (claim), supports it, or is silent. | `agents/recovery/` |
 
 (**Specialist Pods** have no Prep Manager; their fifth member is a Specialist / Integration Engineer. See [`FAQ.md`](FAQ.md).)
 
