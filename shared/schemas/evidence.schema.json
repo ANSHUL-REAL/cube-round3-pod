@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/evidence.schema.json",
+  "title": "CUBE Evidence Record v1",
+  "description": "What one agent found about one subject at one stage, check by check. Immutable once produced. See EVIDENCE-CONTRACT.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_id", "workflow_id", "stage", "agent_id", "subject", "status", "captured_at",
+               "produced_at", "model", "checks", "decision", "upstream_refs", "content_hash"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "record_id": { "type": "string", "pattern": "^(RCV|PRP|PCK|RTN|RCY)-[A-Za-z0-9._-]+$", "description": "Stage prefix + id. RCV receiving, PRP prep, PCK pack, RTN returns, RCY recovery. Same request in, same record_id out." },
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "stage": { "enum": ["receiving", "prep", "pack", "returns", "recovery"] },
+    "agent_id": { "type": "string", "minLength": 1, "description": "WHO produced this: your agent's own identifier, e.g. 'receiving-manager@1.4.0'." },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["org_id", "subject_id"],
+      "properties": {
+        "org_id": { "type": "string", "minLength": 1 },
+        "subject_id": { "type": "string", "minLength": 1, "description": "What the workflow is about. In the Round 2 data this is the unit_id." },
+        "unit_id": { "type": ["string", "null"], "description": "The Round 2 join key, if your agent's notion differs from subject_id (see unit_scope)." },
+        "unit_scope": { "enum": ["unit", "po_line", "order", "unknown"], "description": "What your unit_id denotes. Round 2 finding F-08: it is ambiguous." },
+        "refs": {
+          "type": "object",
+          "description": "Other join keys you have: po_number, po_line, order_id, work_order_id, fba_shipment_id, sku, asin, fnsku.",
+          "additionalProperties": { "type": ["string", "number", "null"] }
+        }
+      }
+    },
+    "client_id": { "type": ["string", "null"] },
+    "status": { "enum": ["completed", "pending", "error"], "description": "completed: judged. pending: saved but not judged (model timeout, needs a person). error: could not produce a judgment; a record still exists." },
+    "captured_at": { "type": "string", "format": "date-time", "description": "When the physical capture happened (UTC). Never overwrite with now." },
+    "produced_at": { "type": "string", "format": "date-time" },
+    "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "operator_id": { "type": ["string", "null"] },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "description": "Model/engine, or 'rules' / 'csv-replay-stub' / 'human' for non-model logic." },
+        "version": { "type": "string" },
+        "provider": { "type": ["string", "null"] },
+        "prompt_version": { "type": ["string", "null"] },
+        "calls": { "type": "integer", "minimum": 0, "description": "Model calls for this record. Batch: one per unit." },
+        "cost_usd": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "The media/files/rows this was based on, content-addressed.",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["ref"],
+        "properties": {
+          "ref": { "type": "string" },
+          "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+          "kind": { "enum": ["image", "video", "document", "csv_row", "record", "other"] }
+        }
+      }
+    },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
+    "decision": { "$ref": "#/$defs/decision" },
+    "payload": { "type": "object", "additionalProperties": true, "description": "Agent-specific data. Consumers must tolerate unknown keys." },
+    "upstream_refs": { "type": "array", "items": { "type": "string" }, "description": "record_ids this record consumed." },
+    "overrides": {
+      "type": "array",
+      "description": "Optional, append-only. An operator disagreeing with THIS agent at capture time (Round 2 style). Workflow-level overrides live in Workflow State.",
+      "items": { "$ref": "#/$defs/override" }
+    },
+    "error": { "oneOf": [{ "type": "null" }, { "$ref": "error.schema.json" }] },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "SHA-256 of the canonical JSON excluding content_hash and overrides. A content hash is not tamper-evidence by itself." }
+  },
+  "$defs": {
+    "verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"] },
+    "check": {
+      "type": "object", "additionalProperties": false, "required": ["check_key", "verdict", "confidence"],
+      "properties": {
+        "check_key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "verdict": { "$ref": "#/$defs/verdict" },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "0..1 in THIS verdict. null for deterministic checks with no model confidence." },
+        "expected": {},
+        "observed": {},
+        "detail": { "type": "string", "description": "Why this verdict, in a sentence or two." },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "description": "inputs[].ref or upstream record_ids that support this check." },
+        "uncertain_reason": { "enum": ["poor_image", "occluded", "insufficient_evidence", "model_error", "rule_unavailable", "conflicting_evidence", "other"] }
+      },
+      "allOf": [{ "if": { "properties": { "verdict": { "const": "UNCERTAIN" } }, "required": ["verdict"] }, "then": { "required": ["uncertain_reason"] } }]
+    },
+    "decision": {
+      "type": "object", "additionalProperties": false, "required": ["verdict", "outcome", "reason"],
+      "properties": {
+        "verdict": { "$ref": "#/$defs/verdict" },
+        "outcome": { "type": "string", "description": "Agent-specific outcome code; values per agent in EVIDENCE-CONTRACT.md." },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "reason": { "type": "string" },
+        "needs_human": { "type": "boolean", "default": false }
+      }
+    },
+    "override": {
+      "type": "object", "additionalProperties": false,
+      "required": ["overridden_at", "overridden_by", "original_verdict", "new_verdict", "reason"],
+      "properties": {
+        "overridden_at": { "type": "string", "format": "date-time" },
+        "overridden_by": { "type": "string" },
+        "target": { "type": "string", "description": "A check_key, or 'decision'." },
+        "original_verdict": { "$ref": "#/$defs/verdict" },
+        "new_verdict": { "$ref": "#/$defs/verdict" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

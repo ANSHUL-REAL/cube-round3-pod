@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0012",
+  "stage": "prep",
+  "agent_id": "prep-stub@0",
+  "status": "completed",
+  "verdict": "UNCERTAIN",
+  "confidence": null,
+  "timestamp": "2026-10-04T18:37:06Z",
+  "model": {
+    "name": "csv-replay-stub",
+    "version": "0",
+    "provider": null,
+    "calls": 0,
+    "cost_usd": 0
+  },
+  "error": null,
+  "next_step_recommendation": {
+    "action": "review",
+    "reason": "stub replay of sample row; 0 failed check(s)"
+  },
+  "evidence": {
+    "schema_version": "1.0",
+    "record_id": "PRP-0012",
+    "workflow_id": "WF-org_demo_bravo-UNIT-0012",
+    "stage": "prep",
+    "agent_id": "prep-stub@0",
+    "subject": {
+      "org_id": "org_demo_bravo",
+      "subject_id": "UNIT-0012",
+      "unit_id": "UNIT-0012",
+      "unit_scope": "unit",
+      "refs": {
+        "work_order_id": "WO-3002",
+        "fba_shipment_id": "FBA-DUMMY-101",
+        "sku": "SKU-MUG-11",
+        "asin": "B0DUMMY351",
+        "fnsku": "X00DUMMY012"
+      }
+    },
+    "client_id": null,
+    "status": "completed",
+    "captured_at": "2026-06-05T06:34:00Z",
+    "produced_at": "2026-10-04T18:37:06Z",
+    "latency_ms": null,
+    "operator_id": "op_dana",
+    "model": {
+      "name": "csv-replay-stub",
+      "version": "0",
+      "provider": null,
+      "calls": 0,
+      "cost_usd": 0
+    },
+    "inputs": [
+      {
+        "ref": "fixtures/prep/UNIT-0012_front.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/prep/UNIT-0012_back.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/prep/UNIT-0012_label.jpg",
+        "sha256": null,
+        "kind": "image"
+      }
+    ],
+    "checks": [
+      {
+        "check_key": "fnsku_label_placement",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "flat",
+        "observed": "flat",
+        "evidence_refs": [
+          "fixtures/prep/UNIT-0012_front.jpg",
+          "fixtures/prep/UNIT-0012_back.jpg",
+          "fixtures/prep/UNIT-0012_label.jpg"
+        ]
+      },
+      {
+        "check_key": "original_barcode_covered",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "yes",
+        "observed": "yes",
+        "evidence_refs": [
+          "fixtures/prep/UNIT-0012_front.jpg",
+          "fixtures/prep/UNIT-0012_back.jpg",
+          "fixtures/prep/UNIT-0012_label.jpg"
+        ]
+      },
+      {
+        "check_key": "handling_marks",
+        "verdict": "UNCERTAIN",
+        "confidence": null,
+        "expected": "all_present",
+        "observed": "uncertain",
+        "evidence_refs": [
+          "fixtures/prep/UNIT-0012_front.jpg",
+          "fixtures/prep/UNIT-0012_back.jpg",
+          "fixtures/prep/UNIT-0012_label.jpg"
+        ],
+        "uncertain_reason": "poor_image"
+      }
+    ],
+    "decision": {
+      "verdict": "UNCERTAIN",
+      "outcome": "pending_review",
+      "confidence": null,
+      "reason": "stub replay of sample row; 0 failed check(s)",
+      "needs_human": true
+    },
+    "payload": {
+      "prep_price_usd": 0.4,
+      "measurements": null
+    },
+    "upstream_refs": [],
+    "overrides": [],
+    "error": null,
+    "content_hash": "c56f5d5b7ab5749a13116dfc4db651e12334c975a4ccaba460a2dfb506e0bca0"
+  }
+}

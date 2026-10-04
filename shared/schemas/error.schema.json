@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/error.schema.json",
+  "title": "CUBE Error v1",
+  "description": "A failure, recorded instead of hidden. Used by agents (in an Agent Output) and by the orchestrator (in Workflow State).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "message", "retryable"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Short snake_case code. Standard codes: agent_unavailable, agent_timeout, agent_rejected, agent_exception, invalid_output, tenant_mismatch, model_error, rule_unavailable, upstream_missing."
+    },
+    "message": { "type": "string" },
+    "retryable": { "type": "boolean", "description": "Would trying again plausibly help? Refusals (4xx, wrong tenant) are not retryable." },
+    "stage": { "type": ["string", "null"] },
+    "agent_id": { "type": ["string", "null"] },
+    "at": { "type": ["string", "null"], "format": "date-time" },
+    "detail": { "type": ["string", "null"] }
+  }
+}

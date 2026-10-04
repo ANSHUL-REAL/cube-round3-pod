@@ -1,0 +1,11 @@
+# Fill in after your Pod completes pod.json. Each member owns their agent folder.
+# Shared areas belong to the whole Pod: list every member (or a team) so any of you can review them.
+# GitHub shows these owners as suggested reviewers. Enforcement needs branch protection (see GITHUB-GUIDE.md).
+/agents/receiving/    @receiving-owner-handle
+/agents/prep/         @prep-owner-handle
+/agents/pack/         @pack-owner-handle
+/agents/returns/      @returns-owner-handle
+/agents/recovery/     @recovery-owner-handle
+/orchestration/       @member1 @member2 @member3 @member4 @member5
+/shared/              @member1 @member2 @member3 @member4 @member5
+/tests/               @member1 @member2 @member3 @member4 @member5

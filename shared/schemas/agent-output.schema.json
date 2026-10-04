@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/agent-output.schema.json",
+  "title": "CUBE Agent Output v1",
+  "description": "What an agent returns. The orchestrator takes the evidence, records it, and decides the state transition. The output informs; it does not set workflow state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workflow_id", "stage", "agent_id", "status", "verdict", "confidence", "timestamp", "model", "error", "evidence"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "workflow_id": { "type": "string" },
+    "stage": { "enum": ["receiving", "prep", "pack", "returns", "recovery"] },
+    "agent_id": { "type": "string" },
+    "status": { "enum": ["completed", "pending", "error"], "description": "Same meaning as evidence.status." },
+    "verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"], "description": "Must equal evidence.decision.verdict." },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "model": { "$ref": "evidence.schema.json#/properties/model" },
+    "error": { "oneOf": [{ "type": "null" }, { "$ref": "error.schema.json" }] },
+    "next_step_recommendation": {
+      "type": ["object", "null"],
+      "description": "Advice only. The orchestrator decides.",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "enum": ["continue", "review", "retry", "stop", "route_to_recovery", "complete"] },
+        "reason": { "type": "string" }
+      }
+    },
+    "evidence": { "$ref": "evidence.schema.json" }
+  }
+}

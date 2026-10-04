@@ -1,0 +1,10 @@
+{
+  "stage": "prep",
+  "agent_id": "prep-stub@0",
+  "owner": "@github-handle-of-the-owner",
+  "mode": "inproc",
+  "url": "http://localhost:8102",
+  "module": "agents.prep.app",
+  "implementation": "organiser-stub",
+  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+}

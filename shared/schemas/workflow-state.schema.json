@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/workflow-state.schema.json",
+  "title": "CUBE Workflow State v1",
+  "description": "The authoritative state of one workflow. Owned by the orchestrator and derived from the evidence chain. Agents never write it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workflow_id", "flow_id", "org_id", "subject_id", "context", "status", "status_reason", "current_stage",
+               "previous_stage", "stage_results", "evidence_references", "timestamps", "errors", "overrides", "halted", "final_outcome", "transitions"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "workflow_id": { "type": "string" },
+    "flow_id": { "type": "string" },
+    "org_id": { "type": "string" },
+    "subject_id": { "type": "string" },
+    "context": { "type": "object", "description": "Case facts that drive routing, e.g. route and returned.", "additionalProperties": true },
+    "status": { "enum": ["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED", "BLOCKED", "RECOVERY_REQUIRED"], "description": "Definitions in ORCHESTRATION-GUIDE.md. Do not invent other meanings." },
+    "status_reason": { "type": "string" },
+    "current_stage": { "type": ["string", "null"] },
+    "previous_stage": { "type": ["string", "null"] },
+    "stage_results": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["stage", "state"],
+        "properties": {
+          "stage": { "enum": ["receiving", "prep", "pack", "returns", "recovery"] },
+          "agent_id": { "type": ["string", "null"] },
+          "state": { "enum": ["pending", "completed", "skipped", "error"] },
+          "skipped_reason": { "type": ["string", "null"] },
+          "record_id": { "type": ["string", "null"], "description": "Latest evidence record for this stage." },
+          "evidence_status": { "enum": ["completed", "pending", "error", null] },
+          "verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN", null], "description": "As the agent reported it. Overrides are applied in final_outcome.effective_verdicts." },
+          "outcome": { "type": ["string", "null"] },
+          "needs_human": { "type": ["boolean", "null"] },
+          "next_step_recommendation": { "type": ["object", "null"] },
+          "runs": { "type": "integer", "description": "Times this stage was started (resume increments)." },
+          "attempts": { "type": "integer", "description": "Tries in the latest run (retries)." },
+          "started_at": { "type": ["string", "null"] },
+          "finished_at": { "type": ["string", "null"] },
+          "duration_ms": { "type": ["integer", "null"] },
+          "error": { "oneOf": [{ "type": "null" }, { "$ref": "error.schema.json" }] }
+        }
+      }
+    },
+    "evidence_references": { "type": "array", "items": { "type": "string" }, "description": "Every record_id in this workflow, in order. Records are never deleted or replaced." },
+    "timestamps": {
+      "type": "object", "additionalProperties": false, "required": ["created_at", "updated_at", "completed_at"],
+      "properties": { "created_at": { "type": "string" }, "updated_at": { "type": "string" }, "completed_at": { "type": ["string", "null"] } }
+    },
+    "errors": { "type": "array", "items": { "$ref": "error.schema.json" } },
+    "overrides": {
+      "type": "array",
+      "description": "Append-only. Each override references the evidence it supersedes.",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["override_id", "supersedes", "target", "actor", "at", "reason", "original_verdict", "previous_verdict", "new_verdict"],
+        "properties": {
+          "override_id": { "type": "string" },
+          "supersedes": { "type": "object", "additionalProperties": false, "required": ["record_id"],
+            "properties": { "record_id": { "type": "string" }, "override_id": { "type": ["string", "null"], "description": "The earlier override this one replaces, if any." } } },
+          "target": { "const": "decision" },
+          "actor": { "type": "string", "minLength": 1 },
+          "at": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string", "minLength": 1 },
+          "original_verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"], "description": "What the agent said." },
+          "previous_verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"], "description": "What was effective just before this override." },
+          "new_verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"] },
+          "new_outcome": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "halted": {
+      "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["stage", "reason", "at"],
+        "properties": { "stage": { "type": "string" }, "reason": { "type": "string" }, "at": { "type": "string" } } }],
+      "description": "Set when policy stopped the workflow to wait for a person. Cleared by resume."
+    },
+    "final_outcome": { "oneOf": [{ "type": "null" }, { "$ref": "final-outcome.schema.json" }] },
+    "transitions": {
+      "type": "array",
+      "description": "The audit trail: every skip, retry, completion, halt, override, status change, with a timestamp and a reason.",
+      "items": { "type": "object", "required": ["at", "event"], "properties": {
+        "at": { "type": "string" }, "event": { "type": "string" }, "stage": { "type": ["string", "null"] }, "detail": { "type": ["string", "null"] },
+        "from_status": { "type": ["string", "null"] }, "to_status": { "type": ["string", "null"] } } }
+    }
+  }
+}

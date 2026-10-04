@@ -1,0 +1,31 @@
+{
+  "description": "The canonical sample workflow: UNIT-0014 (FBA, returned). With the organiser stubs, Prep says compliant, so the channel's inbound-defect fee is contradicted and Recovery recommends a claim; the weight-tier fee has no evidence and is left unclaimed.",
+  "case": {
+    "org_id": "org_demo_alpha",
+    "unit_id": "UNIT-0014",
+    "route": "fba",
+    "returned": true
+  },
+  "expected_stage_verdicts": {
+    "receiving": "PASS",
+    "prep": "PASS",
+    "pack": null,
+    "returns": "PASS",
+    "recovery": "FAIL"
+  },
+  "expected_stage_states": {
+    "receiving": "completed",
+    "prep": "completed",
+    "pack": "skipped",
+    "returns": "completed",
+    "recovery": "completed"
+  },
+  "expected_status": "COMPLETED",
+  "expected_final_outcome": {
+    "outcome": "CLAIM_RECOMMENDED",
+    "verdict": "FAIL",
+    "needs_human": false,
+    "claimable_usd": 2.0,
+    "provisional": false
+  }
+}

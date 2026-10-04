@@ -1,0 +1,240 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "flow_id": "standard-v1",
+  "org_id": "org_demo_bravo",
+  "subject_id": "UNIT-0039",
+  "context": {
+    "route": "fba",
+    "returned": true
+  },
+  "status": "FAILED",
+  "status_reason": "stage did not complete: prep",
+  "current_stage": "recovery",
+  "previous_stage": "returns",
+  "stage_results": [
+    {
+      "stage": "receiving",
+      "agent_id": "receiving-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "RCV-0039",
+      "evidence_status": "completed",
+      "verdict": "PASS",
+      "outcome": "accept",
+      "needs_human": false,
+      "next_step_recommendation": {
+        "action": "continue",
+        "reason": "stub replay of sample row; 0 failed check(s)"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 1,
+      "error": null
+    },
+    {
+      "stage": "prep",
+      "agent_id": "prep-stub@0",
+      "state": "error",
+      "skipped_reason": null,
+      "record_id": "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+      "evidence_status": "pending",
+      "verdict": "UNCERTAIN",
+      "outcome": "pending_review",
+      "needs_human": true,
+      "next_step_recommendation": {
+        "action": "retry",
+        "reason": "connection refused"
+      },
+      "runs": 1,
+      "attempts": 2,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 0,
+      "error": {
+        "code": "agent_unavailable",
+        "message": "connection refused",
+        "retryable": true,
+        "stage": "prep",
+        "agent_id": "prep-stub@0",
+        "at": "2026-10-04T18:37:06Z",
+        "detail": null
+      }
+    },
+    {
+      "stage": "pack",
+      "agent_id": "pack-stub@0",
+      "state": "skipped",
+      "skipped_reason": "route='fba' not in ['mfn']",
+      "record_id": null,
+      "evidence_status": null,
+      "verdict": null,
+      "outcome": null,
+      "needs_human": null,
+      "next_step_recommendation": null,
+      "runs": 0,
+      "attempts": 0,
+      "started_at": null,
+      "finished_at": null,
+      "duration_ms": null,
+      "error": null
+    },
+    {
+      "stage": "returns",
+      "agent_id": "returns-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "RTN-0039",
+      "evidence_status": "completed",
+      "verdict": "PASS",
+      "outcome": "liquidate",
+      "needs_human": false,
+      "next_step_recommendation": {
+        "action": "continue",
+        "reason": "stub replay: disposition copied from the operator column, not decided by an agent"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 1,
+      "error": null
+    },
+    {
+      "stage": "recovery",
+      "agent_id": "recovery-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "RCY-UNIT-0039",
+      "evidence_status": "completed",
+      "verdict": "UNCERTAIN",
+      "outcome": "insufficient_evidence",
+      "needs_human": false,
+      "next_step_recommendation": {
+        "action": "complete",
+        "reason": "stub: 1 charge(s), 0 contradicted"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 0,
+      "error": null
+    }
+  ],
+  "evidence_references": [
+    "RCV-0039",
+    "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+    "RTN-0039",
+    "RCY-UNIT-0039"
+  ],
+  "timestamps": {
+    "created_at": "2026-10-04T18:37:06Z",
+    "updated_at": "2026-10-04T18:37:06Z",
+    "completed_at": null
+  },
+  "errors": [
+    {
+      "code": "agent_unavailable",
+      "message": "connection refused",
+      "retryable": true,
+      "stage": "prep",
+      "agent_id": "prep-stub@0",
+      "at": "2026-10-04T18:37:06Z",
+      "detail": null
+    }
+  ],
+  "overrides": [],
+  "halted": null,
+  "final_outcome": {
+    "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+    "outcome": "INCOMPLETE",
+    "verdict": "UNCERTAIN",
+    "reason": "Stage did not complete: prep.",
+    "needs_human": true,
+    "provisional": true,
+    "claimable_usd": null,
+    "contributing_records": [
+      "RCV-0039",
+      "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+      "RTN-0039",
+      "RCY-UNIT-0039"
+    ],
+    "effective_verdicts": {
+      "receiving": "PASS",
+      "prep": "UNCERTAIN",
+      "returns": "PASS",
+      "recovery": "UNCERTAIN"
+    },
+    "decided_by": "orchestrator",
+    "decided_at": "2026-10-04T18:37:06Z"
+  },
+  "transitions": [
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "workflow_created",
+      "stage": null,
+      "detail": "flow=standard-v1"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_skipped",
+      "stage": "pack",
+      "detail": "route='fba' not in ['mfn']"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "advancing",
+      "from_status": "PENDING",
+      "to_status": "IN_PROGRESS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "receiving",
+      "detail": "accept / PASS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "retry",
+      "stage": "prep",
+      "detail": "connection refused"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_degraded",
+      "stage": "prep",
+      "detail": "agent_unavailable: recorded as pending; flow policy decides what next"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_error",
+      "stage": "prep",
+      "detail": "pending_review / UNCERTAIN"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "returns",
+      "detail": "liquidate / PASS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "recovery",
+      "detail": "insufficient_evidence / UNCERTAIN"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "stage did not complete: prep",
+      "from_status": "IN_PROGRESS",
+      "to_status": "FAILED"
+    }
+  ]
+}

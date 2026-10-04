@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_alpha-UNIT-0014",
+  "stage": "returns",
+  "agent_id": "returns-stub@0",
+  "status": "completed",
+  "verdict": "PASS",
+  "confidence": null,
+  "timestamp": "2026-10-04T18:37:05Z",
+  "model": {
+    "name": "csv-replay-stub",
+    "version": "0",
+    "provider": null,
+    "calls": 0,
+    "cost_usd": 0
+  },
+  "error": null,
+  "next_step_recommendation": {
+    "action": "continue",
+    "reason": "stub replay: disposition copied from the operator column, not decided by an agent"
+  },
+  "evidence": {
+    "schema_version": "1.0",
+    "record_id": "RTN-0014",
+    "workflow_id": "WF-org_demo_alpha-UNIT-0014",
+    "stage": "returns",
+    "agent_id": "returns-stub@0",
+    "subject": {
+      "org_id": "org_demo_alpha",
+      "subject_id": "UNIT-0014",
+      "unit_id": "UNIT-0014",
+      "unit_scope": "unit",
+      "refs": {
+        "order_id": "ORD-DUMMY-50014",
+        "sku": "SKU-LAMP-LED",
+        "asin": "B0DUMMY357"
+      }
+    },
+    "client_id": null,
+    "status": "completed",
+    "captured_at": "2026-07-18T07:36:00Z",
+    "produced_at": "2026-10-04T18:37:05Z",
+    "latency_ms": null,
+    "operator_id": "op_eli",
+    "model": {
+      "name": "csv-replay-stub",
+      "version": "0",
+      "provider": null,
+      "calls": 0,
+      "cost_usd": 0
+    },
+    "inputs": [
+      {
+        "ref": "fixtures/returns/UNIT-0014_1.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/returns/UNIT-0014_2.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/returns/UNIT-0014_3.jpg",
+        "sha256": null,
+        "kind": "image"
+      }
+    ],
+    "checks": [
+      {
+        "check_key": "identity_match",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "SKU-LAMP-LED",
+        "observed": "yes",
+        "evidence_refs": [
+          "fixtures/returns/UNIT-0014_1.jpg",
+          "fixtures/returns/UNIT-0014_2.jpg",
+          "fixtures/returns/UNIT-0014_3.jpg"
+        ]
+      },
+      {
+        "check_key": "completeness",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": [
+          "lamp",
+          "usb cable",
+          "manual"
+        ],
+        "observed": {
+          "missing": []
+        },
+        "evidence_refs": [
+          "fixtures/returns/UNIT-0014_1.jpg",
+          "fixtures/returns/UNIT-0014_2.jpg",
+          "fixtures/returns/UNIT-0014_3.jpg"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "PASS",
+      "outcome": "liquidate",
+      "confidence": null,
+      "reason": "stub replay: disposition copied from the operator column, not decided by an agent",
+      "needs_human": false
+    },
+    "payload": {
+      "observed_state": "signs_of_use",
+      "condition_graded": false,
+      "amazon_condition": null,
+      "sent_contents_seen": false
+    },
+    "upstream_refs": [
+      "RCV-0014",
+      "PRP-0014"
+    ],
+    "overrides": [],
+    "error": null,
+    "content_hash": "6090af5eb19a35e7928088157f78284148e5102905e0358527223c22111ffb9c"
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_alpha-UNIT-0014",
+  "stage": "receiving",
+  "agent_id": "receiving-stub@0",
+  "status": "completed",
+  "verdict": "PASS",
+  "confidence": null,
+  "timestamp": "2026-10-04T18:37:05Z",
+  "model": {
+    "name": "csv-replay-stub",
+    "version": "0",
+    "provider": null,
+    "calls": 0,
+    "cost_usd": 0
+  },
+  "error": null,
+  "next_step_recommendation": {
+    "action": "continue",
+    "reason": "stub replay of sample row; 0 failed check(s)"
+  },
+  "evidence": {
+    "schema_version": "1.0",
+    "record_id": "RCV-0014",
+    "workflow_id": "WF-org_demo_alpha-UNIT-0014",
+    "stage": "receiving",
+    "agent_id": "receiving-stub@0",
+    "subject": {
+      "org_id": "org_demo_alpha",
+      "subject_id": "UNIT-0014",
+      "unit_id": "UNIT-0014",
+      "unit_scope": "po_line",
+      "refs": {
+        "po_number": "PO-7003",
+        "po_line": "3",
+        "sku": "SKU-LAMP-LED",
+        "asin": "B0DUMMY357"
+      }
+    },
+    "client_id": null,
+    "status": "completed",
+    "captured_at": "2026-06-04T14:36:00Z",
+    "produced_at": "2026-10-04T18:37:05Z",
+    "latency_ms": null,
+    "operator_id": "op_amira",
+    "model": {
+      "name": "csv-replay-stub",
+      "version": "0",
+      "provider": null,
+      "calls": 0,
+      "cost_usd": 0
+    },
+    "inputs": [
+      {
+        "ref": "fixtures/receiving/UNIT-0014_pallet.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/receiving/UNIT-0014_carton.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/receiving/UNIT-0014_unit.jpg",
+        "sha256": null,
+        "kind": "image"
+      }
+    ],
+    "checks": [
+      {
+        "check_key": "identity_match",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "SKU-LAMP-LED (LED Desk Lamp)",
+        "observed": "yes",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "carton_count",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": 2,
+        "observed": 2,
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "quantity",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": 24,
+        "observed": 24,
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "carton_damage",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "none",
+        "observed": "none",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "unit_damage",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "none",
+        "observed": "none",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "quality_flags",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": [],
+        "observed": [],
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0014_pallet.jpg",
+          "fixtures/receiving/UNIT-0014_carton.jpg",
+          "fixtures/receiving/UNIT-0014_unit.jpg"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "PASS",
+      "outcome": "accept",
+      "confidence": null,
+      "reason": "stub replay of sample row; 0 failed check(s)",
+      "needs_human": false
+    },
+    "payload": {
+      "supplier": "Supplier Coastal (DUMMY)",
+      "qty_ordered": 24,
+      "qty_received": 24,
+      "shortfall_units": 0,
+      "quality_flags": []
+    },
+    "upstream_refs": [],
+    "overrides": [],
+    "error": null,
+    "content_hash": "c555f5ba73b5d5449ca39e7dc3e1f6bee14e1bd2d5cd781a4ffe2f7e2210c78d"
+  }
+}

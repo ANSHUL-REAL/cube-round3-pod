@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/agent-input.schema.json",
+  "title": "CUBE Agent Input v1",
+  "description": "What the orchestrator sends an agent (POST /run).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "workflow_id", "stage", "subject", "previous_evidence"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "request_id": { "type": "string", "description": "Idempotency key. Same request_id, same record_id." },
+    "workflow_id": { "type": "string" },
+    "stage": { "enum": ["receiving", "prep", "pack", "returns", "recovery"], "description": "The current stage, which is also the agent being called." },
+    "subject": {
+      "type": "object", "additionalProperties": false, "required": ["org_id", "subject_id"],
+      "properties": {
+        "org_id": { "type": "string" },
+        "subject_id": { "type": "string" },
+        "route": { "enum": ["fba", "mfn", "unknown"], "description": "fba: Prep then Amazon ships. mfn: merchant-fulfilled / 3PL, seller packs." }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "This stage's captures / report rows, content-addressed.",
+      "items": { "type": "object", "required": ["ref"], "properties": {
+        "ref": { "type": "string" }, "kind": { "enum": ["image", "video", "document", "csv_row", "other"] }, "sha256": { "type": ["string", "null"] } } }
+    },
+    "previous_evidence": {
+      "type": "array",
+      "description": "Every Evidence Record already produced in this workflow, in stage order. Read-only. Empty for the first stage.",
+      "items": { "$ref": "evidence.schema.json" }
+    },
+    "context": {
+      "type": "object", "additionalProperties": true,
+      "description": "Stage information and hints. The orchestrator always adds context.overrides: workflow-level overrides of previous evidence (use the latest as effective)."
+    }
+  }
+}

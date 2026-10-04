@@ -1,0 +1,34 @@
+{
+  "pod_id": "TEMPLATE",
+  "pod_type": "standard",
+  "flow": "orchestration/flow.json",
+  "members": [
+    {
+      "role": "Receiving Manager",
+      "agent": "receiving",
+      "github": ""
+    },
+    {
+      "role": "Prep Manager",
+      "agent": "prep",
+      "github": ""
+    },
+    {
+      "role": "Pack Manager",
+      "agent": "pack",
+      "github": ""
+    },
+    {
+      "role": "Returns Manager",
+      "agent": "returns",
+      "github": ""
+    },
+    {
+      "role": "Recovery Manager",
+      "agent": "recovery",
+      "github": ""
+    }
+  ],
+  "notes": "Organisers pre-fill pod_id, pod_type and flow. The Pod fills in each member's GitHub handle and picks an orchestration coordinator (a coordinator, not an owner: the Pod owns the orchestration jointly) in the first session (PARTICIPANT-GUIDE.md).",
+  "orchestration_coordinator": ""
+}

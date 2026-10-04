@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "record_id": "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "stage": "prep",
+  "agent_id": "prep-stub@0",
+  "subject": {
+    "org_id": "org_demo_bravo",
+    "subject_id": "UNIT-0039",
+    "unit_id": "UNIT-0039",
+    "unit_scope": "unit",
+    "refs": {}
+  },
+  "client_id": null,
+  "status": "error",
+  "captured_at": "2026-10-04T18:37:06Z",
+  "produced_at": "2026-10-04T18:37:06Z",
+  "latency_ms": null,
+  "operator_id": null,
+  "model": {
+    "name": "none",
+    "version": "0",
+    "calls": 0
+  },
+  "inputs": [],
+  "checks": [],
+  "decision": {
+    "verdict": "UNCERTAIN",
+    "outcome": "pending_review",
+    "confidence": null,
+    "reason": "invalid_output: content_hash does not match the evidence body",
+    "needs_human": true
+  },
+  "payload": {},
+  "upstream_refs": [
+    "RCV-0039"
+  ],
+  "overrides": [],
+  "error": {
+    "code": "invalid_output",
+    "message": "content_hash does not match the evidence body",
+    "retryable": false,
+    "stage": "prep",
+    "agent_id": "prep-stub@0",
+    "at": "2026-10-04T18:37:06Z",
+    "detail": null
+  },
+  "content_hash": "122f6f5bca8a1684454f24bb3c7449549d074f13cbc1c75787ad60afc49c1d10"
+}

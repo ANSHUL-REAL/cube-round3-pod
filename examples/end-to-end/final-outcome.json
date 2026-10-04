@@ -1,0 +1,23 @@
+{
+  "workflow_id": "WF-org_demo_alpha-UNIT-0014",
+  "outcome": "CLAIM_RECOMMENDED",
+  "verdict": "FAIL",
+  "reason": "Recovery contradicted at least one charge (claimable $2.00).",
+  "needs_human": false,
+  "provisional": false,
+  "claimable_usd": 2.0,
+  "contributing_records": [
+    "RCV-0014",
+    "PRP-0014",
+    "RTN-0014",
+    "RCY-UNIT-0014"
+  ],
+  "effective_verdicts": {
+    "receiving": "PASS",
+    "prep": "PASS",
+    "returns": "PASS",
+    "recovery": "FAIL"
+  },
+  "decided_by": "orchestrator",
+  "decided_at": "2026-10-04T18:37:05Z"
+}

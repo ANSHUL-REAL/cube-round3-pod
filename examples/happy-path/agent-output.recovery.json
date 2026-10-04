@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "stage": "recovery",
+  "agent_id": "recovery-stub@0",
+  "status": "completed",
+  "verdict": "UNCERTAIN",
+  "confidence": null,
+  "timestamp": "2026-10-04T18:37:05Z",
+  "model": {
+    "name": "csv-replay-stub",
+    "version": "0",
+    "provider": null,
+    "calls": 0,
+    "cost_usd": 0
+  },
+  "error": null,
+  "next_step_recommendation": {
+    "action": "complete",
+    "reason": "stub: 1 charge(s), 0 contradicted"
+  },
+  "evidence": {
+    "schema_version": "1.0",
+    "record_id": "RCY-UNIT-0039",
+    "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+    "stage": "recovery",
+    "agent_id": "recovery-stub@0",
+    "subject": {
+      "org_id": "org_demo_bravo",
+      "subject_id": "UNIT-0039",
+      "unit_id": "UNIT-0039",
+      "unit_scope": "unit",
+      "refs": {}
+    },
+    "client_id": null,
+    "status": "completed",
+    "captured_at": "2026-06-21T00:00:00Z",
+    "produced_at": "2026-10-04T18:37:05Z",
+    "latency_ms": null,
+    "operator_id": null,
+    "model": {
+      "name": "csv-replay-stub",
+      "version": "0",
+      "provider": null,
+      "calls": 0,
+      "cost_usd": 0
+    },
+    "inputs": [],
+    "checks": [
+      {
+        "check_key": "charge_fee_0039_1",
+        "verdict": "UNCERTAIN",
+        "confidence": null,
+        "expected": "charge supported by evidence",
+        "observed": "SILENT",
+        "detail": "no measured weight/dimensions upstream (finding F-07)",
+        "uncertain_reason": "insufficient_evidence"
+      }
+    ],
+    "decision": {
+      "verdict": "UNCERTAIN",
+      "outcome": "insufficient_evidence",
+      "confidence": null,
+      "reason": "stub: 1 charge(s), 0 contradicted",
+      "needs_human": false
+    },
+    "payload": {
+      "charges": [
+        {
+          "line_id": "FEE-0039-1",
+          "charge_type": "fulfilment_fee_weight_tier",
+          "amount_usd": 5.1,
+          "position": "SILENT",
+          "reason": "no measured weight/dimensions upstream (finding F-07)",
+          "evidence_record_ids": []
+        }
+      ],
+      "claimable_usd": 0.0,
+      "unclaimable": [
+        {
+          "line_id": "FEE-0039-1",
+          "charge_type": "fulfilment_fee_weight_tier",
+          "amount_usd": 5.1,
+          "position": "SILENT",
+          "reason": "no measured weight/dimensions upstream (finding F-07)",
+          "evidence_record_ids": []
+        }
+      ]
+    },
+    "upstream_refs": [
+      "RCV-0039",
+      "PRP-0039",
+      "RTN-0039"
+    ],
+    "overrides": [],
+    "error": null,
+    "content_hash": "bf0db0bfeb2c6995b884da8bb3dc0bdfa37d113da180fe74a3e30cf49487a677"
+  }
+}

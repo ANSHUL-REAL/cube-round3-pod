@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "record_id": "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "stage": "prep",
+  "agent_id": "prep-stub@0",
+  "subject": {
+    "org_id": "org_demo_bravo",
+    "subject_id": "UNIT-0039",
+    "unit_id": "UNIT-0039",
+    "unit_scope": "unit",
+    "refs": {}
+  },
+  "client_id": null,
+  "status": "error",
+  "captured_at": "2026-10-04T18:37:06Z",
+  "produced_at": "2026-10-04T18:37:06Z",
+  "latency_ms": null,
+  "operator_id": null,
+  "model": {
+    "name": "none",
+    "version": "0",
+    "calls": 0
+  },
+  "inputs": [],
+  "checks": [],
+  "decision": {
+    "verdict": "UNCERTAIN",
+    "outcome": "pending_review",
+    "confidence": null,
+    "reason": "tenant_mismatch: TENANCY/SUBJECT MISMATCH: evidence is about a different org or subject than this workflow",
+    "needs_human": true
+  },
+  "payload": {},
+  "upstream_refs": [
+    "RCV-0039"
+  ],
+  "overrides": [],
+  "error": {
+    "code": "tenant_mismatch",
+    "message": "TENANCY/SUBJECT MISMATCH: evidence is about a different org or subject than this workflow",
+    "retryable": false,
+    "stage": "prep",
+    "agent_id": "prep-stub@0",
+    "at": "2026-10-04T18:37:06Z",
+    "detail": null
+  },
+  "content_hash": "ffadc8fce37a61f4d48a3f008c0401acadb0a54e5483e441b04cd7e6f952bb30"
+}

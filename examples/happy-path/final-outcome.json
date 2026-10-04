@@ -1,0 +1,23 @@
+{
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "outcome": "CLEAN",
+  "verdict": "PASS",
+  "reason": "All applicable stages passed.",
+  "needs_human": false,
+  "provisional": false,
+  "claimable_usd": null,
+  "contributing_records": [
+    "RCV-0039",
+    "PRP-0039",
+    "RTN-0039",
+    "RCY-UNIT-0039"
+  ],
+  "effective_verdicts": {
+    "receiving": "PASS",
+    "prep": "PASS",
+    "returns": "PASS",
+    "recovery": "UNCERTAIN"
+  },
+  "decided_by": "orchestrator",
+  "decided_at": "2026-10-04T18:37:05Z"
+}

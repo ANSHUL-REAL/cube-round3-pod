@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "record_id": "PRP-PENDING-WF-org_demo_bravo-UNIT-0039-prep",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "stage": "prep",
+  "agent_id": "prep-stub@0",
+  "subject": {
+    "org_id": "org_demo_bravo",
+    "subject_id": "UNIT-0039",
+    "unit_id": "UNIT-0039",
+    "unit_scope": "unit",
+    "refs": {}
+  },
+  "client_id": null,
+  "status": "pending",
+  "captured_at": "2026-10-04T18:37:06Z",
+  "produced_at": "2026-10-04T18:37:06Z",
+  "latency_ms": null,
+  "operator_id": null,
+  "model": {
+    "name": "none",
+    "version": "0",
+    "calls": 0
+  },
+  "inputs": [],
+  "checks": [],
+  "decision": {
+    "verdict": "UNCERTAIN",
+    "outcome": "pending_review",
+    "confidence": null,
+    "reason": "agent_timeout: no answer in 30s",
+    "needs_human": true
+  },
+  "payload": {},
+  "upstream_refs": [
+    "RCV-0039"
+  ],
+  "overrides": [],
+  "error": {
+    "code": "agent_timeout",
+    "message": "no answer in 30s",
+    "retryable": true,
+    "stage": "prep",
+    "agent_id": "prep-stub@0",
+    "at": "2026-10-04T18:37:06Z",
+    "detail": null
+  },
+  "content_hash": "13021c02046a863698035b897858f46fb297343815804847fad6e2ce8c06a81b"
+}

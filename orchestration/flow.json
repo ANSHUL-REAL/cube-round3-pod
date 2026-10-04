@@ -1,0 +1,42 @@
+{
+  "flow_id": "standard-v1",
+  "description": "Receiving -> Prep (FBA units) | Pack (merchant-fulfilled units) -> Returns (if a return happened) -> Recovery. Edit freely: the order, conditions and policies are yours. Record every change in docs/decisions.md.",
+  "steps": [
+    {
+      "stage": "receiving"
+    },
+    {
+      "when": {
+        "route": [
+          "fba"
+        ]
+      },
+      "stage": "prep"
+    },
+    {
+      "when": {
+        "route": [
+          "mfn"
+        ]
+      },
+      "stage": "pack"
+    },
+    {
+      "when": {
+        "returned": [
+          true
+        ]
+      },
+      "stage": "returns"
+    },
+    {
+      "stage": "recovery"
+    }
+  ],
+  "defaults": {
+    "timeout_s": 30,
+    "retries": 1,
+    "on_uncertain": "continue",
+    "on_error": "continue"
+  }
+}

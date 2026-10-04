@@ -1,0 +1,602 @@
+{
+  "WF-org_demo_alpha-UNIT-0001": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0002": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0003": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0004": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0005": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0006": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0007": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0008": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0009": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0010": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0011": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0012": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0013": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0014": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 2.0
+  },
+  "WF-org_demo_bravo-UNIT-0015": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0016": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0017": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0018": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 1.0
+  },
+  "WF-org_demo_alpha-UNIT-0019": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0020": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0021": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0022": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0023": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0024": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0025": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0026": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 1.0
+  },
+  "WF-org_demo_bravo-UNIT-0027": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0028": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0029": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0030": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0031": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0032": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0033": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0034": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0035": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0036": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0037": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0038": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0039": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0040": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0041": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0042": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0043": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0044": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0045": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0046": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0047": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0048": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0049": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0050": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0051": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0052": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0053": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0054": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0055": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0056": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0057": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0058": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0059": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0060": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0061": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 2.0
+  },
+  "WF-org_demo_alpha-UNIT-0062": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0063": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0064": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0065": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0066": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0067": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0068": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0069": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0070": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0071": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 1.0
+  },
+  "WF-org_demo_bravo-UNIT-0072": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0073": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0074": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 0.5
+  },
+  "WF-org_demo_bravo-UNIT-0075": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0076": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0077": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0078": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0079": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0080": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0081": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0082": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0083": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0084": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0085": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0086": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0087": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0088": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0089": {
+    "status": "BLOCKED",
+    "outcome": "NEEDS_REVIEW",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0090": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0091": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0092": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0093": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0094": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0095": {
+    "status": "COMPLETED",
+    "outcome": "CLAIM_RECOMMENDED",
+    "needs_human": false,
+    "claimable_usd": 0.5
+  },
+  "WF-org_demo_bravo-UNIT-0096": {
+    "status": "BLOCKED",
+    "outcome": "EXCEPTION",
+    "needs_human": true,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0097": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0098": {
+    "status": "COMPLETED",
+    "outcome": "EXCEPTION",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_bravo-UNIT-0099": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  },
+  "WF-org_demo_alpha-UNIT-0100": {
+    "status": "COMPLETED",
+    "outcome": "CLEAN",
+    "needs_human": false,
+    "claimable_usd": null
+  }
+}

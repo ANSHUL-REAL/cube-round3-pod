@@ -1,0 +1,163 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+  "stage": "receiving",
+  "agent_id": "receiving-stub@0",
+  "status": "completed",
+  "verdict": "PASS",
+  "confidence": null,
+  "timestamp": "2026-10-04T18:37:05Z",
+  "model": {
+    "name": "csv-replay-stub",
+    "version": "0",
+    "provider": null,
+    "calls": 0,
+    "cost_usd": 0
+  },
+  "error": null,
+  "next_step_recommendation": {
+    "action": "continue",
+    "reason": "stub replay of sample row; 0 failed check(s)"
+  },
+  "evidence": {
+    "schema_version": "1.0",
+    "record_id": "RCV-0039",
+    "workflow_id": "WF-org_demo_bravo-UNIT-0039",
+    "stage": "receiving",
+    "agent_id": "receiving-stub@0",
+    "subject": {
+      "org_id": "org_demo_bravo",
+      "subject_id": "UNIT-0039",
+      "unit_id": "UNIT-0039",
+      "unit_scope": "po_line",
+      "refs": {
+        "po_number": "PO-7009",
+        "po_line": "4",
+        "sku": "SKU-SERUM-30",
+        "asin": "B0DUMMY031"
+      }
+    },
+    "client_id": null,
+    "status": "completed",
+    "captured_at": "2026-06-02T11:55:00Z",
+    "produced_at": "2026-10-04T18:37:05Z",
+    "latency_ms": null,
+    "operator_id": "op_eli",
+    "model": {
+      "name": "csv-replay-stub",
+      "version": "0",
+      "provider": null,
+      "calls": 0,
+      "cost_usd": 0
+    },
+    "inputs": [
+      {
+        "ref": "fixtures/receiving/UNIT-0039_pallet.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/receiving/UNIT-0039_carton.jpg",
+        "sha256": null,
+        "kind": "image"
+      },
+      {
+        "ref": "fixtures/receiving/UNIT-0039_unit.jpg",
+        "sha256": null,
+        "kind": "image"
+      }
+    ],
+    "checks": [
+      {
+        "check_key": "identity_match",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "SKU-SERUM-30 (Vitamin C Face Serum 30ml)",
+        "observed": "yes",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "carton_count",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": 4,
+        "observed": 4,
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "quantity",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": 24,
+        "observed": 24,
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "carton_damage",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "none",
+        "observed": "none",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "unit_damage",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": "none",
+        "observed": "none",
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      },
+      {
+        "check_key": "quality_flags",
+        "verdict": "PASS",
+        "confidence": null,
+        "expected": [],
+        "observed": [],
+        "evidence_refs": [
+          "fixtures/receiving/UNIT-0039_pallet.jpg",
+          "fixtures/receiving/UNIT-0039_carton.jpg",
+          "fixtures/receiving/UNIT-0039_unit.jpg"
+        ]
+      }
+    ],
+    "decision": {
+      "verdict": "PASS",
+      "outcome": "accept",
+      "confidence": null,
+      "reason": "stub replay of sample row; 0 failed check(s)",
+      "needs_human": false
+    },
+    "payload": {
+      "supplier": "Supplier North (DUMMY)",
+      "qty_ordered": 24,
+      "qty_received": 24,
+      "shortfall_units": 0,
+      "quality_flags": []
+    },
+    "upstream_refs": [],
+    "overrides": [],
+    "error": null,
+    "content_hash": "6855e0b832ecd4cac0182f1e05994dac3802230baaab54a0e1d9dd7436c53e6f"
+  }
+}

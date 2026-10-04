@@ -1,0 +1,254 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "WF-org_demo_bravo-UNIT-0012",
+  "flow_id": "standard-v1+block-on-uncertain",
+  "org_id": "org_demo_bravo",
+  "subject_id": "UNIT-0012",
+  "context": {
+    "route": "fba",
+    "returned": false
+  },
+  "status": "COMPLETED",
+  "status_reason": "all required stages finished",
+  "current_stage": "recovery",
+  "previous_stage": "prep",
+  "stage_results": [
+    {
+      "stage": "receiving",
+      "agent_id": "receiving-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "RCV-0012",
+      "evidence_status": "completed",
+      "verdict": "PASS",
+      "outcome": "accept",
+      "needs_human": false,
+      "next_step_recommendation": {
+        "action": "continue",
+        "reason": "stub replay of sample row; 0 failed check(s)"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 1,
+      "error": null
+    },
+    {
+      "stage": "prep",
+      "agent_id": "prep-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "PRP-0012",
+      "evidence_status": "completed",
+      "verdict": "UNCERTAIN",
+      "outcome": "pending_review",
+      "needs_human": true,
+      "next_step_recommendation": {
+        "action": "review",
+        "reason": "stub replay of sample row; 0 failed check(s)"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 1,
+      "error": null
+    },
+    {
+      "stage": "pack",
+      "agent_id": "pack-stub@0",
+      "state": "skipped",
+      "skipped_reason": "route='fba' not in ['mfn']",
+      "record_id": null,
+      "evidence_status": null,
+      "verdict": null,
+      "outcome": null,
+      "needs_human": null,
+      "next_step_recommendation": null,
+      "runs": 0,
+      "attempts": 0,
+      "started_at": null,
+      "finished_at": null,
+      "duration_ms": null,
+      "error": null
+    },
+    {
+      "stage": "returns",
+      "agent_id": "returns-stub@0",
+      "state": "skipped",
+      "skipped_reason": "returned=False not in [True]",
+      "record_id": null,
+      "evidence_status": null,
+      "verdict": null,
+      "outcome": null,
+      "needs_human": null,
+      "next_step_recommendation": null,
+      "runs": 0,
+      "attempts": 0,
+      "started_at": null,
+      "finished_at": null,
+      "duration_ms": null,
+      "error": null
+    },
+    {
+      "stage": "recovery",
+      "agent_id": "recovery-stub@0",
+      "state": "completed",
+      "skipped_reason": null,
+      "record_id": "RCY-UNIT-0012",
+      "evidence_status": "completed",
+      "verdict": "UNCERTAIN",
+      "outcome": "insufficient_evidence",
+      "needs_human": false,
+      "next_step_recommendation": {
+        "action": "complete",
+        "reason": "stub: 1 charge(s), 0 contradicted"
+      },
+      "runs": 1,
+      "attempts": 1,
+      "started_at": "2026-10-04T18:37:06Z",
+      "finished_at": "2026-10-04T18:37:06Z",
+      "duration_ms": 1,
+      "error": null
+    }
+  ],
+  "evidence_references": [
+    "RCV-0012",
+    "PRP-0012",
+    "RCY-UNIT-0012"
+  ],
+  "timestamps": {
+    "created_at": "2026-10-04T18:37:06Z",
+    "updated_at": "2026-10-04T18:37:06Z",
+    "completed_at": "2026-10-04T18:37:06Z"
+  },
+  "errors": [],
+  "overrides": [
+    {
+      "override_id": "OVR-001",
+      "supersedes": {
+        "record_id": "PRP-0012",
+        "override_id": null
+      },
+      "target": "decision",
+      "actor": "op_amira",
+      "at": "2026-10-04T18:37:06Z",
+      "reason": "Retook the photo: label is flat and the polybag is sealed",
+      "original_verdict": "UNCERTAIN",
+      "previous_verdict": "UNCERTAIN",
+      "new_verdict": "PASS",
+      "new_outcome": null
+    }
+  ],
+  "halted": null,
+  "final_outcome": {
+    "workflow_id": "WF-org_demo_bravo-UNIT-0012",
+    "outcome": "CLEAN",
+    "verdict": "PASS",
+    "reason": "All applicable stages passed.",
+    "needs_human": false,
+    "provisional": false,
+    "claimable_usd": null,
+    "contributing_records": [
+      "RCV-0012",
+      "PRP-0012",
+      "RCY-UNIT-0012"
+    ],
+    "effective_verdicts": {
+      "receiving": "PASS",
+      "prep": "PASS",
+      "recovery": "UNCERTAIN"
+    },
+    "decided_by": "orchestrator",
+    "decided_at": "2026-10-04T18:37:06Z"
+  },
+  "transitions": [
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "workflow_created",
+      "stage": null,
+      "detail": "flow=standard-v1+block-on-uncertain"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_skipped",
+      "stage": "pack",
+      "detail": "route='fba' not in ['mfn']"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_skipped",
+      "stage": "returns",
+      "detail": "returned=False not in [True]"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "advancing",
+      "from_status": "PENDING",
+      "to_status": "IN_PROGRESS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "receiving",
+      "detail": "accept / PASS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "prep",
+      "detail": "pending_review / UNCERTAIN"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "halted",
+      "stage": "prep",
+      "detail": "stage prep is UNCERTAIN, needs a person, and on_uncertain=block"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "halted at prep: stage prep is UNCERTAIN, needs a person, and on_uncertain=block",
+      "from_status": "IN_PROGRESS",
+      "to_status": "BLOCKED"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "override",
+      "stage": "prep",
+      "detail": "OVR-001 by op_amira: UNCERTAIN -> PASS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "resumed",
+      "stage": null,
+      "detail": "from status BLOCKED"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "advancing",
+      "from_status": "BLOCKED",
+      "to_status": "IN_PROGRESS"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "stage_completed",
+      "stage": "recovery",
+      "detail": "insufficient_evidence / UNCERTAIN"
+    },
+    {
+      "at": "2026-10-04T18:37:06Z",
+      "event": "status_changed",
+      "stage": null,
+      "detail": "all required stages finished",
+      "from_status": "IN_PROGRESS",
+      "to_status": "COMPLETED"
+    }
+  ]
+}

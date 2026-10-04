@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cube-Build-A-Thon/cube-round3-pod/shared/schemas/final-outcome.schema.json",
+  "title": "CUBE Final Outcome v1",
+  "description": "The orchestrator's end-to-end decision for one workflow, derived from the evidence chain and the overrides. Provisional until the workflow status is COMPLETED.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflow_id", "outcome", "verdict", "reason", "needs_human", "provisional", "contributing_records", "effective_verdicts", "decided_by", "decided_at"],
+  "properties": {
+    "workflow_id": { "type": "string" },
+    "outcome": { "enum": ["CLEAN", "CLAIM_RECOMMENDED", "EXCEPTION", "NEEDS_REVIEW", "INCOMPLETE"], "description": "Default meanings in INTEGRATION-GUIDE.md. A Pod may refine its rules and must document them in docs/decisions.md." },
+    "verdict": { "enum": ["PASS", "FAIL", "UNCERTAIN"] },
+    "reason": { "type": "string" },
+    "needs_human": { "type": "boolean" },
+    "provisional": { "type": "boolean", "description": "true while the workflow is not COMPLETED (a stage failed, or a person must still decide)." },
+    "claimable_usd": { "type": ["number", "null"] },
+    "contributing_records": { "type": "array", "items": { "type": "string" }, "description": "The evidence this outcome rests on. An outcome with no evidence is a bug." },
+    "effective_verdicts": { "type": "object", "description": "stage -> verdict after applying overrides.", "additionalProperties": { "enum": ["PASS", "FAIL", "UNCERTAIN"] } },
+    "decided_by": { "const": "orchestrator" },
+    "decided_at": { "type": "string", "format": "date-time" }
+  }
+}
