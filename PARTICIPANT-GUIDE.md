@@ -12,7 +12,7 @@ Member 2 → Prep             Member 5 → Recovery
 Member 3 → Pack
 ```
 
-**Specialist Pods** (no Prep Manager) have four agent owners (Receiving, Pack, Returns, Recovery) and a **Specialist / Integration Engineer**. The Specialist is not scored as having built a sixth agent: they are assessed on integration, orchestration, reliability and system-level contribution. They **lead and coordinate** the orchestration, the cross-agent hand-offs, validation and error handling, end-to-end testing, evidence and deployment, and help the others with their adapters. They do not own it alone. Your `pod.json` says which kind of Pod you are, and which flow you run.
+**Specialist Pods** (no Prep Manager) have four agent owners (Receiving, Pack, Returns, Recovery) and a **Specialist / Integration Engineer**. The Specialist is not scored as having built a sixth agent: they are assessed on integration, orchestration, reliability and system-level contribution. They **lead and coordinate** the orchestration, the cross-agent hand-offs, validation and error handling, end-to-end testing, evidence and deployment, and help the others with their adapters. They do not own it alone. If you are a Specialist Pod (the organisers will tell you), set `pod_type` and `flow` in `pod.json` so the starter runs `orchestration/flow.specialist.json`.
 
 ## 2. Individual responsibility
 
@@ -45,7 +45,7 @@ Pick an **orchestration coordinator** in your first session (a Specialist Pod's 
 ## 4. How the Pod works together
 
 ```text
- 1. Get your Pod repository (your Pod's fork of the starter)
+ 1. Fork the official starter repository (one fork per Pod; see GITHUB-GUIDE.md)
  2. Assign responsibilities (fill in pod.json and .github/CODEOWNERS)
  3. Bring in the Round 2 agents
  4. Agree the integration architecture (read INTEGRATION-GUIDE + ORCHESTRATION-GUIDE together)

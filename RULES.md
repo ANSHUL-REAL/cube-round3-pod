@@ -33,7 +33,7 @@ If a Pod member does not contribute, tell an organiser early. Do not hide it in 
 
 | # | Rule | Enforced by |
 |---|---|---|
-| **R1** | Your Pod works in **one Pod repository**: your Pod's fork of the starter (`cube-r3-pod-NN`, or the fork the organisers tell you to use). That repository is your Round 3 development and final submission repository. | Pod |
+| **R1** | Your Pod works in **one repository: your Pod's fork of the official starter** (or the copy the organisers tell you to use). That repository is your Round 3 development and final submission repository. Do not split the Pod's work across five forks. | Pod |
 | **R2** | Do not edit, delete or interfere with the organisers' starter, **another Pod's repo**, or anyone's Round 2 repo. Your Round 2 repo stays as it was submitted. | Participant responsibility |
 | **R3** | Bring your Round 2 agent into `agents/<name>/` by **copying** it. Record its origin in `PROVENANCE.md`. Adapting it for the contract is expected. | Pod / review |
 | **R4** | Every member works under their own GitHub account. Contributions are assessed from history and PRs. | Repository history |
@@ -91,7 +91,7 @@ These carry over from Round 2 and now apply to the **whole system**, not just yo
 
 ## 8. Submission rules
 
-- One submission **per Pod**, from the Pod's repository, as described in [`SUBMISSION-GUIDE.md`](SUBMISSION-GUIDE.md).
+- One submission **per Pod**, from the Pod's fork, as described in [`SUBMISSION-GUIDE.md`](SUBMISSION-GUIDE.md).
 - You submit a **tagged commit** (`round3-final`). What is on that commit is what is assessed.
 - Every link you submit must work **without logging in to your personal accounts**. Check it from a private window.
 - The demo you submit must be of the system in that commit, working. A mock-up is not a demo.

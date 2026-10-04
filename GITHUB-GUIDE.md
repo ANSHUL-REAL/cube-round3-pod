@@ -6,7 +6,7 @@ Round 3 is a **Pod build**: five people, one repository. In Round 2 you worked a
 Official starter  (Cube-Build-A-Thon/cube-round3-pod)
         │  fork / copy
         ▼
-Your Pod's repository   (Cube-Build-A-Thon/cube-r3-pod-NN)   ◀── branches and PRs happen here
+Your Pod's fork   (one repository per Pod)   ◀── branches and PRs happen here
         │
         ▼
 Final submission = the tagged commit `round3-final` on main
@@ -22,20 +22,25 @@ git config --global user.email "you@example.com"     # the email on your GitHub 
 gh auth login                                        # or check SSH:  ssh -T git@github.com
 ```
 
-## 1. Fork: get your Pod's repository
+## 1. Fork the starter
 
-Each Pod works in **one fork of the official starter**. The organisers create it for you: `cube-r3-pod-NN` (your number is in your Pod assignment), created from the starter, **private**, with the five Pod members added as collaborators.
+Each Pod works in **one fork of the official starter**: [`Cube-Build-A-Thon/cube-round3-pod`](https://github.com/Cube-Build-A-Thon/cube-round3-pod). Do this once, together:
+
+1. **One member** (agree who) forks the starter into their account, or uses **Use this template** on the starter's page for a copy (a template copy can be private; a fork of a public repo is public, so never put anything sensitive in it).
+2. **Add the other four members as collaborators with write access** (Settings → Collaborators).
+3. **Add the organisers as collaborators (read access is enough)** and send them the repository link, so your work can be assessed. The organisers will tell you which account to add.
+4. Everyone clones **that one repository**:
 
 ```sh
-git clone git@github.com:Cube-Build-A-Thon/cube-r3-pod-NN.git       # SSH
-git clone https://github.com/Cube-Build-A-Thon/cube-r3-pod-NN.git   # or HTTPS
-cd cube-r3-pod-NN
+git clone git@github.com:<owner>/<your-pod-repo>.git        # SSH
+git clone https://github.com/<owner>/<your-pod-repo>.git    # or HTTPS
+cd <your-pod-repo>
 make setup && make test && make run      # everything should pass on the stubs before you change anything
 ```
 
-**No Pod repo yet, or no write access?** Tell an organiser. If they tell you to fork yourselves: one member forks `Cube-Build-A-Thon/cube-round3-pod` into their account, adds the other four as collaborators, and you follow everything below from there. Do not work in five separate forks.
+**Do not work in five separate forks.** One shared repository, branches and pull requests inside it.
 
-In your first session, together, make one commit that fills in `pod.json` (everyone's GitHub handle and agent) and `.github/CODEOWNERS`.
+In your first session, together, make one commit that fills in `pod.json` (everyone's GitHub handle and agent, and your orchestration coordinator) and `.github/CODEOWNERS`. **Specialist Pods** (no Prep Manager): set `"flow": "orchestration/flow.specialist.json"` and `"pod_type": "specialist"` in `pod.json`, and remove the Prep member.
 
 ## 2. Who works where
 
@@ -142,7 +147,7 @@ Stuck? `git rebase --abort` (or `git merge --abort`) puts you back where you sta
 
 | Symptom | Fix |
 |---|---|
-| `Repository not found` / `Permission denied` | Wrong GitHub account, or you have not been added to the Pod repo. Ask an organiser. |
+| `Repository not found` / `Permission denied` | Wrong GitHub account, or the repo owner has not added you as a collaborator. Ask the owner. |
 | `rejected … (fetch first)` | `git pull --rebase`, resolve, push. |
 | Passes locally, fails in CI | CI uses Python 3.12 and `requirements.txt`: add what you installed there. |
 | CI says "Committed env file" / "Possible secret" | Remove it, **revoke the credential immediately** (deleting the commit does not make it safe). |

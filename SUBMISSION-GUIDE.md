@@ -48,7 +48,7 @@ And the items the checklist implies:
 
 | # | Item | Requirement |
 |---|---|---|
-| 1 | **Final GitHub repository** | Your Pod repo, tagged `round3-final`, CI green. |
+| 1 | **Final GitHub repository** | Your Pod's fork of the starter, tagged `round3-final`, CI green, readable by the organisers (see `GITHUB-GUIDE.md`). |
 | 2 | **A working integrated system** | `make setup && make test && make run` (or your documented equivalent) on a clean clone, with the Pod's real agents, not the stubs, except where you say so in `agent.json` and the demo. |
 | 3 | **README and documentation** | `README.md` accurate for *your* Pod; `docs/decisions.md` and `docs/build-log.md` current. |
 | 4 | **Architecture** | `ARCHITECTURE.md` describing **your** system: components, orchestrator and workflow state, final-outcome logic, tenancy, failure model, deployment. |

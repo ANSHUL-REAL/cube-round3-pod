@@ -7,7 +7,7 @@ No. The objective is to integrate and adapt the existing Round 2 agent.
 Yes, where required for integration, reliability, compatibility or improvement, while preserving its intended functionality. Keep your Round 2 repository as submitted; make the changes in the Pod repo and record the origin in `PROVENANCE.md`.
 
 **Are all five agents mandatory?**
-Yes, unless the official competition rules explicitly say otherwise. They do for **Specialist Pods**: the Pods that have no Prep Manager run four agents (Receiving, Pack, Returns, Recovery) plus a Specialist / Integration Engineer. `pod.json` says which kind you are, and `orchestration/flow.specialist.json` is your flow. Without Prep evidence, Recovery must treat inbound-defect charges as SILENT, not guess. Nobody else may drop an agent.
+Yes, unless the official competition rules explicitly say otherwise. They do for **Specialist Pods**: the Pods that have no Prep Manager run four agents (Receiving, Pack, Returns, Recovery) plus a Specialist / Integration Engineer. The organisers will tell you if you are a Specialist Pod; then set `pod_type` and `flow` in `pod.json` to use `orchestration/flow.specialist.json`. Without Prep evidence, Recovery must treat inbound-defect charges as SILENT, not guess. Nobody else may drop an agent.
 
 **Do we need an orchestrator?**
 Yes. The Pod needs a mechanism responsible for coordinating the overall workflow and **maintaining workflow state**. A starter orchestrator is provided; extend it or replace it, but it must still own the state, record evidence, and handle failures and UNCERTAIN (see [`ORCHESTRATION-GUIDE.md`](ORCHESTRATION-GUIDE.md)).

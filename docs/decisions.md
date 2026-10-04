@@ -72,7 +72,7 @@ Round 2 participants raised these contradictions and gaps in the shared data and
 
 ### Raising a new finding
 
-A contradiction between documents or data is a **finding**, not a failure. Open an issue on your Pod repo with the `finding` label: what contradicts what, an example row, and what you assumed (and add the assumption above). Good findings are credited under *Decision quality*.
+A contradiction between documents or data is a **finding**, not a failure. Open an issue on your Pod's repo with the `finding` label: what contradicts what, an example row, and what you assumed (and add the assumption above). Good findings are credited under *Decision quality*.
 
 ## Your Pod's decisions
 

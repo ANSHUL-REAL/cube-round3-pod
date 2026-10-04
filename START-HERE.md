@@ -1,6 +1,6 @@
 # START HERE
 
-The first document to read after you get your Pod's repository. About five minutes.
+The first document to read after you fork the starter repository. About five minutes.
 
 ## What is Round 3?
 

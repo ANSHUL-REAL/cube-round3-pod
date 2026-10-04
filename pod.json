@@ -1,5 +1,5 @@
 {
-  "pod_id": "TEMPLATE",
+  "pod_id": "pod-XX",
   "pod_type": "standard",
   "flow": "orchestration/flow.json",
   "members": [
@@ -29,6 +29,6 @@
       "github": ""
     }
   ],
-  "notes": "Organisers pre-fill pod_id, pod_type and flow. The Pod fills in each member's GitHub handle and picks an orchestration coordinator (a coordinator, not an owner: the Pod owns the orchestration jointly) in the first session (PARTICIPANT-GUIDE.md).",
+  "notes": "Fill this in together in your first session: pod_id, each member's GitHub handle, and an orchestration coordinator (a coordinator, not an owner: the Pod owns the orchestration jointly). SPECIALIST PODS (no Prep Manager): set pod_type to \"specialist\", flow to \"orchestration/flow.specialist.json\", and replace the Prep member with {\"role\": \"Specialist / Integration Engineer\", \"agent\": null, \"github\": \"\"}.",
   "orchestration_coordinator": ""
 }
