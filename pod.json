@@ -1,34 +1,34 @@
 {
-  "pod_id": "pod-XX",
+  "pod_id": "pod-12",
   "pod_type": "standard",
   "flow": "orchestration/flow.json",
   "members": [
     {
       "role": "Receiving Manager",
       "agent": "receiving",
-      "github": ""
+      "github": "cherryy-x23"
     },
     {
       "role": "Prep Manager",
       "agent": "prep",
-      "github": ""
+      "github": "Devisri-074"
     },
     {
       "role": "Pack Manager",
       "agent": "pack",
-      "github": ""
+      "github": "ANSHUL-REAL"
     },
     {
       "role": "Returns Manager",
       "agent": "returns",
-      "github": ""
+      "github": "krishnababuprodduturu"
     },
     {
       "role": "Recovery Manager",
       "agent": "recovery",
-      "github": ""
+      "github": "DaKaufeeBoii"
     }
   ],
-  "notes": "Fill this in together in your first session: pod_id, each member's GitHub handle, and an orchestration coordinator (a coordinator, not an owner: the Pod owns the orchestration jointly). SPECIALIST PODS (no Prep Manager): set pod_type to \"specialist\", flow to \"orchestration/flow.specialist.json\", and replace the Prep member with {\"role\": \"Specialist / Integration Engineer\", \"agent\": null, \"github\": \"\"}.",
-  "orchestration_coordinator": ""
+  "notes": "Pod 12. Standard flow: the organisers supplied a reference Prep Manager (Manvith111/cube26-prp-0319-manvith111), ported to Python here and owned by @Devisri-074. Handles and the coordinator are proposed from the Pod's plan: confirm them together and with the organisers (pod type, Prep owner). A coordinator, not an owner: the Pod owns the orchestration jointly.",
+  "orchestration_coordinator": "ANSHUL-REAL"
 }

@@ -6,6 +6,32 @@
 
 **New here? Read [`START-HERE.md`](START-HERE.md) first.** This README is the concise overview; the detailed rules live in the guides.
 
+## Pod 12: what is built, and what is not
+
+Five agents plus the orchestrator, one `agents/<stage>/` folder each. Every stage is a real agent that reads photos (or, for Recovery, the fee report and all earlier evidence) and returns a Round 3 Evidence Record. **No stage is a stub.**
+
+| Stage | Owner | Built from | What it does | Tests |
+|---|---|---|---|---|
+| Receiving | @cherryy-x23 | Sai charan's Round 2 agent, rebuilt | Model reports what it sees (never shown the PO); rules compare with the PO line | `tests/integration/test_receiving_agent.py` |
+| Prep | @Devisri-074 | Organiser's reference Prep (Manvith111), ported to Python | Model transcribes what is on the unit; rules check the work order | `tests/integration/test_prep_agent.py` |
+| Pack | @ANSHUL-REAL | Anshul's Round 2 agent, core unchanged | Model lists what is in the box; rules compare with the order: seal, stop and fix, or a person decides | `tests/integration/test_pack_agent.py` |
+| Returns | @krishnababuprodduturu | Krishna Babu's Round 2 agent, core unchanged | Model observes the returned parcel; rules grade identity, completeness and condition, reading Pack and Receiving | `tests/integration/test_returns_agent.py` |
+| Recovery | @DaKaufeeBoii | Sai Tarun's Round 2 rules, rebuilt on the organisers' fee report | Deterministic rules decide which charges evidence contradicts; precision first | `tests/integration/test_recovery_agent.py` |
+
+Where each stage came from, and what changed, is in its `PROVENANCE.md`. Every design choice is in [`docs/decisions.md`](docs/decisions.md).
+
+**Read this before you rely on any number.**
+- **No real-model run has been done through this repository.** All tests use scripted models, so they check capture handling, rules, record mapping, fail-open, tenancy and hand-offs, **not what a real model sees**. No Round 3 accuracy is claimed. Round 2 results belong to the Round 2 repositories and do not transfer.
+- **The organisers' sample has no photos**, so `make run` on the sample ends every workflow `FAILED` / `INCOMPLETE` with `no_capture`. That is the intended behaviour: an agent with nothing to look at must not invent a verdict. To demo, take the photos in [`docs/DEMO-CAPTURE-PLAN.md`](docs/DEMO-CAPTURE-PLAN.md) (`python scripts/capture_plan.py`).
+- **Rule sources are unverified** for Prep (compliance rules) and Returns (condition scale): they are labelled so in the records. Nobody looked up Amazon's published rules.
+- **Known orchestrator gap:** overriding an earlier stage after Recovery has run does not re-run Recovery (see D-RC12).
+
+```sh
+make setup && make test          # tests need no API key
+python -m agents.pack.check --unit UNIT-0008 --org org_demo_alpha box.jpg   # one stage, one photo (Pack, Prep and Receiving have a check CLI)
+python scripts/capture_plan.py   # which demo photos are still missing
+```
+
 ## Objective
 
 Integrate the five independently built Round 2 agents into one connected, end-to-end commerce workflow, and show it working. **Integrate → Orchestrate → Test → Deploy → Demonstrate.** Not a rebuild.
