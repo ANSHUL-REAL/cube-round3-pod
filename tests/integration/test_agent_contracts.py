@@ -11,6 +11,7 @@ from shared.utils.records import add_agent_override
 from shared.utils.schema import errors
 from tests.conftest import AGENTS, applies, make_input
 
+REAL_AGENTS = {"receiving"}  # these run as the real agent here, not as the organiser stub (see tests/conftest.py)
 PREFIX = {"receiving": "RCV", "prep": "PRP", "pack": "PCK", "returns": "RTN", "recovery": "RCY"}
 
 
@@ -83,7 +84,9 @@ def test_recovery_honours_overrides_of_previous_evidence(cases):
 
 
 def test_agent_level_override_is_append_only(cases):
-    out = client_for("receiving").run(make_input("receiving", cases[0]), 30)
+    """Needs a record that has checks. The real Receiving gives a pending record (no checks) when it has no photos."""
+    case = next(c for c in cases if c["route"] == "fba")
+    out = next(o for o in (client_for(s).run(make_input(s, case), 30) for s in AGENTS) if o["evidence"]["checks"])
     rec, target = out["evidence"], out["evidence"]["checks"][0]
     new = add_agent_override(rec, by="op_test", target=target["check_key"], new_verdict="FAIL", reason="operator disagrees")
     assert new["overrides"][0]["original_verdict"] == target["verdict"]

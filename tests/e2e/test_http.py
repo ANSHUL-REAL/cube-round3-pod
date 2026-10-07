@@ -13,7 +13,7 @@ import pytest
 import uvicorn
 
 from orchestration.orchestrator import load_flow, run_workflow
-from tests.conftest import AGENTS, make_input
+from tests.conftest import AGENTS, STUB_STAGES, make_input
 
 pytestmark = pytest.mark.http
 
@@ -29,7 +29,7 @@ def servers():
     started, urls = [], {}
     for stage in AGENTS:
         port = free_port()
-        server = uvicorn.Server(uvicorn.Config(importlib.import_module(f"agents.{stage}.app").app,
+        server = uvicorn.Server(uvicorn.Config(importlib.import_module(STUB_STAGES.get(stage) or f"agents.{stage}.app").app,
                                                host="127.0.0.1", port=port, log_level="error"))
         threading.Thread(target=server.run, daemon=True).start()
         urls[stage] = f"http://127.0.0.1:{port}"
