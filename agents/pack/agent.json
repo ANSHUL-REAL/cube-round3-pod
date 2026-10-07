@@ -1,10 +1,10 @@
 {
   "stage": "pack",
-  "agent_id": "pack-stub@0",
-  "owner": "@github-handle-of-the-owner",
+  "agent_id": "pack-manager@0.1.0",
+  "owner": "@ANSHUL-REAL",
   "mode": "inproc",
   "url": "http://localhost:8103",
   "module": "agents.pack.app",
-  "implementation": "organiser-stub",
-  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+  "implementation": "Round 2 Pack Manager (Anshul Nautiyal). One batched Gemini call per box lists what is in the box and never sees the order; fixed rules compare that with the order. No model key means a pending record, not a guess. See agents/pack/README.md and PROVENANCE.md.",
+  "notes": "Needs GEMINI_API_KEY for live checks. Box photos go in data/input/<unit_id>/pack/. Tests use scripted perceivers and need no key."
 }

@@ -1,53 +1,121 @@
-"""Pack Manager: agent entry point.
+"""Pack Manager: the pod's Round 3 agent entry point.
 
-========================  REPLACE ME  ========================
-ORGANISER STUB replaying the Round 2 sample CSV.
-Member 3: bring your Round 2 Pack Manager here and make `handle()` call it.
-Only merchant-fulfilled / 3PL units reach Pack (route == "mfn"); Amazon packs FBA boxes.
+One batched Gemini call per box looks at the photo(s) and reports what is in the box. The model never sees
+the order and never decides. Fixed rules (core/decision.py) compare what it saw with the order and return
+seal / stop_and_fix / pending_review, each backed by named checks.
+
+Fail open: a missing capture, an unreadable photo, no API key or a model error returns a *pending* record
+(UNCERTAIN, with the reason and the photos kept) rather than an exception or an invented verdict.
+Only merchant-fulfilled / 3PL units reach Pack (route == "mfn"); the flow's routing decides that.
+
 Run:  uvicorn agents.pack.app:app --port 8103
-===============================================================
 """
-from shared.utils import sample_data
-from shared.utils.records import build_output, build_record, check
+from __future__ import annotations
+
+import logging
+from functools import lru_cache
+from pathlib import Path
+
+from shared.utils.log import get_logger
+from shared.utils.records import build_output
 from shared.utils.server import make_app
-from shared.utils.stubs import STUB_MODEL, photos
+from shared.utils.stubs import effective_verdict, previous
 
-STAGE = "pack"
-AGENT_ID = "pack-stub@0"
+from . import adapter, captures, ledger
+from .core import __version__
+from .core.catalogue import load_org_catalogue
+from .core.config import Settings
+from .core.models import Decision
+from .core.pipeline import verify_box
+from .core.quality import ImageDecodeError, prepare_photo
+from .core.vision.base import PerceptionError
+from .core.vision.gemini import GeminiPerceiver
+from .orders import resolve_order
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+STAGE = adapter.STAGE
+log = get_logger("pack")
 
 
-def parse_lines(text: str) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for part in filter(None, text.split(";")):
-        sku, _, qty = part.partition(":")
-        out[sku] = out.get(sku, 0) + int(qty or 1)
-    return out
+@lru_cache
+def settings() -> Settings:
+    """Round 2 settings. GEMINI_API_KEY and friends come from the environment or the pod's .env."""
+    return Settings(catalogue_dir=str(HERE / "catalogue"), cache_dir=str(ROOT / ".cache" / "pack-vlm"))
+
+
+def get_perceiver(st: Settings):
+    """The vision model. Raises PerceptionError when no API key is configured. Tests replace this function."""
+    return GeminiPerceiver(st)
+
+
+def _provider(perceiver) -> str | None:
+    return "google" if isinstance(perceiver, GeminiPerceiver) else None
+
+
+def _upstream(request: dict) -> dict:
+    """What Receiving said about this unit, using the latest human override. Informational: Pack judges the box
+    against the order, so a Receiving exception is recorded here but does not change the box verdict."""
+    rec = previous(request, "receiving")
+    if not rec:
+        return {}
+    return {"receiving": {"record_id": rec["record_id"], "verdict": rec["decision"]["verdict"],
+                          "effective_verdict": effective_verdict(request, rec)}}
 
 
 def handle(request: dict) -> dict:
-    s = request["subject"]
-    r = sample_data.row("pack", s["subject_id"], s["org_id"])
-    refs = [p["ref"] for p in photos(r)]
-    want, got = parse_lines(r["order_lines"]), parse_lines(r["observed_in_box"])
-    missing = sorted(k for k in want if k not in got)
-    short = sorted(k for k in want if k in got and got[k] != want[k])
-    extra = sorted(k for k in got if k not in want)
-    checks = [
-        check("items_present", "FAIL" if missing else "PASS", None, expected=sorted(want), observed=sorted(got),
-              detail=f"missing: {missing}" if missing else "", evidence_refs=refs),
-        check("quantities_correct", "FAIL" if short else "PASS", None, expected=want,
-              observed={k: got[k] for k in want if k in got}, evidence_refs=refs),
-        check("no_extra_items", "FAIL" if extra else "PASS", None, expected=[], observed=extra, evidence_refs=refs),
-    ]
-    pack_out = "seal" if all(c["verdict"] == "PASS" for c in checks) else "stop_and_fix"
-    record = build_record(
-        request, agent_id=AGENT_ID, record_id=r["record_id"], captured_at=r["captured_at"], operator_id=r["operator_id"],
-        unit_scope="order", refs={"order_id": r["order_id"]}, checks=checks, outcome=pack_out, model=STUB_MODEL,
-        inputs=photos(r), reason=f"stub replay of sample row; agent says {pack_out}",
-        payload={"channel": r["channel"], "operator_verdict": r["operator_verdict"],
-                 "agent_agrees_with_operator": r["operator_verdict"] == pack_out},
+    subject = request["subject"]
+    org_id, unit_id = subject["org_id"], subject["subject_id"]
+    order, meta = resolve_order(request)  # LookupError: unknown unit or another organisation's unit -> 404
+    st = settings()
+
+    inputs = request.get("inputs") or []
+    if not any(i.get("kind", "image") == "image" for i in inputs):
+        return adapter.pending(request, order, meta, code="no_capture", retryable=True,
+                               message="No photo of the open box was provided, so nothing was checked.")
+    try:
+        loaded = captures.load(inputs, unit_id)
+    except captures.CaptureError as exc:
+        return adapter.pending(request, order, meta, code="capture_unreadable", message=str(exc), retryable=False)
+
+    used, extra = loaded[: st.max_box_photos], loaded[st.max_box_photos:]
+    not_used = [item["ref"] for item, _ in extra]
+    try:
+        prepared = [prepare_photo(data, st) for _, data in used]
+    except (ImageDecodeError, ValueError) as exc:
+        return adapter.pending(request, order, meta, code="capture_unreadable", retryable=False,
+                               message=f"A photo could not be decoded: {exc}")
+    photos = [{"ref": item["ref"], "original_sha256": p.original_sha256, "analysed_sha256": p.sha256,
+               "width": p.width, "height": p.height, "quality_gate": p.quality.gate}
+              for (item, _), p in zip(used, prepared)]
+
+    try:
+        perceiver = get_perceiver(st)
+    except PerceptionError as exc:
+        return adapter.pending(request, order, meta, code="model_not_configured", message=str(exc), retryable=True,
+                               photos=photos, payload={"photos_not_used": not_used})
+
+    catalogue, root = load_org_catalogue(st.catalogue_dir, org_id)
+    hashes = [p.sha256 for p in prepared]
+    rec = verify_box(
+        order, prepared, catalogue, perceiver, st, operator_label=meta.get("operator_id") or "pod-agent",
+        catalogue_root=root,
+        force_quality=True,  # nobody to retake it mid-workflow: a bad photo becomes UNCERTAIN, with the reason
+        earlier_uses=ledger.earlier_uses(org_id, hashes),
     )
-    return build_output(record)
+    if rec.outcome.decision == Decision.PENDING:  # the model did not answer; verify_box kept the capture
+        return adapter.pending(request, order, meta, code="model_unavailable", retryable=True, photos=photos,
+                               message=str(rec.observations.get("error", "the vision model did not answer")),
+                               checks=adapter.map_checks(rec, [p["ref"] for p in photos]),
+                               payload={"photos_not_used": not_used})
+
+    out_record = adapter.build(request, order, meta, rec, photos, not_used, st, provider=_provider(perceiver),
+                               upstream=_upstream(request))
+    ledger.remember(org_id, hashes, order.order_id, out_record["record_id"])
+    log.info("pack_checked", extra={"ctx": {"org_id": org_id, "subject_id": unit_id,
+                                            "outcome": out_record["decision"]["outcome"]}})
+    return build_output(out_record)
 
 
-app = make_app(STAGE, handle)
+app = make_app(STAGE, handle, version=__version__)
+logging.getLogger("httpx").setLevel(logging.WARNING)

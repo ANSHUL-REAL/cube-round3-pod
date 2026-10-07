@@ -10,3 +10,4 @@ venv/
 out/
 .pytest_cache/
 *.egg-info/
+.cache/
