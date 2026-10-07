@@ -13,6 +13,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from shared.utils.captures import CapturePathError, resolve_capture
+
 from .vision import Photo
 
 try:  # iPhone photos (HEIC). Optional: without it, a HEIC file is reported as unreadable.
@@ -49,11 +51,10 @@ def load(inputs: list[dict], subject_id: str) -> list[tuple[dict, bytes]]:
         if item.get("kind", "image") != "image":
             continue
         ref = item["ref"]
-        path = (root / ref).resolve()
-        if root not in path.parents:
-            raise CaptureError(f"capture {ref!r} is outside the capture root")
-        if ref.split("/")[:2] != [subject_id, STAGE]:
-            raise CaptureError(f"capture {ref!r} is not under {subject_id}/{STAGE}/")
+        try:
+            path = resolve_capture(root, ref, subject_id, STAGE)
+        except CapturePathError as exc:
+            raise CaptureError(str(exc)) from exc
         try:
             data = path.read_bytes()
         except OSError as exc:

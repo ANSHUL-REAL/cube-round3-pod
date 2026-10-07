@@ -24,6 +24,7 @@ from functools import lru_cache
 from shared.utils.log import get_logger
 from shared.utils.records import build_output
 from shared.utils.server import make_app
+from shared.utils.stubs import require_same_subject
 
 from . import adapter, captures, upstream
 from .config import Settings
@@ -60,6 +61,7 @@ def _provider(judge) -> str | None:
 def handle(request: dict) -> dict:
     subject = request["subject"]
     org_id, unit_id = subject["org_id"], subject["subject_id"]
+    require_same_subject(request)
     item = resolve_return(request)  # LookupError: unknown unit or another organisation's unit -> 404
     st = settings()
 

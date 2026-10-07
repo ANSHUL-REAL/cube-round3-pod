@@ -17,7 +17,7 @@ from functools import lru_cache
 from shared.utils.log import get_logger
 from shared.utils.records import build_output
 from shared.utils.server import make_app
-from shared.utils.stubs import effective_verdict, previous
+from shared.utils.stubs import effective_verdict, previous, require_same_subject
 
 from . import __version__, adapter, captures
 from .config import Settings
@@ -55,6 +55,7 @@ def handle(request: dict) -> dict:
     subject = request["subject"]
     org_id, unit_id = subject["org_id"], subject["subject_id"]
     try:
+        require_same_subject(request)
         po, meta = resolve_order(request)  # LookupError: unknown unit or another organisation's unit -> 404
     except OrderError as exc:
         return adapter.pending(request, None, None, code="order_invalid", retryable=False,

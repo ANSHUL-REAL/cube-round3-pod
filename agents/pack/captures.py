@@ -10,6 +10,8 @@ import hashlib
 import os
 from pathlib import Path
 
+from shared.utils.captures import CapturePathError, resolve_capture
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -28,11 +30,10 @@ def load(inputs: list[dict], subject_id: str) -> list[tuple[dict, bytes]]:
         if item.get("kind", "image") != "image":
             continue
         ref = item["ref"]
-        path = (root / ref).resolve()
-        if root not in path.parents:
-            raise CaptureError(f"capture {ref!r} is outside the capture root")
-        if ref.split("/", 1)[0] != subject_id:
-            raise CaptureError(f"capture {ref!r} does not belong to subject {subject_id!r}")
+        try:
+            path = resolve_capture(root, ref, subject_id, "pack")
+        except CapturePathError as exc:
+            raise CaptureError(str(exc)) from exc
         try:
             data = path.read_bytes()
         except OSError as exc:

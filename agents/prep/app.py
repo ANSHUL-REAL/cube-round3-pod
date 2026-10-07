@@ -18,7 +18,7 @@ from functools import lru_cache
 from shared.utils.log import get_logger
 from shared.utils.records import build_output
 from shared.utils.server import make_app
-from shared.utils.stubs import effective_verdict, previous
+from shared.utils.stubs import effective_verdict, previous, require_same_subject
 
 from . import adapter, captures, rules, workorders
 from .settings import Settings, get_settings
@@ -60,7 +60,12 @@ def handle(request: dict) -> dict:
     org_id, unit_id = subject["org_id"], subject["subject_id"]
     if subject.get("route") != "fba":
         raise LookupError(f"Prep handles FBA units only; {unit_id} has route {subject.get('route')!r}")
-    order = workorders.resolve(request)  # LookupError: unknown unit or another organisation's unit -> 404
+    require_same_subject(request)
+    try:
+        order = workorders.resolve(request)  # LookupError: unknown unit or another organisation's unit -> 404
+    except ValueError as exc:  # unreadable work order (e.g. polybag "maybe", price "abc"): the data's fault, not a crash
+        return adapter.pending(request, None, code="order_invalid", retryable=False,
+                               message=f"The work order cannot be read: {exc}", upstream=_upstream(request))
     st = settings()
     upstream = _upstream(request)
     fail = dict(order=order, upstream=upstream)

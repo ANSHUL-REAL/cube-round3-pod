@@ -19,7 +19,7 @@ from pathlib import Path
 from shared.utils.log import get_logger
 from shared.utils.records import build_output
 from shared.utils.server import make_app
-from shared.utils.stubs import effective_verdict, previous
+from shared.utils.stubs import effective_verdict, previous, require_same_subject
 
 from . import adapter, captures, ledger
 from .core import __version__
@@ -74,7 +74,14 @@ def _upstream(request: dict) -> dict:
 def handle(request: dict) -> dict:
     subject = request["subject"]
     org_id, unit_id = subject["org_id"], subject["subject_id"]
-    order, meta = resolve_order(request)  # LookupError: unknown unit or another organisation's unit -> 404
+    require_same_subject(request)
+    try:
+        order, meta = resolve_order(request)  # LookupError: unknown unit or another organisation's unit -> 404
+        if not order.lines:
+            raise ValueError("the order has no lines to check the box against")
+    except ValueError as exc:  # a bad order line (quantity 0, "A:1,B:2", no lines) is the order's fault, not a crash
+        return adapter.pending(request, None, None, code="order_invalid", retryable=False,
+                               message=f"The order cannot be checked: {exc}")
     st = settings()
 
     inputs = request.get("inputs") or []

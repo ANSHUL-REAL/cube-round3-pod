@@ -152,6 +152,10 @@ def _validate(out: dict, wf: dict, stage: str) -> list[str]:
 VERDICTS = {"PASS", "FAIL", "UNCERTAIN"}
 
 
+class WorkflowConflict(ValueError):
+    """A workflow id is already used by a different organisation or subject."""
+
+
 class _Unreachable:
     """Stands in for a client that could not be built, so the failure is recorded against the stage."""
 
@@ -273,8 +277,12 @@ def advance(wf: dict, flow: dict, store, clients: dict | None = None) -> dict:
 def run_workflow(case: dict, flow: dict | None = None, store=None, clients: dict | None = None) -> dict:
     """Start (or continue) the workflow for a case. Idempotent: an existing workflow is advanced, not duplicated."""
     flow, store = flow or load_flow(), store or MemoryStore()
-    wf = store.load_workflow(workflow_id_for(case)) or new_workflow(case, flow)
-    return advance(wf, flow, store, clients)
+    wf = store.load_workflow(workflow_id_for(case))
+    subject = case.get("subject_id") or case["unit_id"]
+    if wf is not None and (wf["org_id"], wf["subject_id"]) != (case["org_id"], subject):
+        # "WF-<org>-<unit>" is not unique: org "a-b" + unit "c" and org "a" + unit "b-c" give the same id.
+        raise WorkflowConflict(f"{wf['workflow_id']} already belongs to {wf['org_id']} / {wf['subject_id']}")
+    return advance(wf or new_workflow(case, flow), flow, store, clients)
 
 
 def resume(workflow_id: str, flow: dict | None = None, store=None, clients: dict | None = None) -> dict:

@@ -11,6 +11,7 @@ organisation is never answered: that is the tenancy rule.
 from __future__ import annotations
 
 from shared.utils import sample_data
+from shared.utils.ids import is_safe_id
 
 from .core.models import Order, OrderLine, parse_lines
 
@@ -25,6 +26,8 @@ def resolve_order(request: dict) -> tuple[Order, dict]:
     """The Order plus metadata (channel, operator_id, captured_at, operator_verdict) for the record."""
     subject = request["subject"]
     org_id, unit_id = subject["org_id"], subject["subject_id"]
+    if not (is_safe_id(org_id) and is_safe_id(unit_id)):  # org_id names a catalogue folder: it must be a plain name
+        raise LookupError(f"no pack record for {unit_id!r} in {org_id!r}")
 
     ctx = request.get("context") or {}
     given = ctx.get("order") or (ctx.get("case") or {}).get("order")

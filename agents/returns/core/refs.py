@@ -40,7 +40,7 @@ def _load_yaml(path: Path) -> dict | None:
 
 
 def _safe_name(value: str) -> bool:
-    return bool(value) and not any(c in value for c in "/\\") and ".." not in value
+    return bool(value) and not any(c in value for c in "/\:") and ".." not in value
 
 
 def load_card(org_id: str, sku: str) -> ProductCardV1 | None:

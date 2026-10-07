@@ -8,15 +8,9 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from pathlib import Path
 
-# Workflow and record ids become file names, so they may not contain separators, drive letters or "..".
-SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-
-
-def is_safe_id(value: object) -> bool:
-    return isinstance(value, str) and len(value) <= 200 and bool(SAFE_ID.match(value)) and ".." not in value
+from shared.utils.ids import SAFE_ID, is_safe_id  # noqa: F401  (workflow and record ids become file names)
 
 
 class EvidenceConflict(Exception):

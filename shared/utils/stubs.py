@@ -23,8 +23,26 @@ def photos(row: dict) -> list[dict]:
     return [{"ref": p, "sha256": None, "kind": "image"} for p in row.get("photo_refs", "").split(";") if p]
 
 
+def require_same_subject(request: dict) -> None:
+    """Refuse a request that carries evidence about another organisation or subject (LookupError -> 404).
+
+    Call it first in `handle()`, before any "no photo" or other early return, so the refusal never depends on the order
+    in which an agent happens to look at its input.
+    """
+    me = request["subject"]
+    for r in request.get("previous_evidence", []):
+        s = r.get("subject") or {}
+        if (s.get("org_id"), s.get("subject_id")) != (me["org_id"], me["subject_id"]):
+            raise LookupError(f"previous evidence {r.get('record_id')} belongs to another organisation or subject")
+
+
 def previous(request: dict, stage: str) -> dict | None:
-    """The latest earlier evidence record for a stage, or None."""
+    """The latest earlier evidence record for a stage, or None.
+
+    Tenancy: a record about another organisation or another subject is never used. It raises LookupError, which the
+    server turns into a 404 and the in-process client into a refusal, exactly as for an unknown unit.
+    """
+    require_same_subject(request)
     found = [r for r in request.get("previous_evidence", []) if r["stage"] == stage]
     return found[-1] if found else None
 

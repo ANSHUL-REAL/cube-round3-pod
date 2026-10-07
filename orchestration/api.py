@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from shared.utils import sample_data
 
 from .clients import HttpClient, client_for, load_manifest
-from .orchestrator import apply_override, bundle, default_flow_path, flow_stages, load_flow, resume, run_workflow
+from .orchestrator import WorkflowConflict, apply_override, bundle, default_flow_path, flow_stages, load_flow, resume, run_workflow
 from .store import EvidenceConflict, FileStore, is_safe_id
 
 app = FastAPI(title="CUBE Round 3 orchestrator")
@@ -48,7 +48,10 @@ def create(body: dict) -> dict:
         raise HTTPException(422, "org_id and unit_id must be text made of letters, digits, '.', '_' and '-'")
     case = {"org_id": org, "unit_id": subject, "route": body.get("route") or sample_data.route(subject, org),
             "returned": body.get("returned", sample_data.has("returns", subject, org))}
-    return run_workflow(case, load_flow(FLOW), STORE)
+    try:
+        return run_workflow(case, load_flow(FLOW), STORE)
+    except WorkflowConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 def _get(workflow_id: str) -> dict:

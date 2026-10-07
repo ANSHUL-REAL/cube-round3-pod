@@ -15,6 +15,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from shared.utils.captures import CapturePathError, resolve_capture
+
 try:  # phone photos are often HEIC; optional
     import pillow_heif
 
@@ -59,12 +61,10 @@ def load(inputs: list[dict], subject_id: str) -> list[Capture]:
         if item.get("kind", "image") != "image":
             continue
         ref = item["ref"]
-        parts = ref.split("/")
-        path = (root / ref).resolve()
-        if root not in path.parents:
-            raise CaptureError(f"capture {ref!r} is outside the capture root")
-        if parts[0] != subject_id or len(parts) < 3 or parts[1] != STAGE_DIR:
-            raise CaptureError(f"capture {ref!r} is not under {subject_id}/{STAGE_DIR}/")
+        try:
+            path = resolve_capture(root, ref, subject_id, STAGE_DIR)
+        except CapturePathError as exc:
+            raise CaptureError(str(exc)) from exc
         try:
             data = path.read_bytes()
             mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
