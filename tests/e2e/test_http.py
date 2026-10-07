@@ -14,12 +14,8 @@ import uvicorn
 
 from orchestration.clients import load_manifest
 from orchestration.orchestrator import load_flow, run_workflow
-<<<<<<< HEAD
 from tests.conftest import AGENTS, STUB_STAGES, make_input
-=======
-from tests.conftest import AGENTS, make_input
 from tests.helpers import needs_stubs
->>>>>>> feature/prep
 
 pytestmark = pytest.mark.http
 

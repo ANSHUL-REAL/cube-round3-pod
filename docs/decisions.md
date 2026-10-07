@@ -111,7 +111,6 @@ _Add entries below._
 - Consequences: a rare slow-but-correct answer is abandoned at 12 s and retried. Revisit if the retry rate is high.
 
 
-<<<<<<< HEAD
 ### D-V01 · Receiving: the model reads the delivery and is never shown the purchase order
 - Date / Owner: 2026-10-07 / @cherryy-x23 (Round 2 author), ported by @ANSHUL-REAL
 - Context: Round 2's prompt listed the expected SKU, colour, variant, components and totals "for context", and its live path read server-side file paths, so no uploaded photo ever reached the model.
@@ -197,7 +196,6 @@ _Add entries below._
 - Decision: skip them while Prep is not an `organiser-stub` (`tests/helpers.py: needs_stubs`, the same pattern as the golden-outcome test) and cover the same behaviour in `tests/integration/test_prep_agent.py` with our own fixtures, including an override of our Prep record changing Recovery's answer.
 - Consequences: the other four members will hit the same thing when their agents replace stubs; the pod should agree one approach. This touches shared test files, so it is its own commit and easy to drop.
 
-=======
 ### D-RT01 · Returns: the model observes, rules decide, and only the engine and its data are carried over
 - Date / Owner: 2026-10-07 / @krishnababuprodduturu (Round 2 author), integrated by @ANSHUL-REAL
 - Context: the Round 2 Returns Manager (RTN-0038) is a full product: web console, Postgres with row-level security, job queue, hash-chained ledger, tool-calling Gemini sessions. Round 3 needs one agent behind `handle()`.
@@ -261,4 +259,3 @@ _Add entries below._
 - Context: `test_examples.py::test_example_cases_still_produce_the_documented_outcome` and `test_http.py::test_full_workflow_over_http_matches_in_process` replay the stock stubs and expect every stage to complete. The starter already skips its golden-outcome test under the same condition ("not the stock stubs").
 - Decision: the same skip (`implementation != "organiser-stub"`) on those two tests. No assertion was changed or removed, and the real behaviour is covered by `tests/integration/test_returns_agent.py`.
 - Consequences: other members replacing stubs will make the same edit; the hunks are identical, so the merge should be trivial. Pod-level: decide whether to rewrite those tests against fixtures.
->>>>>>> feature/returns
