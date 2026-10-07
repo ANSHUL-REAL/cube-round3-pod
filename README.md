@@ -24,7 +24,8 @@ Where each stage came from, and what changed, is in its `PROVENANCE.md`. Every d
 - **No real-model run has been done through this repository.** All tests use scripted models, so they check capture handling, rules, record mapping, fail-open, tenancy and hand-offs, **not what a real model sees**. No Round 3 accuracy is claimed. Round 2 results belong to the Round 2 repositories and do not transfer.
 - **The organisers' sample has no photos**, so `make run` on the sample ends every workflow `FAILED` / `INCOMPLETE` with `no_capture`. That is the intended behaviour: an agent with nothing to look at must not invent a verdict. To demo, take the photos in [`docs/DEMO-CAPTURE-PLAN.md`](docs/DEMO-CAPTURE-PLAN.md) (`python scripts/capture_plan.py`).
 - **Rule sources are unverified** for Prep (compliance rules) and Returns (condition scale): they are labelled so in the records. Nobody looked up Amazon's published rules.
-- **Known orchestrator gap:** overriding an earlier stage after Recovery has run does not re-run Recovery (see D-RC12).
+- **Late overrides:** a person's override takes effect at once, and every later stage that used the overridden record is flagged stale and runs again on `resume` (the console does it for you). The old records are kept, never rewritten (D-RC12, D-O03).
+- **No sign-in** on the API or the console: run them on `127.0.0.1` only (D-O02, D-O03).
 
 ```sh
 make setup && make test          # tests need no API key
@@ -77,10 +78,12 @@ make setup            # venv + dependencies + .env
 make test             # integration, end-to-end, failure, UNCERTAIN, override and HTTP tests
 make run              # all sample workflows end to end -> out/workflows/*.json and out/evidence/*.json
 make case UNIT=UNIT-0014 ORG=org_demo_alpha     # one workflow, in full
-make serve            # orchestrator API on :8100 (POST /workflows, GET /workflows/{id}, GET /health)
+make serve            # orchestrator API and the readable console on :8100 (the console is at /; the API at /workflows, /health)
+python scripts/serve.py          # the same, on any OS, with our five agents
+python scripts/serve.py --stubs  # the same, answering with the organisers' CSV-replay stubs (every page says so), to look at the screens without photos or a model key
 ```
 
-Out of the box everything runs on **organiser stub agents** replaying the synthetic Round 2 CSVs. **Replacing a stub with your real agent is your job.**
+All five stages are our agents (`agents/<stage>/`); the organisers' stubs are kept in `tests/stubs/` for the plumbing tests and the console's `--stubs` mode. The console (`orchestration/web`) shows each stage as a card and each evidence record as a page, takes photos per stage, and records an override; it decides nothing itself.
 
 Run an agent as its own service:
 

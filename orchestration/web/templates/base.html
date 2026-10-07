@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}Pod 12 console{% endblock %}</title>
+<script>
+  try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700;800;900&display=swap">
+<link rel="stylesheet" href="/ui/static/ui.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="logo">📦</span><span>Pod 12 console</span></a>
+    <nav>
+      <a href="/" class="{{ 'on' if nav == 'home' }}">Units</a>
+      <a href="/health" class="{{ 'on' if nav == 'health' }}">Health</a>
+      <a href="/docs">API</a>
+    </nav>
+    <span class="spacer"></span>
+    <button class="toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">🌗 Theme</button>
+  </div>
+</header>
+<main class="wrap">
+  {% if stub_mode %}
+  <div class="banner stub"><b>Organiser stubs are answering.</b> These screens are showing the organisers' CSV-replay stubs, not our agents.
+    They exist so the screens can be seen without photos or a model key. Start the server without <code>POD_UI_STUBS=1</code> to run our agents.</div>
+  {% endif %}
+  {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
+  {% block body %}{% endblock %}
+  <footer>No sign-in: anyone who can reach this page can run workflows and record overrides. Keep it on this machine.
+    Photos added here are stored in <code>data/input/</code> and are public if you push them.</footer>
+</main>
+<script>
+  document.querySelectorAll("[data-theme-toggle]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var root = document.documentElement;
+      var dark = root.dataset.theme ? root.dataset.theme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.dataset.theme = dark ? "light" : "dark";
+      try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+    });
+  });
+  document.querySelectorAll("[data-filter]").forEach(function (box) {
+    box.addEventListener("input", function () {
+      var q = box.value.toLowerCase();
+      document.querySelectorAll(box.dataset.filter).forEach(function (row) {
+        row.style.display = row.textContent.toLowerCase().indexOf(q) === -1 ? "none" : "";
+      });
+    });
+  });
+</script>
+</body>
+</html>

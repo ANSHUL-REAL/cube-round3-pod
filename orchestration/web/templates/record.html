@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ rec.record_id }} · pod 12 console{% endblock %}
+{% block body %}
+<div class="crumbs"><a href="/">Units</a> / <a href="/ui/w/{{ wf.workflow_id }}">{{ wf.subject_id }}</a> / <span class="mono">{{ rec.record_id }}</span></div>
+<div class="page-head">
+  <div class="grow">
+    <h1>{{ stages_meta[rec.stage][0] }} {{ stages_meta[rec.stage][1] }} evidence</h1>
+    <p class="muted mono">{{ rec.record_id }} · {{ rec.agent_id }}</p>
+  </div>
+  <span class="chip {{ rec.decision.verdict | lower }}">{{ rec.decision.verdict | lower }}</span>
+  <span class="chip {{ rec.decision.outcome | lower }}">{{ rec.decision.outcome | replace('_', ' ') }}</span>
+  <span class="chip {{ rec.status }}">{{ rec.status }}</span>
+</div>
+
+<section class="card">
+  <p style="font-weight:700">{{ rec.decision.reason }}</p>
+  <dl class="kv">
+    <dt>Confidence</dt><dd>{{ rec.decision.confidence if rec.decision.confidence is not none else 'n/a (rules decide)' }}</dd>
+    <dt>Needs a person</dt><dd>{{ 'yes' if rec.decision.needs_human else 'no' }}</dd>
+    <dt>Model</dt><dd>{{ rec.model.name }} {{ rec.model.version }}{% if rec.model.provider %} · {{ rec.model.provider }}{% endif %} · {{ rec.model.calls }} call(s){% if rec.model.cost_usd is not none %} · ${{ rec.model.cost_usd }}{% endif %}</dd>
+    <dt>Captured / produced</dt><dd>{{ rec.captured_at }} / {{ rec.produced_at }}</dd>
+    <dt>Content hash</dt><dd class="mono">{{ rec.content_hash }}<br><span class="muted">A hash of this record's content. It shows an edit only if you still hold the original hash somewhere else.</span></dd>
+    {% if rec.upstream_refs %}<dt>Used earlier evidence</dt><dd>{% for u in rec.upstream_refs %}{% if u in in_workflow %}<a class="mono" href="/ui/w/{{ wf.workflow_id }}/r/{{ u }}">{{ u }}</a>{% else %}<span class="mono">{{ u }}</span>{% endif %}{{ ', ' if not loop.last }}{% endfor %}</dd>{% endif %}
+  </dl>
+  {% if rec.error %}<div class="banner" style="background:var(--fail);color:var(--fail-ink)"><b>{{ rec.error.code }}</b>: {{ rec.error.message }}{% if rec.error.retryable %} (can be retried: press Run again){% endif %}</div>{% endif %}
+</section>
+
+<section class="card" style="margin-top:22px">
+  <h2>Checks</h2>
+  {% if rec.checks %}
+  <div class="tablewrap"><table>
+    <thead><tr><th>Check</th><th>Verdict</th><th>Why</th><th>Expected</th><th>Observed</th><th>Evidence</th></tr></thead>
+    <tbody>
+    {% for c in rec.checks %}
+      <tr><td class="mono">{{ c.check_key }}</td>
+        <td><span class="chip {{ c.verdict | lower }}">{{ c.verdict | lower }}</span>{% if c.uncertain_reason %}<br><span class="muted">{{ c.uncertain_reason | replace('_', ' ') }}</span>{% endif %}</td>
+        <td>{{ c.detail or '' }}{% if c.confidence is not none %}<br><span class="muted">confidence {{ c.confidence }}</span>{% endif %}</td>
+        <td class="mono">{{ c.expected | tojson if c.expected is defined and c.expected is not none else '' }}</td>
+        <td class="mono">{{ c.observed | tojson if c.observed is defined and c.observed is not none else '' }}</td>
+        <td>{% for e in c.evidence_refs or [] %}<span class="mono">{{ e }}</span><br>{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% else %}<p class="muted">No checks: this stage could not judge, and says why above. Nothing is invented.</p>{% endif %}
+</section>
+
+<div class="grid cols-2" style="margin-top:22px">
+  <section class="card">
+    <h2>Inputs</h2>
+    {% if rec.inputs %}
+    <div class="photos">{% for i in rec.inputs %}{% if i.ref in shown %}<a href="/ui/photo/{{ i.ref }}" target="_blank"><img class="photo" style="max-width:140px" src="/ui/photo/{{ i.ref }}" alt="input photo"></a>{% endif %}{% endfor %}</div>
+    <div class="tablewrap"><table><thead><tr><th>Ref</th><th>sha256</th></tr></thead><tbody>
+    {% for i in rec.inputs %}<tr><td class="mono">{{ i.ref }}</td><td class="mono" style="word-break:break-all">{{ i.sha256 or 'none' }}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="muted">No photos or files: this stage reads other records.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>Evidence trail</h2>
+    <ul class="trail">
+      <li><b>Final outcome</b> {% if final %}<span class="chip {{ final.outcome | lower }}">{{ final.outcome | replace('_', ' ') }}</span>{% endif %}</li>
+      <li class="arrow">⬇</li>
+      <li><b>This record</b> <span class="mono">{{ rec.record_id }}</span> {% if final and rec.record_id in final.contributing_records %}<span class="chip pass">contributes</span>{% endif %}</li>
+      <li class="arrow">⬇</li>
+      <li><b>{{ rec.checks | length }} check(s)</b> {% for c in rec.checks %}<span class="chip {{ c.verdict | lower }}">{{ c.check_key }}</span> {% endfor %}</li>
+      <li class="arrow">⬇</li>
+      <li><b>{{ rec.inputs | length }} input(s)</b> {% for i in rec.inputs %}<span class="mono">{{ (i.sha256 or 'no hash')[:12] }}…</span> {% endfor %}</li>
+    </ul>
+  </section>
+</div>
+
+<section class="card" style="margin-top:22px">
+  <h2>Overrides of this record</h2>
+  {% if overrides %}<ul class="trail">{% for o in overrides %}<li><b>{{ o.override_id }}</b>: <span class="chip {{ o.previous_verdict | lower }}">{{ o.previous_verdict | lower }}</span> ➜ <span class="chip {{ o.new_verdict | lower }}">{{ o.new_verdict | lower }}</span><br><span class="muted">{{ o.actor }} · {{ o.at }} · “{{ o.reason }}”</span></li>{% endfor %}</ul>
+  {% else %}<p class="muted">None. The record above is exactly what the agent returned.</p>{% endif %}
+</section>
+
+<details style="margin-top:22px"><summary>Full record (JSON)</summary><pre>{{ pretty }}</pre></details>
+{% endblock %}

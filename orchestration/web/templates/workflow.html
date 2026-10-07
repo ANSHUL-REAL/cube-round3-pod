@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ wf.subject_id }} · pod 12 console{% endblock %}
+{% block body %}
+<div class="crumbs"><a href="/">Units</a> / <span class="mono">{{ wf.workflow_id }}</span></div>
+<div class="page-head">
+  <div class="grow">
+    <h1 class="mono">{{ wf.subject_id }}</h1>
+    <p class="muted">{{ wf.org_id }} · route {{ wf.context.get('route', 'unknown') }}{% if wf.context.get('returned') %} · returned{% endif %}{% if story %} · {{ story }}{% endif %}</p>
+  </div>
+  <span class="chip {{ wf.status | lower }}" title="{{ wf.status_reason }}">{{ wf.status | replace('_', ' ') }}</span>
+  <a class="btn alt small" href="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}">📷 Photos</a>
+  <form method="post" action="/ui/w/{{ wf.workflow_id }}/resume" style="margin:0"><button class="btn small" type="submit">▶ Run again</button></form>
+</div>
+<p class="muted" style="margin-top:0">{{ wf.status_reason }}.{% if wf.halted %} Halted at <b>{{ wf.halted.stage }}</b>: {{ wf.halted.reason }}.{% endif %}</p>
+
+{% if stale %}<div class="banner"><b>Out of date:</b> {{ stale | join(', ') }} used a verdict a person has since overridden. Press <b>Run again</b> to refresh {{ 'it' if stale | length == 1 else 'them' }}.</div>{% endif %}
+<div class="pipeline">
+  {% for s in steps %}
+  <article class="step s-{{ s.state }}">
+    <div class="row"><span class="icon">{{ s.icon }}</span><span class="name">{{ s.name }}</span></div>
+    <div class="row">
+      <span class="chip {{ s.state }}">{{ s.state }}</span>
+      {% if s.verdict %}<span class="chip {{ s.verdict | lower }}">{{ s.verdict | lower }}</span>{% endif %}
+      {% if s.outcome %}<span class="chip {{ s.outcome | lower }}">{{ s.outcome | replace('_', ' ') }}</span>{% endif %}
+      {% if s.needs_human %}<span class="chip pending_review">needs a person</span>{% endif %}
+    </div>
+    {% if s.state == 'skipped' %}
+      <p class="why">Not needed for this unit: {{ s.skipped_reason }}.</p>
+    {% else %}
+      {% if s.error %}<p class="why"><b>{{ s.error.code }}</b>: {{ s.error.message }}</p>
+      {% elif s.reason %}<p class="why">{{ s.reason }}</p>{% else %}<p class="why">{{ s.blurb }}</p>{% endif %}
+      {% if s.failed_checks %}<div class="row">{% for c in s.failed_checks %}<span class="chip fail">{{ c }}</span>{% endfor %}</div>{% endif %}
+      {% if s.unsure_checks %}<div class="row">{% for c in s.unsure_checks %}<span class="chip uncertain">{{ c }}</span>{% endfor %}</div>{% endif %}
+      {% if s.photos %}<div class="thumbs">{% for p in s.photos %}<a href="/ui/photo/{{ p }}" target="_blank"><img src="/ui/photo/{{ p }}" alt="photo for {{ s.name }}" loading="lazy"></a>{% endfor %}</div>{% endif %}
+      {% if s.agent_id %}<div class="agent">{{ s.agent_id }}{% if s.model.get('name') %} · {{ s.model.name }}{% endif %}{% if s.duration_ms is not none %} · {{ s.duration_ms }} ms{% endif %}</div>{% endif %}
+    {% endif %}
+    <div class="foot">{% if s.record_id %}<a class="btn alt small" href="/ui/w/{{ wf.workflow_id }}/r/{{ s.record_id }}">Evidence</a>{% endif %}</div>
+  </article>
+  {% endfor %}
+</div>
+
+{% if final %}
+<section class="card final">
+  <div class="big {{ final.outcome | lower }}">{{ final.outcome | replace('_', ' ') }}</div>
+  <div>
+    <p style="font-weight:700;margin-bottom:8px">{{ final.reason }}</p>
+    <dl class="kv">
+      <dt>Verdict</dt><dd><span class="chip {{ final.verdict | lower }}">{{ final.verdict | lower }}</span>{% if final.provisional %} <span class="chip pending">provisional</span>{% endif %}{% if final.needs_human %} <span class="chip pending_review">needs a person</span>{% endif %}</dd>
+      {% if final.claimable_usd is not none %}<dt>Claimable</dt><dd><b>${{ '%.2f' % final.claimable_usd }}</b></dd>{% endif %}
+      <dt>Effective verdicts</dt><dd>{% for st, v in final.effective_verdicts.items() %}<span class="chip {{ v | lower }}">{{ st }}: {{ v | lower }}</span> {% endfor %}</dd>
+      <dt>Built from</dt><dd>{% for rid in final.contributing_records %}<a class="mono" href="/ui/w/{{ wf.workflow_id }}/r/{{ rid }}">{{ rid }}</a>{{ ', ' if not loop.last }}{% endfor %}</dd>
+    </dl>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid cols-2" style="margin-top:26px">
+  <section class="card">
+    <h3>Record a person's decision</h3>
+    <p class="muted">An override never changes the original record: it is added next to it with who, why and when. The latest one is what later stages and the final outcome use.</p>
+    <form method="post" action="/ui/w/{{ wf.workflow_id }}/override">
+      <label for="rid">Which record</label>
+      <select id="rid" name="record_id">{% for rid in wf.evidence_references %}<option value="{{ rid }}">{{ rid }}</option>{% endfor %}</select>
+      <label for="nv">New verdict</label>
+      <select id="nv" name="new_verdict"><option>PASS</option><option>FAIL</option><option>UNCERTAIN</option></select>
+      <label for="actor">Who are you</label><input id="actor" type="text" name="actor" required maxlength="80">
+      <label for="reason">Why</label><input id="reason" type="text" name="reason" required maxlength="300">
+      <p style="margin-top:14px"><button class="btn" type="submit">Save override</button></p>
+    </form>
+    <p class="muted" style="font-size:13px">The override counts at once. Stages that already used the old verdict are listed as out of date until you press <b>Run again</b>.</p>
+  </section>
+  <section class="card">
+    <h3>Overrides so far</h3>
+    {% if wf.overrides %}
+    <ul class="trail">{% for o in wf.overrides %}
+      <li><b>{{ o.override_id }}</b> on <a class="mono" href="/ui/w/{{ wf.workflow_id }}/r/{{ o.supersedes.record_id }}">{{ o.supersedes.record_id }}</a>:
+        <span class="chip {{ o.previous_verdict | lower }}">{{ o.previous_verdict | lower }}</span> ➜ <span class="chip {{ o.new_verdict | lower }}">{{ o.new_verdict | lower }}</span><br>
+        <span class="muted">{{ o.actor }} · {{ o.at }} · “{{ o.reason }}”</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted">None.</p>{% endif %}
+    <details style="margin-top:14px"><summary>Audit trail ({{ wf.transitions | length }} events)</summary>
+      <div class="tablewrap"><table><thead><tr><th>When</th><th>Event</th><th>Stage</th><th>Detail</th></tr></thead><tbody>
+      {% for t in wf.transitions %}<tr><td class="mono">{{ t.at }}</td><td>{{ t.event }}</td><td>{{ t.stage or '' }}</td><td>{{ t.detail or '' }}</td></tr>{% endfor %}
+      </tbody></table></div></details>
+  </section>
+</div>
+{% endblock %}

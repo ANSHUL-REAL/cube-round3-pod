@@ -14,14 +14,18 @@ from __future__ import annotations
 import os
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from shared.utils import sample_data
 
 from .clients import HttpClient, client_for, load_manifest
 from .orchestrator import WorkflowConflict, apply_override, bundle, default_flow_path, flow_stages, load_flow, resume, run_workflow
 from .store import EvidenceConflict, FileStore, is_safe_id
+from .web import HERE as _WEB, router as _ui_router
 
 app = FastAPI(title="CUBE Round 3 orchestrator")
+app.mount("/ui/static", StaticFiles(directory=str(_WEB / "static")), name="ui-static")
+app.include_router(_ui_router)  # the readable console: /, /ui/w/<workflow>, /ui/capture/<org>/<unit>
 FLOW = os.environ.get("ORCH_FLOW") or default_flow_path()
 STORE = FileStore()
 

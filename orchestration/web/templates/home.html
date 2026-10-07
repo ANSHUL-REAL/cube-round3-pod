@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% set nav = "home" %}
+{% block title %}Pod 12 console · units{% endblock %}
+{% block body %}
+</main>
+<section class="hero">
+  <div class="wrap">
+    <div class="wordmark"><span>pod 12</span>five agents,<br>one record.</div>
+    <p class="lead">Receiving, Prep, Pack, Returns and Recovery hand evidence to each other. Pick a unit, add photos for each step, run it, and read the evidence trail from the final outcome back to the exact photo.</p>
+  </div>
+</section>
+<main class="wrap">
+  <div class="page-head"><div class="grow"><h2>Demo units</h2><p class="muted">The five stories to show. Each needs photos for its steps; without them a step answers “no photo” and says so.</p></div></div>
+  <div class="grid cols-3">
+    {% for r in demo %}
+    <article class="card">
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <h3 class="mono" style="margin-right:auto">{{ r.unit }}</h3>
+        <span class="chip">{{ r.route }}</span>{% if r.returned %}<span class="chip">returned</span>{% endif %}
+      </div>
+      <p>{{ r.story }}</p>
+      <p style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        {% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'pending' }}" title="photos for {{ s }}">{{ stages_meta[s][0] }} {{ r.photos[s] }}</span>{% endfor %}
+        {% if r.status %}<span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% endif %}
+        {% if r.outcome %}<span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}
+      </p>
+      <p style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0">
+        <a class="btn alt small" href="/ui/capture/{{ r.org }}/{{ r.unit }}">📷 Photos</a>
+        <form method="post" action="/ui/run" style="margin:0"><input type="hidden" name="org" value="{{ r.org }}"><input type="hidden" name="unit" value="{{ r.unit }}">
+          <button class="btn small" type="submit">▶ {{ 'Run again' if r.workflow_id else 'Run' }}</button></form>
+        {% if r.workflow_id %}<a class="btn alt small" href="/ui/w/{{ r.workflow_id }}">Open</a>{% endif %}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="page-head" style="margin-top:30px"><div class="grow"><h2>All {{ total }} sample units</h2></div>
+    <input type="text" class="filter" data-filter="#all tbody tr" placeholder="Filter: unit, org, route…"></div>
+  <div class="card tablewrap" id="all">
+    <table>
+      <thead><tr><th>Unit</th><th>Organisation</th><th>Route</th><th>Photos</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr><td class="mono">{{ r.unit }}</td><td class="mono">{{ r.org }}</td>
+          <td><span class="chip">{{ r.route }}</span>{% if r.returned %} <span class="chip">returned</span>{% endif %}</td>
+          <td>{% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'pending' }}">{{ stages_meta[s][0] }} {{ r.photos[s] }}</span> {% endfor %}</td>
+          <td>{% if r.status %}<span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% else %}<span class="muted">not run</span>{% endif %}</td>
+          <td><a href="/ui/capture/{{ r.org }}/{{ r.unit }}">photos</a>{% if r.workflow_id %} · <a href="/ui/w/{{ r.workflow_id }}">open</a>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

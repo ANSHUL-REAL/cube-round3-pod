@@ -16,3 +16,6 @@ pillow-heif>=0.18
 pyyaml>=6.0
 rfc8785>=0.1.4
 zxing-cpp>=2.0   # barcode decoding of return photos; optional at runtime (no decoder = no barcode evidence)
+# Web UI (orchestration/web)
+jinja2>=3.1
+python-multipart>=0.0.9
