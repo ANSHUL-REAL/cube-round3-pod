@@ -1,0 +1,34 @@
+schema: category-policy/v1
+version: 1.0.0
+policy_id: amazon-uk-2020-12-toys-games
+category_key: toys_games
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+fields:
+  listing_conditions_allowed:
+    value:
+    - new
+    - used_like_new
+    - used_very_good
+    - used_good
+    - used_acceptable
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines p.14 Toys & Games
+  consumable_ingestible_or_topical:
+    value: false
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines category scope
+  functional_verification_required_for_used:
+    value: false
+    source_type: assumption
+    source_ref: Non-electrical toys do not require expert safety testing
+  opened_item_route:
+    value: restock
+    source_type: business_policy
+    source_ref: 'Seller policy: restock if all parts present'
+  damaged_item_route:
+    value: dispose
+    source_type: business_policy
+    source_ref: 'Seller policy: dispose damaged toys'
+content_sha256: 3431ef87f6998f925e35961a103eec00b991cc52049826a4c39c23afd13f7003

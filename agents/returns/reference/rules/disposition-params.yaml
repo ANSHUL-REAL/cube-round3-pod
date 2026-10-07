@@ -1,0 +1,15 @@
+schema: disposition-params/v1
+version: 1.0.0
+restock_used_grades:
+- used_like_new
+- used_very_good
+refurbish_min_net_gain:
+  amount_minor: 10000
+  currency: INR
+dispose_max_salvage:
+  amount_minor: 5000
+  currency: INR
+high_value_threshold:
+  amount_minor: 500000
+  currency: INR
+content_sha256: 2253ea61f03c21887a02aed766944b413e74743c1615ec364904d2e92c748808

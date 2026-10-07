@@ -1,0 +1,35 @@
+schema: category-policy/v1
+version: 1.0.0
+policy_id: amazon-uk-2020-12-electronics
+category_key: electronics
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+fields:
+  listing_conditions_allowed:
+    value:
+    - new
+    - used_like_new
+    - used_very_good
+    - used_good
+    - used_acceptable
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines p.7-8 Electronics & Photo
+  consumable_ingestible_or_topical:
+    value: false
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines category scope
+  functional_verification_required_for_used:
+    value: true
+    source_type: amazon_guideline
+    source_ref: 'Condition Guidelines p.9: expert safety testing required for used
+      electrical'
+  opened_item_route:
+    value: restock
+    source_type: business_policy
+    source_ref: 'Seller policy: restock if complete and passed safety checks'
+  damaged_item_route:
+    value: liquidate
+    source_type: business_policy
+    source_ref: 'Seller policy: liquidate damaged electronic units'
+content_sha256: cc52864bef421464b8a946aa185007d87bb6c8c3893bb7a8add6d1d78b2ad157

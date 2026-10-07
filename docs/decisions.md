@@ -110,3 +110,67 @@ _Add entries below._
 - Why: a model that is too slow should produce a retryable pending record that keeps the photo, not an orchestrator timeout.
 - Consequences: a rare slow-but-correct answer is abandoned at 12 s and retried. Revisit if the retry rate is high.
 
+
+### D-RT01 · Returns: the model observes, rules decide, and only the engine and its data are carried over
+- Date / Owner: 2026-10-07 / @krishnababuprodduturu (Round 2 author), integrated by @ANSHUL-REAL
+- Context: the Round 2 Returns Manager (RTN-0038) is a full product: web console, Postgres with row-level security, job queue, hash-chained ledger, tool-calling Gemini sessions. Round 3 needs one agent behind `handle()`.
+- Options considered: (A) keep the stub's CSV replay; (B) run the Round 2 service and call it over HTTP; (C) copy the decision core and its reference data, and let the pod's orchestrator, store and contract replace the rest.
+- Decision: C. `agents/returns/core/` holds the Round 2 validation, identity fusion, completeness, condition and disposition engine with only import lines changed (checked file by file, see PROVENANCE.md). The model fills a schema with no disposition field; code decides.
+- Why: a disposition that a model could change by what it says in a photo is not auditable; Round 2's separation keeps every outcome traceable to a named rule (`payload.disposition.rule_id`, `inputs_sha256`). The pod already has an orchestrator, an evidence store and tenancy, so Round 2's copies of those are redundant.
+- Consequences: Round 2's database-backed checks (photo reuse across returns, near-duplicate photos), its queue and its console are not here. Its evaluation numbers describe the Round 2 path, not this one.
+
+### D-RT02 · Returns: one model call, no tools, bounded to fit the stage timeout
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: Round 2 ran a stateful Interactions API session with a crop tool and up to 2 round trips, a 180 s timeout and a 45 s p95 target. The orchestrator gives a stage 30 s, and engineering rule 2 says one batched call per unit.
+- Options considered: (A) keep the session loop and raise the stage timeout; (B) one `generateContent` call, no tools, no repair turn, 24 s, and a pending record on any failure.
+- Decision: B. The system prompt is used unchanged (it is hash-locked and mentions tools); the user text says no tools are available. Thinking defaults to `low` (Round 2: `medium`). Output mode defaults to JSON in the prompt (`RETURNS_OUTPUT_MODE=json_prompted`), with constrained output available as `json_schema`.
+- Why: a slow answer that is cut off by the orchestrator loses the capture's result; a retryable pending record keeps it.
+- Consequences: the crop tool is gone, so small print and part identification rely on the photos as given. None of this is measured through the pod: no live run was made, the model id is Round 2's default and unchecked, and `low` thinking may grade worse than Round 2's `medium`. Revisit after a live run; raising `timeout_s` for this step in `flow.json` would allow `medium`.
+
+### D-RT03 · Returns: the condition scale is Amazon's published one, from an unverified substitute source
+- Date / Owner: 2026-10-07 / @krishnababuprodduturu (source choice), @ANSHUL-REAL (recording it)
+- Context: the contract says to look the scale up, not invent it. Round 2 could not retrieve amazon.in's guidelines (login) and used the public Amazon UK Condition Guidelines PDF (16 Dec 2020) for amazon.in.
+- Decision: keep Round 2's rubric snapshots as they are, stamped `unverified_substitute`, and write `payload.rule_source` (snapshot id and hash, URL, retrieval date, document SHA-256 as recorded in Round 2) into every record. A unit that cannot be graded from the photos is UNCERTAIN (`insufficient_evidence`) with `amazon_condition: null`, never given a grade by default. A missing or hash-failing rubric means no judgment (`no_product_reference`).
+- Why: grading against a scale we could not check, silently, would be a model "remembering" a rule; labelling it keeps the record honest and the data easy to swap (`reference/rubrics/active.yaml`).
+- Consequences: this pod did not retrieve the PDF or re-check its hash. The owner should confirm the marketplace and replace the snapshots if the organisers publish theirs.
+
+### D-RT04 · Returns: how Round 2's checks map onto the contract's keys
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: Round 2 emitted `identity`, `completeness`, `component:<id>`, `condition_grade`, `relistable_as_is`, `category_policy`, `unit_presence`, `photo_quality`; the contract recommends `identity_match`, `completeness`, `condition` and requires snake_case keys.
+- Decision: `identity_match` (first, because the organiser Recovery stub reads `checks[0]`), `completeness`, `condition`, plus `unit_presence` and `photo_quality`. Per-part results stay whole in `payload.components`. `condition` is PASS when graded and nothing physically unacceptable was seen, FAIL for severe damage, dirt, a used consumable or an opened item in a New-only category, UNCERTAIN when ungradable; the function is never tested. `photo_quality` is never FAIL (nobody can retake the photo): fewer than 2 usable photos is UNCERTAIN and the unit is a pending review.
+- Why: Round 2's `relistable_as_is` and `category_policy` are consequences of the same facts, so they live in the disposition block rather than as extra checks that would double-count a FAIL.
+- Consequences: a consumer that wants Round 2's exact checks reads `payload`. A missing non-essential part makes `completeness` FAIL (as in Round 2) even when the engine would still route the item.
+
+### D-RT05 · Returns: a route is reported only when nothing asks for a person
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: Round 2 treats "needs review" as a flag next to a route (review is "never a fifth disposition"); the contract has `pending_review` as an outcome and `needs_human` as an explicit request.
+- Decision: the outcome is the engine's route only if the verdict is not UNCERTAIN, the engine and the escalation rules ask for no review, and the earlier records do not conflict. Otherwise the outcome is `pending_review`, a PASS is lifted to UNCERTAIN, and the engine's route stays in `payload.disposition.engine_recommendation`. `dispose` and high-value routes (Round 2 sign-off rules S01, S02) set `needs_human`. `_assert_consistent` raises if a route is reported with identity or presence not PASS, or `restock` with any check not PASS.
+- Why: handing a warehouse a "restock" that a rule also flagged for review is how a wrong item re-enters stock.
+- Consequences: the pod's workflow is BLOCKED more often than Round 2's queue would be; that is the cost of not deciding for a person.
+
+### D-RT06 · Returns: what Pack and Receiving change, and what they do not (finding F-08)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: a return is only meaningful against what was sold and sent. `unit_id` means different things in different stages (F-08).
+- Decision: Pack's order id, order lines and box count are compared with the returned order and SKU. A different order, a SKU not on the order, or (Pack FAIL) a SKU Pack counted none of, make `identity_match` UNCERTAIN (`conflicting_evidence`) and the unit a pending review. Everything else from Pack and Receiving (flags, box mismatch, supplier-side findings) is context in the check detail and `evidence_refs`; no verdict changes. The latest workflow override of each record is its effective verdict. A missing or pending upstream record gives no conflict.
+- Why: two records that disagree about scope are UNCERTAIN under the contract, and a guess in either direction could produce a wrong claim. Receiving's flags say what the supplier shipped, not who damaged the item, so they inform but do not decide.
+- Consequences: Pack counts are a model's counts, so a `not_packed` conflict asks a person and does not assert the item was never sent. Pack counts per SKU cannot speak to missing parts of a unit.
+
+### D-RT07 · Returns: no verified product reference, no judgment (and what that means for the sample)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: Round 2's gate (section 11.2a) refuses to call the model when the card, parts list, reference image, category entry, rubric or policy is missing. The organisers' ten sample SKUs have placeholder cards (invented features and values) and no reference images.
+- Decision: keep the gate. The record is `pending_review` with `no_product_reference`, `status: error`, not retryable, naming what is missing, with the captures kept; the model is not called. Every reference document is hash-checked, and cards are read only under the caller's organisation.
+- Why: judging a real photo against an invented description of the product would manufacture evidence.
+- Consequences: on the organisers' sample, Returns ends in an error record until a product is onboarded (card with reference images, hashes updated) and photos are taken. A card with one critical body feature can never reach identity `yes` without a barcode. Open for the owner: relax the gate to judge completeness and condition without reference images (identity then stays UNCERTAIN)?
+
+### D-RT08 · Returns: FBA-routed returns are judged like any other (finding F-11)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: whether FBA returns come back to the seller or the channel's warehouse decides whether Returns evidence can contradict `refund_issued_item_not_returned`.
+- Decision: Returns judges whatever photos it is given, records `payload.route`, and reports `claim_signals` (`item_not_returned`, `wrong_item_returned`, `returned_damaged`) as `yes`/`no`/`uncertain` observations with their basis. It does not decide who received the return or whether a charge is contradicted.
+- Why: that is Recovery's call, and the organisers have not ruled. If photos exist the item was at least seen by the seller.
+- Consequences: nothing here blocks Recovery from using or ignoring these signals.
+
+### D-RT09 · Returns: the starter's stub-only tests skip once a stub is replaced
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: `test_examples.py::test_example_cases_still_produce_the_documented_outcome` and `test_http.py::test_full_workflow_over_http_matches_in_process` replay the stock stubs and expect every stage to complete. The starter already skips its golden-outcome test under the same condition ("not the stock stubs").
+- Decision: the same skip (`implementation != "organiser-stub"`) on those two tests. No assertion was changed or removed, and the real behaviour is covered by `tests/integration/test_returns_agent.py`.
+- Consequences: other members replacing stubs will make the same edit; the hunks are identical, so the merge should be trivial. Pod-level: decide whether to rewrite those tests against fixtures.

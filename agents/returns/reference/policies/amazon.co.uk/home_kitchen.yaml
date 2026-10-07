@@ -1,0 +1,39 @@
+schema: category-policy/v1
+version: 1.0.0
+policy_id: amazon-uk-2020-12-home-kitchen
+category_key: home_kitchen
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+fields:
+  listing_conditions_allowed:
+    value:
+    - new
+    - used_like_new
+    - used_very_good
+    - used_good
+    - used_acceptable
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines p.9-10 Home & Garden
+  consumable_ingestible_or_topical:
+    value: false
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines category scope
+  consumable_items_where_any_part_used_prohibited:
+    value: true
+    source_type: amazon_guideline
+    source_ref: 'Condition Guidelines p.10: consumable items where any part has been
+      used'
+  functional_verification_required_for_used:
+    value: false
+    source_type: assumption
+    source_ref: Non-electrical home goods do not require expert electrical certification
+  opened_item_route:
+    value: restock
+    source_type: business_policy
+    source_ref: 'Seller policy: restock if clean and unused'
+  damaged_item_route:
+    value: dispose
+    source_type: business_policy
+    source_ref: 'Seller policy: dispose damaged home kitchen items'
+content_sha256: 4a58f927b1c36960c6278dd1113577058812b8e3fddb7955a83703127fd292b3

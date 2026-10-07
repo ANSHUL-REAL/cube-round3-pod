@@ -1,0 +1,115 @@
+schema: product-card/v1
+version: 1.0.0
+org_id: org_demo_alpha
+sku: SKU-PHONE-IQOO9
+identifiers:
+  asin: B0DUMMY999
+  fnsku: null
+  gtin: null
+  model_numbers:
+  - I2304
+  - Neo 9
+  barcode_values: []
+title: iQOO Neo 9 Smartphone with 120W FlashCharge
+brand: iQOO
+category_key: electronics
+distinguishing_features:
+- id: df_dual_tone
+  description: Two-tone red and white vertical split back panel with NEO branding
+  location: product_body
+  importance: critical
+- id: df_dual_camera
+  description: Two large vertical circular camera modules on the upper left
+  location: product_body
+  importance: critical
+similar_skus: []
+components:
+- id: phone_unit
+  name: iQOO Neo 9 Smartphone
+  quantity: 1
+  essential: true
+  replaceable: false
+  verifiable_by_photo: true
+  visual_cues: Red and white split two-tone back smartphone with dual cameras
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+- id: power_adapter
+  name: 120W FlashCharge Power Adapter
+  quantity: 1
+  essential: true
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: White 120W power adapter brick with two-pin plug
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+- id: usb_cable
+  name: USB Type-C Cable
+  quantity: 1
+  essential: true
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: White USB-C charging and data cable with paper band
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+- id: manual
+  name: Quick Start Guide
+  quantity: 1
+  essential: false
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: Folded white booklet titled iQOO I2304 Quick Start Guide
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+- id: sim_ejector
+  name: SIM Ejector Tool
+  quantity: 1
+  essential: false
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: Silver SIM ejector pin tool in white cardboard cutout holder
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+- id: protective_case
+  name: Clear Protective Case
+  quantity: 1
+  essential: false
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: Transparent flexible TPU silicone protective phone case
+  source:
+    type: seller_catalogue
+    ref: cat row 99
+    retrieved_at: null
+reference_images:
+- id: ref_contents
+  view: contents_layout
+  path: SKU-PHONE-IQOO9/ref_contents.jpg
+  sha256: 3d07d7ce92723c13d8dcbc348d333206e9a95f5a1c82b02234c75a8cd6295772
+consumable: false
+value:
+  synthetic: true
+  list_price:
+    amount_minor: 3499900
+    currency: INR
+  recovery_rate_bp:
+    restock_new: 10000
+    restock_used: 7500
+    refurbish: 6000
+    liquidate: 3000
+    dispose: 0
+  refurbish_cost:
+    amount_minor: 250000
+    currency: INR
+provenance_notes: Reference card for iQOO Neo 9 created from user-provided pre-sale
+  reference photo.
+content_sha256: b23eb7ebdffa0dd399d723ba4dd3b5f1b57276025b50df1faf69f4ad5a756dd8

@@ -12,6 +12,7 @@ import httpx
 import pytest
 import uvicorn
 
+from orchestration.clients import load_manifest
 from orchestration.orchestrator import load_flow, run_workflow
 from tests.conftest import AGENTS, make_input
 
@@ -70,6 +71,9 @@ def test_bad_input_is_422_and_wrong_tenant_is_404(http_mode, cases):
 
 
 def test_full_workflow_over_http_matches_in_process(http_mode, cases, monkeypatch):
+    manifests = [load_manifest(st) for st in AGENTS]
+    if any(m["implementation"] != "organiser-stub" for m in manifests):
+        pytest.skip("this asserts every stub stage completes; a real agent needs captures and a model (see tests/integration)")
     case = next(c for c in cases if c["route"] == "fba" and c["returned"])
     over_http = run_workflow(case)
     monkeypatch.setenv("ORCH_MODE", "inproc")

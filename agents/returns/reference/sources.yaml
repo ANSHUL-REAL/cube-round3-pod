@@ -1,0 +1,12 @@
+schema: sources/v1
+version: 1.0.0
+sources:
+- id: amazon-uk-condition-guidelines-pdf
+  title: Amazon.co.uk Condition Guidelines
+  url: https://m.media-amazon.com/images/G/02/rainier/help/legal/Condition_Guidelines_EN_161220.pdf
+  retrieved_at: '2026-09-25T00:00:00Z'
+  sha256_of_downloaded_bytes: 342a3dc2e9cbdec5467ec03417630f1e2466ac3bbf6d7a6965caf871a35e2718
+  pages: 17
+  license_note: Amazon published seller documentation; short attributed quotations
+    used under fair dealing for interoperability and grading.
+content_sha256: 57c80d994201dc2cd579613cbd648be403d4e0d1ee994e63fcff25ea617c6a76

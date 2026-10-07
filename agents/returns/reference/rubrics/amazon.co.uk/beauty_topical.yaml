@@ -1,0 +1,56 @@
+schema: condition-rubric/v1
+version: 1.0.0
+snapshot_id: amazon-uk-condition-guidelines-2020-12-beauty-topical
+source_id: amazon-uk-condition-guidelines-pdf
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+category_key: beauty_topical
+source_pages:
+- 1
+- 15
+grades:
+- code: new
+  label: New
+  text: All consumable, ingestible, and/or topical products sold on Amazon must be
+    listed in New condition. This includes, for example, items within the Beauty,
+    Food & Grocery, Health Care, and Vitamins & Dietary Supplements categories. To
+    be considered New, items must not have been previously used, be in the original
+    packaging, and be properly prepared, packaged, sealed, and labeledlabelled to
+    prevent contamination, spoiling, melting, and damage.
+unacceptable_conditions:
+- code: not_working
+  text: Item does not work perfectly in every regard.
+- code: not_clean
+  text: Item is not clean, having signs of mould, heavy staining, or corrosion.
+- code: damaged_hard_to_use
+  text: Item is damaged in a way that renders it difficult to use.
+- code: missing_essential
+  text: Item is missing essential accompanying material or parts. (This does not necessarily
+    include instructions.)
+- code: needs_repair
+  text: Item requires repair or service.
+- code: counterfeit_or_copy
+  text: Item was not created by the original manufacturer or copyright holder. This
+    includes copies, counterfeits, replicas and imitations.
+- code: promotional_copy
+  text: Item was originally distributed as a promotional copy, promotional bundle,
+    product sample or advance reading copy.
+- code: obscured_details
+  text: Any aspect of the item is obscured and not able to be read or viewed because
+    of markings, stickers or other damage.
+- code: expired
+  text: Item has passed the expiration date (includes “best by” and “sell by” dates),
+    has an unacceptable portion of its shelf life remaining, or has had the expiration
+    date removed or tampered with.
+- code: prohibited
+  text: Item is prohibited for sale on Amazon.co.uk.
+- code: designated_unsellable
+  text: Item was intended for destruction or disposal or otherwise designated as unsellable
+    by the manufacturer or a supplier, vendor, or retailer.
+- code: beauty_topical_used_prohibited
+  text: Products cannot be listed in New condition if the items have been used, have
+    any signs of use, damage, or were intended for destruction or disposal or were
+    otherwise designated as unsellable by the manufacturer or a supplier, vendor,
+    or retailer.
+content_sha256: af32a3e41344e316f8fc4800f57fee6fb6bf84e76fb26815c03b2a6188949dd9
