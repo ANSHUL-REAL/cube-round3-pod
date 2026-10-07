@@ -1,10 +1,10 @@
 {
   "stage": "receiving",
-  "agent_id": "receiving-stub@0",
-  "owner": "@github-handle-of-the-owner",
+  "agent_id": "receiving-manager@0.1.0",
+  "owner": "@cherryy-x23",
   "mode": "inproc",
   "url": "http://localhost:8101",
   "module": "agents.receiving.app",
-  "implementation": "organiser-stub",
-  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+  "implementation": "Round 2 Receiving Manager (Sai charan, @cherryy-x23), ported to Round 3. One batched Gemini call per delivery reads the photos (it is not shown the purchase order and decides nothing); fixed rules compare what it read with the PO line. No model key, no photos or a model error gives a pending record, not a guess. The real model has not been run through this pod; tests use a scripted model. See agents/receiving/README.md and PROVENANCE.md.",
+  "notes": "Needs GEMINI_API_KEY for live checks. Photos go in data/input/<unit_id>/receiving/. Tests use a scripted model and need no key."
 }
