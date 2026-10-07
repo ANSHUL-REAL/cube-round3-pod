@@ -224,3 +224,102 @@ def test_agent_server_still_answers_404_for_a_wrong_tenant():
         raise LookupError("no such unit in this org")
 
     assert TestClient(make_app("receiving", refuse), raise_server_exceptions=False).post("/run", json=_body()).status_code == 404
+
+
+# ---------------------------------------------------------------- stale later stages are refreshed, evidence is never rewritten
+from orchestration.clients import AgentUnavailable  # noqa: E402
+from orchestration.orchestrator import resume, stale_stages  # noqa: E402
+from orchestration.store import EvidenceConflict  # noqa: E402
+from shared.utils import records as records_module  # noqa: E402
+from shared.utils.hashing import seal  # noqa: E402
+from tests.helpers import Boom, Fake  # noqa: E402
+
+STAGES = ("receiving", "prep", "pack", "returns", "recovery")
+FLOW = {"flow_id": "t", "steps": [{"stage": "receiving"}, {"stage": "prep", "when": {"route": ["fba"]}},
+                                   {"stage": "pack", "when": {"route": ["mfn"]}}, {"stage": "returns", "when": {"returned": [True]}},
+                                   {"stage": "recovery"}],
+        "defaults": {"timeout_s": 5, "retries": 0, "on_uncertain": "continue", "on_error": "continue"}}
+
+
+def all_fake(**over):
+    return {**{s: Fake("PASS") for s in STAGES}, **over}
+
+
+def _by_stage(wf):
+    return {s["stage"]: s for s in wf["stage_results"]}
+
+
+def test_rerunning_an_earlier_stage_refreshes_the_later_ones_and_keeps_the_old_records():
+    store = MemoryStore()
+    wf = run_workflow(CASE, FLOW, store, clients=all_fake(receiving=Boom(AgentUnavailable("down"))))
+    assert _by_stage(wf)["receiving"]["state"] == "error" and _by_stage(wf)["recovery"]["state"] == "completed"
+    old = {k: v["record_id"] for k, v in _by_stage(wf).items() if v.get("record_id")}
+    wf = resume(wf["workflow_id"], FLOW, store, clients=all_fake())
+    new = _by_stage(wf)
+    assert wf["status"] == "COMPLETED"
+    for stage in ("prep", "returns", "recovery"):
+        assert new[stage]["runs"] == 2, f"{stage} decided on the failed receiving record, so it must run again"
+        assert new[stage]["record_id"] != old[stage]
+        assert old[stage] in wf["evidence_references"] and store.get_evidence(old[stage]) is not None, "old evidence is kept"
+    assert new["receiving"]["record_id"] in store.get_evidence(new["recovery"]["record_id"])["upstream_refs"]
+    assert any(t["event"] == "stage_invalidated" and t["stage"] == "recovery" for t in wf["transitions"])
+
+
+def test_an_override_counts_at_once_and_lists_the_stages_that_used_the_old_verdict():
+    store = MemoryStore()
+    wf = run_workflow(CASE, FLOW, store, clients=all_fake())
+    rcv = _by_stage(wf)["receiving"]["record_id"]
+    wf = apply_override(wf["workflow_id"], store, record_id=rcv, new_verdict="FAIL", actor="op", reason="carton crushed")
+    assert wf["final_outcome"]["effective_verdicts"]["receiving"] == "FAIL", "the override takes effect immediately"
+    assert stale_stages(wf) == ["prep", "returns", "recovery"], "these three used the old verdict"
+    wf = resume(wf["workflow_id"], FLOW, store, clients=all_fake())
+    assert stale_stages(wf) == []
+    assert [_by_stage(wf)[s]["runs"] for s in ("receiving", "prep", "returns", "recovery")] == [1, 2, 2, 2]
+
+
+def test_resuming_without_an_override_does_not_rerun_finished_stages():
+    store = MemoryStore()
+    wf = run_workflow(CASE, FLOW, store, clients=all_fake())
+    wf = resume(wf["workflow_id"], FLOW, store, clients=all_fake())
+    assert all(s["runs"] == 1 for s in wf["stage_results"] if s["state"] != "skipped")
+
+
+def _tick(monkeypatch):
+    n = iter(range(10_000))
+    monkeypatch.setattr(records_module, "utcnow", lambda: f"2026-10-08T00:{next(n) // 60 % 60:02d}:{next(n) % 60:02d}Z")
+
+
+def test_a_replay_that_differs_only_in_timestamps_reuses_the_stored_record(tmp_path, monkeypatch):
+    """After a crash the workflow file can be older than the evidence. The organiser stubs use fixed record ids."""
+    _tick(monkeypatch)
+    store = FileStore(tmp_path / "out")
+    first = run_workflow(CASE, store=store)
+    for p in (tmp_path / "out" / "workflows").glob("*.json"):
+        p.unlink()  # the crash: evidence is on disk, the workflow state is not
+    second = run_workflow(CASE, store=store)  # same request ids, new clock: used to raise EvidenceConflict
+    assert [s["record_id"] for s in second["stage_results"]] == [s["record_id"] for s in first["stage_results"]]
+    assert any(t["event"] == "evidence_replayed" for t in second["transitions"])
+
+
+def test_a_different_record_under_the_same_id_is_still_refused(tmp_path):
+    from tests.stubs import receiving_stub
+
+    class Tamper:
+        calls = 0
+
+        def run(self, request, timeout_s):
+            out = receiving_stub.handle(request)
+            Tamper.calls += 1
+            if Tamper.calls > 1:  # the same id, but a different decision
+                ev = dict(out["evidence"])
+                ev["decision"] = {**ev["decision"], "reason": "changed after the fact"}
+                out = {**out, "evidence": seal(ev)}
+            return out
+
+    store = FileStore(tmp_path / "out")
+    run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+    for p in (tmp_path / "out" / "workflows").glob("*.json"):
+        p.unlink()
+    with pytest.raises(EvidenceConflict):
+        run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+

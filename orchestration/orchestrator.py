@@ -215,6 +215,12 @@ def _run_stage(wf: dict, sr: dict, idx: int, opts: dict, store, client) -> dict 
         _log(wf, "stage_degraded", stage, f"{err['code']}: recorded as {out['evidence']['status']}; flow policy decides what next")
 
     ev = out["evidence"]
+    stored = store.get_evidence(ev["record_id"])
+    if stored is not None and stored["content_hash"] != ev["content_hash"] and _same_apart_from_timing(stored, ev):
+        # The same request answered again (a replay after a crash, or an agent with fixed record ids): only the clock
+        # differs. The stored record stands; a genuinely different record under the same id is still refused below.
+        ev = out["evidence"] = stored
+        _log(wf, "evidence_replayed", stage, f"{ev['record_id']} already stored; only its timestamps differ")
     store.put_evidence(ev)
     if ev["record_id"] not in wf["evidence_references"]:
         wf["evidence_references"].append(ev["record_id"])
@@ -249,6 +255,33 @@ def _finalize(wf: dict, store) -> dict:
 
 
 # ---------------------------------------------------------------- public API
+TIMING_KEYS = ("content_hash", "produced_at", "latency_ms", "overrides")
+
+
+def _same_apart_from_timing(a: dict, b: dict) -> bool:
+    return {k: v for k, v in a.items() if k not in TIMING_KEYS} == {k: v for k, v in b.items() if k not in TIMING_KEYS}
+
+
+def _invalidate(wf: dict, stage_names, why: str) -> None:
+    """Send completed stages back to `pending`: their next run gets a new request id and so a new record. The old record
+    is neither deleted nor rewritten (evidence is immutable) and stays in `evidence_references`."""
+    for sr in wf["stage_results"]:
+        if sr["stage"] in stage_names and sr["state"] == "completed":
+            sr["state"] = "pending"
+            _log(wf, "stage_invalidated", sr["stage"], f"{why}; it will run again on the current evidence")
+
+
+def stale_stages(wf: dict) -> list[str]:
+    """Stages that decided on a verdict a person has since overridden, and have not run since."""
+    stale: list[str] = []
+    for t in wf["transitions"]:
+        if t["event"] == "downstream_stale":
+            stale += [s for s in t.get("stages", []) if s not in stale]
+        elif t["event"] in ("stage_completed", "stage_error") and t.get("stage") in stale:
+            stale.remove(t["stage"])
+    return [s for s in stale if any(sr["stage"] == s and sr["state"] == "completed" for sr in wf["stage_results"])]
+
+
 def advance(wf: dict, flow: dict, store, clients: dict | None = None) -> dict:
     """Run every stage that has not completed (errored stages are retried), in order, until done or halted."""
     defaults = {"timeout_s": 30, "retries": 1, "on_uncertain": "continue", "on_error": "continue", **flow.get("defaults", {})}
@@ -259,6 +292,7 @@ def advance(wf: dict, flow: dict, store, clients: dict | None = None) -> dict:
     for idx, sr in enumerate(wf["stage_results"]):
         if sr["state"] in ("completed", "skipped"):
             continue
+        _invalidate(wf, {s["stage"] for s in wf["stage_results"][idx + 1:]}, f"{sr['stage']} is being run again")
         step = steps[sr["stage"]]
         opts = {**defaults, **{k: v for k, v in step.items() if k not in ("stage", "when")}}
         try:
@@ -292,6 +326,9 @@ def resume(workflow_id: str, flow: dict | None = None, store=None, clients: dict
     if wf is None:
         raise KeyError(workflow_id)
     _log(wf, "resumed", detail=f"from status {wf['status']}")
+    stale = stale_stages(wf)
+    if stale:
+        _invalidate(wf, set(stale), "a person overrode a record it used")
     return advance(wf, flow, store, clients)
 
 
@@ -318,6 +355,13 @@ def apply_override(workflow_id: str, store, *, record_id: str, new_verdict: str,
              "new_verdict": new_verdict, "new_outcome": new_outcome}
     wf["overrides"].append(entry)
     _log(wf, "override", record["stage"], f"{entry['override_id']} by {actor}: {previous_verdict} -> {new_verdict}")
+    # The override takes effect at once (the outcome is re-derived below). Later stages that already used this record
+    # decided on the old verdict: note which, so `resume` runs exactly those again.
+    stale = [s["stage"] for s in wf["stage_results"] if s["state"] == "completed" and s.get("record_id") and s["record_id"] != record_id
+             and record_id in ((store.get_evidence(s["record_id"]) or {}).get("upstream_refs") or [])]
+    if stale:
+        _log(wf, "downstream_stale", None, f"{', '.join(stale)} used the old verdict of {record_id}; run again to refresh",
+             stages=stale, record_id=record_id)
     return _finalize(wf, store)
 
 
