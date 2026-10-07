@@ -30,6 +30,8 @@ from shared.utils.hashing import verify
 from shared.utils.records import build_record
 from shared.utils.schema import errors
 
+REAL_AGENTS = {"prep"}  # these run as the real agents here; every other stage runs on the organiser stub (tests/conftest.py)
+
 ALPHA, BRAVO = "org_demo_alpha", "org_demo_bravo"
 FNSKU = "X00TEST001"
 REASONS = {"poor_image", "occluded", "insufficient_evidence", "model_error", "rule_unavailable",

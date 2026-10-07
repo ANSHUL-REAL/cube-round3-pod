@@ -27,6 +27,8 @@ from shared.utils.hashing import verify
 from shared.utils.records import build_record, check
 from shared.utils.schema import errors
 
+REAL_AGENTS = {"recovery"}  # these run as the real agents here; every other stage runs on the organiser stub (tests/conftest.py)
+
 ORG, OTHER, UNIT = "org_t", "org_other", "UNIT-T1"
 ROOT = Path(__file__).resolve().parents[2]
 SPECIALIST_FLOW = ROOT / "orchestration" / "flow.specialist.json"

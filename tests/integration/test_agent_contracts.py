@@ -12,7 +12,7 @@ from shared.utils.schema import errors
 from tests.conftest import AGENTS, applies, make_input
 from tests.helpers import needs_stubs
 
-REAL_AGENTS = {"receiving"}  # these run as the real agent here, not as the organiser stub (see tests/conftest.py)
+REAL_AGENTS = {"receiving", "prep", "pack", "returns", "recovery"}  # contract tests run the real agents, not the organiser stubs (tests/conftest.py)
 PREFIX = {"receiving": "RCV", "prep": "PRP", "pack": "PCK", "returns": "RTN", "recovery": "RCY"}
 
 
@@ -86,9 +86,11 @@ def test_recovery_honours_overrides_of_previous_evidence(cases):
 
 
 def test_agent_level_override_is_append_only(cases):
-    """Needs a record that has checks. The real Receiving gives a pending record (no checks) when it has no photos."""
-    case = next(c for c in cases if c["route"] == "fba")
-    out = next(o for o in (client_for(s).run(make_input(s, case), 30) for s in AGENTS) if o["evidence"]["checks"])
+    """Tests the shared override helper, which needs a record that has checks. The real agents give pending records (no
+    checks) when they have no photos, so the record comes from the organiser's Receiving stub."""
+    from tests.stubs import receiving_stub
+
+    out = receiving_stub.handle(make_input("receiving", cases[0]))
     rec, target = out["evidence"], out["evidence"]["checks"][0]
     new = add_agent_override(rec, by="op_test", target=target["check_key"], new_verdict="FAIL", reason="operator disagrees")
     assert new["overrides"][0]["original_verdict"] == target["verdict"]

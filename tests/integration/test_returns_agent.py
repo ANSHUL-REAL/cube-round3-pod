@@ -36,6 +36,8 @@ from shared.utils.hashing import verify
 from shared.utils.records import build_output, build_record, check
 from shared.utils.schema import errors
 
+REAL_AGENTS = {"pack","returns"}  # these run as the real agents here; every other stage runs on the organiser stub (tests/conftest.py)
+
 ALPHA, BRAVO = "org_demo_alpha", "org_demo_bravo"
 SHIPPED = Path(returns.__file__).resolve().parent / "reference"
 

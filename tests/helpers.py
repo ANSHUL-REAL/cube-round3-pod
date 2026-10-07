@@ -72,16 +72,11 @@ class Mangle:
 __all__ = ["Fake", "Boom", "Flaky", "Mangle", "AgentRejected", "AgentTimeout", "AgentUnavailable"]
 
 
-def stock_stub(stage: str) -> bool:
-    """True while agents/<stage> is still the organiser stub (agent.json says so)."""
-    manifest = json.loads((Path(__file__).resolve().parents[1] / "agents" / stage / "agent.json").read_text())
-    return manifest["implementation"] == "organiser-stub"
-
-
 def needs_stubs(*stages: str):
-    """Skip a test that is pinned to the organiser stubs' outcomes once one of those agents is real.
+    """Mark a test that is pinned to the organiser stubs' outcomes for these stages.
 
-    The replaced agent's own tests (tests/integration/test_<stage>_agent.py) cover what the skipped test used to.
+    Plumbing tests run every stage on the organiser stub kept in tests/stubs/ (see tests/conftest.py). A module that tests
+    a real agent declares `REAL_AGENTS = {...}`; a test marked here is skipped only if its own module declares one of the
+    named stages real, because then it can no longer rely on the stub's outcomes.
     """
-    missing = [s for s in stages if not stock_stub(s)]
-    return pytest.mark.skipif(bool(missing), reason=f"pinned to the organiser stub; {', '.join(missing)} is now a real agent")
+    return pytest.mark.needs_stubs(*stages)

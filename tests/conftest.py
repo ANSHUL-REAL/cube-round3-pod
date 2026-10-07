@@ -14,10 +14,10 @@ def cases():
     return json.loads((ROOT / "data/sample/cases.json").read_text())
 
 
-# Stages whose real agent needs photos and a model, so it cannot answer the organiser's plumbing tests (orchestration,
-# workflow state, examples, HTTP) the way a CSV-replay stub does. Those tests run this stage on the organiser stub kept
-# in tests/stubs/. A test module that tests the real agent says so: `REAL_AGENTS = {"receiving"}` at module level.
-STUB_STAGES = {"receiving": "tests.stubs.receiving_stub"}
+# The real agents need photos and a model, so they cannot answer the organiser's plumbing tests (orchestration, workflow
+# state, examples, HTTP) the way a CSV-replay stub does. Those tests run every stage on the organiser's stub, kept verbatim
+# in tests/stubs/. A test module that tests real agents says which: `REAL_AGENTS = {"pack", "returns"}` at module level.
+STUB_STAGES = {stage: f"tests.stubs.{stage}_stub" for stage in ("receiving", "prep", "pack", "returns", "recovery")}
 
 
 def stub_module(stage: str, module) -> str | None:
@@ -30,6 +30,12 @@ def stub_module(stage: str, module) -> str | None:
 @pytest.fixture(autouse=True)
 def plumbing_stubs(request, monkeypatch):
     import orchestration.clients as clients
+
+    pinned = request.node.get_closest_marker("needs_stubs")
+    if pinned:
+        real_here = [s for s in pinned.args if s in getattr(request.module, "REAL_AGENTS", ())]
+        if real_here:
+            pytest.skip(f"pinned to the organiser stub; {', '.join(real_here)} is a real agent in this module")
 
     real = clients.load_manifest
 
