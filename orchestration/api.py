@@ -19,7 +19,7 @@ from shared.utils import sample_data
 
 from .clients import HttpClient, client_for, load_manifest
 from .orchestrator import apply_override, bundle, default_flow_path, flow_stages, load_flow, resume, run_workflow
-from .store import EvidenceConflict, FileStore
+from .store import EvidenceConflict, FileStore, is_safe_id
 
 app = FastAPI(title="CUBE Round 3 orchestrator")
 FLOW = os.environ.get("ORCH_FLOW") or default_flow_path()
@@ -44,6 +44,8 @@ def create(body: dict) -> dict:
     org, subject = body.get("org_id"), body.get("subject_id") or body.get("unit_id")
     if not org or not subject:
         raise HTTPException(422, "org_id and unit_id (or subject_id) are required")
+    if not (is_safe_id(org) and is_safe_id(subject)):
+        raise HTTPException(422, "org_id and unit_id must be text made of letters, digits, '.', '_' and '-'")
     case = {"org_id": org, "unit_id": subject, "route": body.get("route") or sample_data.route(subject, org),
             "returned": body.get("returned", sample_data.has("returns", subject, org))}
     return run_workflow(case, load_flow(FLOW), STORE)
@@ -78,5 +80,5 @@ def override(workflow_id: str, body: dict) -> dict:
     try:
         return apply_override(workflow_id, STORE, record_id=body.get("record_id", ""), new_verdict=body.get("new_verdict", ""),
                               actor=body.get("actor", ""), reason=body.get("reason", ""), new_outcome=body.get("new_outcome"))
-    except (ValueError, EvidenceConflict) as exc:
+    except (ValueError, KeyError, EvidenceConflict) as exc:
         raise HTTPException(422, str(exc)) from exc

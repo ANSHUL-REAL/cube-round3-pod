@@ -27,12 +27,19 @@ def make_app(stage: str, handle: Callable[[dict], dict], version: str = "0.0.0")
 
     @app.post("/run")
     async def run(request: Request) -> dict:
-        body = await request.json()
+        try:
+            body = await request.json()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=["body is not valid JSON"]) from exc
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=422, detail=["body must be a JSON object"])
         problems = errors("agent-input", body)
         if problems or body.get("stage") != stage:
             raise HTTPException(status_code=422, detail=problems or [f"stage must be '{stage}'"])
         try:
             return handle(body)
+        except (KeyError, IndexError) as exc:  # a bug in the agent, not an unknown subject: fail open with the cause
+            return pending_output(body, code="agent_exception", message=f"{type(exc).__name__}: {exc}")
         except LookupError as exc:  # unknown subject / wrong tenant
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except Exception as exc:  # fail open: always return an output

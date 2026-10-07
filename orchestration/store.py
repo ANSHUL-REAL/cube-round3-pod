@@ -8,7 +8,15 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
+
+# Workflow and record ids become file names, so they may not contain separators, drive letters or "..".
+SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def is_safe_id(value: object) -> bool:
+    return isinstance(value, str) and len(value) <= 200 and bool(SAFE_ID.match(value)) and ".." not in value
 
 
 class EvidenceConflict(Exception):
@@ -45,20 +53,28 @@ class FileStore(MemoryStore):
         (self.root / "evidence").mkdir(parents=True, exist_ok=True)
 
     def load_workflow(self, workflow_id: str) -> dict | None:
+        if not is_safe_id(workflow_id):
+            return None
         p = self.root / "workflows" / f"{workflow_id}.json"
         return json.loads(p.read_text()) if p.exists() else None
 
     def save_workflow(self, wf: dict) -> None:
+        if not is_safe_id(wf["workflow_id"]):
+            raise ValueError(f"unsafe workflow_id {wf['workflow_id']!r}")
         p = self.root / "workflows" / f"{wf['workflow_id']}.json"
         tmp = p.with_suffix(".tmp")
         tmp.write_text(json.dumps(wf, indent=2))
         tmp.replace(p)  # atomic: a crash never leaves half a workflow
 
     def get_evidence(self, record_id: str) -> dict | None:
+        if not is_safe_id(record_id):
+            return None
         p = self.root / "evidence" / f"{record_id}.json"
         return json.loads(p.read_text()) if p.exists() else None
 
     def put_evidence(self, record: dict) -> None:
+        if not is_safe_id(record["record_id"]):
+            raise ValueError(f"unsafe record_id {record['record_id']!r}")
         existing = self.get_evidence(record["record_id"])
         if existing and existing["content_hash"] != record["content_hash"]:
             raise EvidenceConflict(f"{record['record_id']} already exists with different content; evidence is immutable")

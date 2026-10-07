@@ -26,7 +26,7 @@ from shared.utils.schema import errors as schema_errors
 
 from .clients import AgentRejected, AgentTimeout, AgentUnavailable, client_for, load_manifest
 from .rollup import derive_final_outcome, derive_status, effective
-from .store import MemoryStore
+from .store import MemoryStore, is_safe_id
 
 ROOT = Path(__file__).resolve().parents[1]
 logger = get_logger("orchestrator")
@@ -63,9 +63,11 @@ def discover_inputs(subject_id: str, stage: str) -> list[dict]:
     Each file becomes a content-addressed input {ref, kind, sha256}. Refs are relative to the input root:
     never absolute (no local paths in evidence).
     """
-    root = Path(os.environ.get("INPUT_DIR", ROOT / "data" / "input"))
-    folder = root / subject_id / stage
-    if not folder.is_dir():
+    root = Path(os.environ.get("INPUT_DIR", ROOT / "data" / "input")).resolve()
+    if not isinstance(subject_id, str) or not is_safe_id(subject_id):
+        return []  # a subject id is a folder name: no separators, no ".."
+    folder = (root / subject_id / stage).resolve()
+    if root not in folder.parents or not folder.is_dir():
         return []
     return [{"ref": p.relative_to(root).as_posix(), "kind": KINDS.get(p.suffix.lower(), "other"),
              "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
@@ -147,6 +149,19 @@ def _validate(out: dict, wf: dict, stage: str) -> list[str]:
     return []
 
 
+VERDICTS = {"PASS", "FAIL", "UNCERTAIN"}
+
+
+class _Unreachable:
+    """Stands in for a client that could not be built, so the failure is recorded against the stage."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+
+    def run(self, request: dict, timeout_s: float) -> dict:
+        raise AgentRejected(f"agent could not be started: {self.reason}")
+
+
 def _run_stage(wf: dict, sr: dict, idx: int, opts: dict, store, client) -> dict | None:
     """Run one stage. Returns a halt reason, or None. Always leaves a stored evidence record behind."""
     stage = sr["stage"]
@@ -162,6 +177,7 @@ def _run_stage(wf: dict, sr: dict, idx: int, opts: dict, store, client) -> dict 
         "previous_evidence": _previous_evidence(wf, idx, store),
         "context": {"overrides": wf["overrides"], "case": wf["context"]},
     }
+    store.save_workflow(wf)  # the run counter is stored BEFORE the call, so a crash retries under a new request id
     t0, out, err = time.monotonic(), None, None
     while sr["attempts"] <= int(opts["retries"]):
         sr["attempts"] += 1
@@ -181,6 +197,8 @@ def _run_stage(wf: dict, sr: dict, idx: int, opts: dict, store, client) -> dict 
             break
         if sr["attempts"] <= int(opts["retries"]):
             _log(wf, "retry", stage, err["message"])
+    if out is None and err is None:
+        err = error_obj("agent_invalid_output", "the agent returned no output", retryable=False, stage=stage)
     if out is not None:
         bad = _validate(out, wf, stage)
         if bad:
@@ -239,7 +257,10 @@ def advance(wf: dict, flow: dict, store, clients: dict | None = None) -> dict:
             continue
         step = steps[sr["stage"]]
         opts = {**defaults, **{k: v for k, v in step.items() if k not in ("stage", "when")}}
-        client = (clients or {}).get(sr["stage"]) or client_for(sr["stage"])
+        try:
+            client = (clients or {}).get(sr["stage"]) or client_for(sr["stage"])
+        except Exception as exc:  # missing agent.json, bad mode, import error: record it against the stage
+            client = _Unreachable(f"{type(exc).__name__}: {exc}")
         halt = _run_stage(wf, sr, idx, opts, store, client)
         store.save_workflow(wf)
         if halt:
@@ -270,8 +291,10 @@ def apply_override(workflow_id: str, store, *, record_id: str, new_verdict: str,
                    new_outcome: str | None = None) -> dict:
     """A person (or rule) changes the effective decision of a record. Nothing is deleted or rewritten:
     the new entry references the evidence and the previous effective decision, and the state is re-derived."""
-    if not actor.strip() or not reason.strip():
-        raise ValueError("an override needs an actor and a reason")
+    if not (isinstance(actor, str) and actor.strip() and isinstance(reason, str) and reason.strip()):
+        raise ValueError("an override needs an actor and a reason (text)")
+    if new_verdict not in VERDICTS:
+        raise ValueError(f"new_verdict must be one of {sorted(VERDICTS)}, got {new_verdict!r}")
     wf = store.load_workflow(workflow_id)
     if wf is None:
         raise KeyError(workflow_id)

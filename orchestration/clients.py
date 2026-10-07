@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import threading
 from pathlib import Path
 
 import httpx
@@ -31,11 +32,32 @@ class InProcClient:
     def __init__(self, manifest: dict):
         self.handle = importlib.import_module(manifest["module"]).handle
 
-    def run(self, request: dict, timeout_s: float) -> dict:  # timeout is not enforced in-process
-        try:
-            return self.handle(request)
-        except LookupError as exc:
+    def run(self, request: dict, timeout_s: float) -> dict:
+        """Run the agent in a worker thread and give up after timeout_s.
+
+        A Python thread cannot be killed, so a timed-out agent keeps running in the background until it returns; its
+        answer is discarded. That is why the thread is a daemon: a hung agent must not stop the process from exiting.
+        """
+        box: dict = {}
+
+        def target() -> None:
+            try:
+                box["out"] = self.handle(request)
+            except BaseException as exc:  # handed back to the caller's thread
+                box["exc"] = exc
+
+        worker = threading.Thread(target=target, name=f"agent-{request.get('stage')}", daemon=True)
+        worker.start()
+        worker.join(timeout_s)
+        if worker.is_alive():
+            raise AgentTimeout(f"no answer within {timeout_s:g} s (in-process agent, still running)")
+        exc = box.get("exc")
+        if exc is None:
+            return box["out"]
+        # KeyError and IndexError are LookupErrors, but they mean a bug in the agent, not "unknown subject / wrong tenant".
+        if isinstance(exc, LookupError) and not isinstance(exc, (KeyError, IndexError)):
             raise AgentRejected(str(exc)) from exc
+        raise exc
 
 
 class HttpClient:
