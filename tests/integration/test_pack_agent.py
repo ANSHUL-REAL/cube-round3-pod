@@ -44,6 +44,7 @@ def jpeg(seed: int) -> bytes:
 def env(tmp_path, monkeypatch):
     """Own capture folder, own settings (no key, no .env), empty reuse ledger, scripted model by default."""
     monkeypatch.setenv("INPUT_DIR", str(tmp_path / "input"))
+    monkeypatch.setenv("PACK_LEDGER_PATH", str(tmp_path / "ledger.json"))
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     st = Settings(_env_file=None, gemini_api_key=None, catalogue_dir=str(pack.HERE / "catalogue"),
                   cache_dir=str(tmp_path / "cache"))
@@ -279,3 +280,81 @@ def test_record_is_honest_about_the_model_and_the_photos(tmp_path, monkeypatch):
     assert photo["original_sha256"] == ev["inputs"][0]["sha256"] and photo["quality_gate"] in {"PASS", "FAIL"}
     assert ev["subject"]["unit_scope"] == "order" and ev["subject"]["refs"]["order_id"] == "ORD-DUMMY-50008"
     assert json.dumps(ev)  # serialisable
+
+
+# ---------------------------------------------------------------- persistence, time budget, hand-offs
+def test_reuse_ledger_survives_a_restart_and_keeps_organisations_apart(tmp_path):
+    ledger.remember(ALPHA, ["abc"], "ORD-1", "PCK-1")
+    ledger._STATE.clear()  # a "restart": memory gone, the file stays
+    assert ledger.earlier_uses(ALPHA, ["abc"]) == [{"order_id": "ORD-1", "record_id": "PCK-1"}]
+    assert ledger.earlier_uses(BRAVO, ["abc"]) == [], "another organisation never sees this photo's history"
+    ledger.remember(ALPHA, ["abc"], "ORD-1", "PCK-1")  # remembering twice does not duplicate
+    assert len(ledger.earlier_uses(ALPHA, ["abc"])) == 1
+
+
+def test_a_broken_ledger_file_never_stops_packing(tmp_path, monkeypatch):
+    path = tmp_path / "ledger.json"
+    path.write_text("{ not json")
+    ledger._STATE.clear()
+    assert ledger.earlier_uses(ALPHA, ["abc"]) == []  # starts empty instead of raising
+    ledger.remember(ALPHA, ["abc"], "ORD-1", "PCK-1")  # and recovers by rewriting it
+    assert json.loads(path.read_text())
+
+
+def test_model_time_budget_fits_inside_the_orchestrators_stage_timeout():
+    from orchestration.orchestrator import load_flow
+
+    attempts = pack.MODEL_RETRIES + 1
+    worst = attempts * pack.MODEL_TIMEOUT_S + sum(2 * (i + 1) for i in range(pack.MODEL_RETRIES))  # 2 s back-off
+    assert worst < load_flow()["defaults"]["timeout_s"], f"worst case {worst}s would be cut off by the orchestrator"
+    st = Settings(_env_file=None, gemini_api_key="x", gemini_timeout_s=pack.MODEL_TIMEOUT_S,
+                  gemini_max_retries=pack.MODEL_RETRIES)
+    assert st.gemini_timeout_s == pack.MODEL_TIMEOUT_S
+
+
+def test_whole_workflow_for_a_returned_box_uses_our_record_downstream(tmp_path, monkeypatch):
+    """UNIT-0016 (alpha): a merchant-fulfilled order of 2 towels that was later returned. Our Pack record goes
+    through the real orchestrator, and Returns and Recovery must receive it as previous evidence."""
+    from orchestration.orchestrator import run_workflow
+    from orchestration.store import MemoryStore
+
+    place(tmp_path, "UNIT-0016", 51)
+    sees(monkeypatch, {"SKU-TOWEL-BLU": 1})  # one towel packed, two ordered
+    case = {"org_id": ALPHA, "unit_id": "UNIT-0016", "route": "mfn", "returned": True}
+    store = MemoryStore()
+    wf = run_workflow(case, store=store)
+    assert errors("workflow-state", wf) == []
+    stages = {s["stage"]: s for s in wf["stage_results"]}
+    assert stages["pack"]["state"] == "completed" and stages["pack"]["outcome"] == "stop_and_fix"
+    assert stages["prep"]["state"] == "skipped" and "fba" in stages["prep"]["skipped_reason"]
+    pack_id = stages["pack"]["record_id"]
+    assert pack_id in wf["evidence_references"] and errors("evidence", store.get_evidence(pack_id)) == []
+    for later in ("returns", "recovery"):
+        assert pack_id in store.get_evidence(stages[later]["record_id"])["upstream_refs"], f"{later} did not receive Pack's record"
+    assert wf["final_outcome"]["contributing_records"], "the final outcome must cite evidence"
+    assert pack_id in wf["final_outcome"]["contributing_records"], "a stop_and_fix box is part of the final story"
+
+
+def test_workflow_without_a_photo_fails_visibly_with_the_reason(tmp_path):
+    from orchestration.orchestrator import run_workflow
+    from orchestration.store import MemoryStore
+
+    wf = run_workflow({"org_id": ALPHA, "unit_id": "UNIT-0008", "route": "mfn", "returned": False}, store=MemoryStore())
+    assert wf["status"] == "FAILED" and wf["final_outcome"]["provisional"] is True
+    assert wf["errors"][0]["code"] == "no_capture" and wf["errors"][0]["stage"] == "pack"
+
+
+def test_check_cli_reports_a_verdict_and_refuses_other_tenants_without_writing(tmp_path, monkeypatch, capsys):
+    from agents.pack.check import main
+
+    photo = tmp_path / "mybox.jpg"
+    photo.write_bytes(jpeg(61))
+    sees(monkeypatch, {"SKU-BOTTLE-750": 1})
+    assert main(["--unit", "UNIT-0008", "--org", ALPHA, str(photo)]) == 0
+    assert "SEAL" in capsys.readouterr().out
+
+    assert main(["--unit", "UNIT-0006", "--org", ALPHA, str(photo)]) == 2  # UNIT-0006 belongs to bravo
+    assert "Refused" in capsys.readouterr().err
+    assert not (tmp_path / "input" / "UNIT-0006").exists(), "a refused request must leave nothing behind"
+    assert main(["--unit", "UNIT-0008", "--org", ALPHA, str(tmp_path / "missing.jpg")]) == 2
+    assert "not found" in capsys.readouterr().err.lower()

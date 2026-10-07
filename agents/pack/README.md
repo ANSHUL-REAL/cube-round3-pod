@@ -58,22 +58,24 @@ The request does not carry the order lines, so `orders.py` looks them up, scoped
 ## Run it
 
 ```sh
-export GEMINI_API_KEY=...        # in .env; never commit it
-mkdir -p data/input/UNIT-0008/pack && cp my_box.jpg data/input/UNIT-0008/pack/
-make run                          # or: make case UNIT=UNIT-0008 ORG=org_demo_alpha
+# GEMINI_API_KEY goes in .env (git-ignored). Never commit it.
+python -m agents.pack.check --unit UNIT-0008 --org org_demo_alpha my_box.jpg   # one box, readable summary
+make case UNIT=UNIT-0008 ORG=org_demo_alpha      # the whole workflow for that unit
 .venv/bin/uvicorn agents.pack.app:app --port 8103
 ```
+
+`agents.pack.check` copies 1 to 3 photos into `data/input/<unit>/pack/`, runs the same code the orchestrator runs, and prints the verdict, each check, what to fix and the record id. It refuses another organisation's unit before writing anything. `--json` prints the full Agent Output.
 
 Without a key, or without photos, every Pack unit comes back `pending_review` and says why. That is the intended behaviour, not a bug.
 
 ## Test it
 
 ```sh
-pytest tests/integration/test_pack_agent.py     # 18 tests, no key needed
+pytest tests/integration/test_pack_agent.py     # 24 tests, no key needed
 pytest tests/integration/test_agent_contracts.py
 ```
 
-The tests replace the model with scripted perceivers, so they check everything **except what the real model sees**: capture handling, the order lookup, the rules, the record mapping, fail-open, tenancy, idempotency and photo reuse. Fixtures include the two boxes in the organisers' sample where the human operator sealed a wrong box (UNIT-0044 has a bottle where a candle was ordered; UNIT-0034 has an extra cable).
+The tests replace the model with scripted perceivers, so they check everything **except what the real model sees**: capture handling, the order lookup, the rules, the record mapping, fail-open, tenancy, idempotency, photo reuse (including across a restart), the model time budget, and a whole orchestrated workflow in which Returns and Recovery receive our Pack record. Fixtures include the two boxes in the organisers' sample where the human operator sealed a wrong box (UNIT-0044 has a bottle where a candle was ordered; UNIT-0034 has an extra cable).
 
 ## Limits (read these)
 
@@ -81,6 +83,7 @@ The tests replace the model with scripted perceivers, so they check everything *
 - **Not yet run live through this pod repository.** The adapter has been tested with scripted models only. A live call through `agents/pack` with a real key and a real box photo is still to do.
 - Those photos are bin photos, not packing-bench photos, and the labels come from Amazon's records, not human labellers.
 - The organisers' sample has **no photos**, so the sample flow shows Pack as pending until someone takes box photos.
-- The photo-reuse ledger is per process: a restart forgets earlier uses.
+- The photo-reuse ledger is a local JSON file (`PACK_LEDGER_PATH`, default `out/pack-ledger.json`). It survives restarts but is not shared between machines; two servers would each see only their own history.
+- The model call is bounded to 2 attempts x 12 s (worst case 26 s) so it finishes inside the orchestrator's 30 s stage timeout. A slower answer becomes a retryable pending record. Round 2's measured p95 was 10.4 s.
 - Only the organisers' 10 sample products are in the catalogue. Add your own under `agents/pack/catalogue/<org_id>/` (see the Round 2 catalogue README for the format).
 - A Receiving exception is recorded, not acted on: Pack judges the box against the order.

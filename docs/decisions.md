@@ -101,4 +101,12 @@ _Add entries below._
 
 ### D-P04 · Pack: a reused photo cannot seal a box
 - Date / Owner: 2026-10-07 / @ANSHUL-REAL
-- Decision: the same photo used for a different order makes `photo_reuse` UNCERTAIN, so the box goes to a person. The same photo for the same order is a re-check. The ledger is in memory, so it forgets across restarts; a persistent ledger is the fix if this check matters in production.
+- Decision: the same photo used for a different order makes `photo_reuse` UNCERTAIN, so the box goes to a person. The same photo for the same order is a re-check. The ledger is a JSON file keyed by (org, photo hash), written atomically; if it cannot be read or written the agent carries on without it rather than stop packing. It is local to one machine, so two servers would each see only their own history; a shared store is the fix if that matters.
+
+### D-P05 · Pack: the model call must finish inside the stage timeout
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: the orchestrator allows a stage 30 s (`flow.json` defaults). Round 2's model settings were 25 s per attempt with one retry, so a slow model could take about 52 s and be cut off, losing the capture's result.
+- Decision: 2 attempts x 12 s plus the 2 s back-off, 26 s worst case, enforced by a test. Measured p95 latency in Round 2 was 10.4 s.
+- Why: a model that is too slow should produce a retryable pending record that keeps the photo, not an orchestrator timeout.
+- Consequences: a rare slow-but-correct answer is abandoned at 12 s and retried. Revisit if the retry rate is high.
+

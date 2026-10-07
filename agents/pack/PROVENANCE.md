@@ -23,8 +23,9 @@
 | `agents/pack/adapter.py` | Maps the Round 2 result onto a Round 3 Evidence Record |
 | `agents/pack/orders.py` | Finds the order for a unit, scoped to the caller's organisation |
 | `agents/pack/captures.py` | Reads the box photos named in `inputs`, safely and hash-checked |
-| `agents/pack/ledger.py` | Remembers which order each photo was used for (photo-reuse check) |
-| `tests/integration/test_pack_agent.py` | 18 behaviour tests on our own fixtures |
+| `agents/pack/ledger.py` | Remembers which order each photo was used for (photo-reuse check), persisted to a JSON file |
+| `agents/pack/check.py` | Command-line checker: one box photo in, verdict out |
+| `tests/integration/test_pack_agent.py` | 24 behaviour tests on our own fixtures |
 
 ## What was left behind
 

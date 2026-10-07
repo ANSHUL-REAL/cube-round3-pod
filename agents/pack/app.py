@@ -37,11 +37,19 @@ ROOT = HERE.parents[1]
 STAGE = adapter.STAGE
 log = get_logger("pack")
 
+# The orchestrator gives a stage 30 s (flow.json defaults.timeout_s). The model call is bounded well inside that:
+# 2 attempts x 12 s + the 2 s back-off = 26 s worst case. (Round 2 used 25 s x 2, which could reach ~52 s and
+# be cut off by the orchestrator.) Measured p95 latency was 10.4 s. A call that fails here becomes a pending
+# record the orchestrator can retry, not a timeout that loses the capture.
+MODEL_TIMEOUT_S = 12.0
+MODEL_RETRIES = 1
+
 
 @lru_cache
 def settings() -> Settings:
     """Round 2 settings. GEMINI_API_KEY and friends come from the environment or the pod's .env."""
-    return Settings(catalogue_dir=str(HERE / "catalogue"), cache_dir=str(ROOT / ".cache" / "pack-vlm"))
+    return Settings(catalogue_dir=str(HERE / "catalogue"), cache_dir=str(ROOT / ".cache" / "pack-vlm"),
+                    gemini_timeout_s=MODEL_TIMEOUT_S, gemini_max_retries=MODEL_RETRIES)
 
 
 def get_perceiver(st: Settings):
