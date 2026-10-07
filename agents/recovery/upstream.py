@@ -39,6 +39,13 @@ class Upstream:
         return self.override is not None and self.verdict != self.original
 
     @property
+    def needs_person(self) -> bool:
+        """Does this record still ask for a person? A person's override settles it unless they set it to UNCERTAIN."""
+        if self.override is not None:
+            return self.verdict == "UNCERTAIN"
+        return bool((self.record.get("decision") or {}).get("needs_human"))
+
+    @property
     def checks(self) -> list[dict]:
         return self.record.get("checks", [])
 

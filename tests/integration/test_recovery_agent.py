@@ -703,3 +703,87 @@ def test_a_person_resolving_prep_after_a_halt_changes_what_recovery_decides(case
         outcomes[new] = (wf["final_outcome"]["outcome"], rcy["payload"]["overrides_applied"][0]["new_verdict"], len(rcy["upstream_refs"]))
     assert outcomes["PASS"] == ("CLAIM_RECOMMENDED", "PASS", 2)
     assert outcomes["FAIL"][0] != "CLAIM_RECOMMENDED" and outcomes["FAIL"][1:] == ("FAIL", 2)
+
+
+# ================================================================ review findings: a claim needs a clean, current, single-unit basis
+def returns_record(identity="PASS", presence=None, *, verdict=None, needs_human=False, captured="2026-06-01T00:00:00Z"):
+    """A Returns record built the way the Returns agent builds one, but with the record-level decision set explicitly."""
+    checks = [check("identity_match", identity, None, uncertain_reason="poor_image"), check("completeness", "PASS", None)]
+    if presence:
+        checks.append(check("unit_presence", presence, None, uncertain_reason="poor_image"))
+    req = {"workflow_id": f"WF-{ORG}-{UNIT}", "stage": "returns", "subject": {"org_id": ORG, "subject_id": UNIT},
+           "previous_evidence": []}
+    verdict = verdict or ("UNCERTAIN" if needs_human else "PASS")
+    return build_record(req, agent_id="returns-fixture@1", record_id=f"RTN-{UNIT}", captured_at=captured, checks=checks,
+                        outcome="pending_review" if verdict == "UNCERTAIN" else "restock", reason="fixture",
+                        model={"name": "rules", "version": "1"}, verdict=verdict, needs_human=needs_human,
+                        refs={"order_id": "ORD-T1", "sku": "SKU-A"})
+
+
+def refund_fee(**kw):
+    return fee(**{**RETURNS_FEE, **kw})
+
+
+def test_a_human_overriding_the_decision_cannot_turn_a_failed_identity_check_into_a_claim(tmp_path, monkeypatch):
+    rtn = returns_record("FAIL", verdict="FAIL")
+    for new in ("PASS", "UNCERTAIN"):
+        out = run(tmp_path, monkeypatch, [refund_fee()], [receiving(), rtn], [override(rtn["record_id"], new, original="FAIL")],
+                  route="mfn")
+        assert_no_claim(out)
+
+
+def test_a_returns_record_whose_unit_is_not_present_is_not_a_basis_for_a_claim(tmp_path, monkeypatch):
+    out = run(tmp_path, monkeypatch, [refund_fee()], [receiving(), returns_record("PASS", presence="FAIL", verdict="FAIL")], route="mfn")
+    assert_no_claim(out)
+
+
+def test_a_returns_record_that_asked_for_a_person_is_not_a_basis_for_a_claim(tmp_path, monkeypatch):
+    out = run(tmp_path, monkeypatch, [refund_fee(amount="6.00")], [receiving(), returns_record("PASS", needs_human=True)], route="mfn")
+    assert_no_claim(out)
+    # once a person has resolved it (override to PASS), the identity check still has to be PASS, and it is
+    rtn = returns_record("PASS", needs_human=True)
+    out = run(tmp_path, monkeypatch, [refund_fee(amount="6.00")], [receiving(), rtn], [override(rtn["record_id"], "PASS", original="UNCERTAIN")],
+              route="mfn")
+    assert out["evidence"]["payload"]["claimable_usd"] == 6.0
+
+
+def test_a_refund_claim_needs_evidence_taken_after_the_charge_was_not_before_it(tmp_path, monkeypatch):
+    late = returns_record("PASS", captured="2026-07-01T00:00:00Z")   # the fee is posted 2026-06-10
+    out = run(tmp_path, monkeypatch, [refund_fee(posted_date="2026-06-10")], [receiving(), late], route="mfn")
+    c = charges(out)["FEE-T1-1"]
+    assert c["position"] == "SILENT" and c["codes"] == ["evidence_after_charge"]
+    assert_no_claim(out)
+
+
+def test_a_weight_tier_claim_needs_a_single_unit_line(tmp_path, monkeypatch):
+    table_file(tmp_path, monkeypatch)
+    # two units at 4.25 each is correct billing; the rule must not read 8.50 as one unit overcharged by 4.25
+    out = run(tmp_path, monkeypatch, [fee(charge_type="fulfilment_fee_weight_tier", amount="8.50", quantity="2")],
+              [receiving(), measured(250)])
+    assert charges(out)["FEE-T1-1"]["codes"] == ["quantity_scope"] and out["evidence"]["payload"]["claims"] == []
+    assert_no_claim(out)
+
+
+def test_a_weight_tier_claim_does_not_rest_on_a_prep_record_that_is_itself_unsure(tmp_path, monkeypatch):
+    table_file(tmp_path, monkeypatch)
+    unsure = prep("UNCERTAIN", payload={"measurements": {"weight_g": 250, "length_mm": 100}})
+    out = run(tmp_path, monkeypatch, [fee(charge_type="fulfilment_fee_weight_tier", amount="6.00")], [receiving(), unsure])
+    assert_no_claim(out)
+
+
+def test_a_weight_tier_claim_needs_a_measurement_from_before_the_charge(tmp_path, monkeypatch):
+    table_file(tmp_path, monkeypatch)
+    out = run(tmp_path, monkeypatch, [fee(charge_type="fulfilment_fee_weight_tier", amount="6.00", posted_date="2026-06-10")],
+              [receiving(), measured(250, captured="2026-07-01T00:00:00Z")])
+    assert_no_claim(out)
+
+
+def test_an_inbound_defect_fee_with_no_quantity_is_not_assumed_to_be_one_unit(tmp_path, monkeypatch):
+    out = run(tmp_path, monkeypatch, [fee(quantity="")], [receiving(), prep("PASS")])
+    assert charges(out)["FEE-T1-1"]["codes"] == ["quantity_scope"]
+    assert_no_claim(out)
+    second = tmp_path / "one_unit"  # the sample reader caches by folder, so a different fee report needs its own
+    second.mkdir()
+    out = run(second, monkeypatch, [fee(quantity="1")], [receiving(), prep("PASS")])
+    assert out["evidence"]["payload"]["claimable_usd"] == 2.0, "a one-unit line is still claimed"
+

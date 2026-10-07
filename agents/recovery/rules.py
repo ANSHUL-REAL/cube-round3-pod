@@ -146,10 +146,25 @@ class Ctx:
         for up in reversed(self.ev.every()):
             m = (up.record.get("payload") or {}).get("measurements")
             w = m.get("weight_g") if isinstance(m, dict) else None
-            if up.completed and isinstance(w, (int, float)) and not isinstance(w, bool) and w > 0 \
+            if up.completed and up.verdict != "UNCERTAIN" and not up.needs_person \
+                    and isinstance(w, (int, float)) and not isinstance(w, bool) and w > 0 \
                     and not ref_conflicts(line.refs(), up):
                 return up, m
         return None
+
+
+def _captured_day(up: Upstream) -> str:
+    return str(up.record.get("captured_at") or "")[:10]
+
+
+def _after_charge(up: Upstream, line: FeeLine, ctx: Ctx) -> bool:
+    """Evidence captured after the charge was posted cannot show the state the charge was based on."""
+    captured = _captured_day(up)
+    return bool(ctx.policy.evidence_must_precede_charge and captured and line.posted_date and captured > line.posted_date)
+
+
+def _units(line: FeeLine) -> str:
+    return f"{line.quantity} units" if line.quantity is not None else "an unknown number of units"
 
 
 def find_duplicates(lines: list[FeeLine]) -> dict[str, FeeLine]:
@@ -213,12 +228,12 @@ def inbound_defect_fee(line: FeeLine, ctx: Ctx) -> Position:
     if not prep.checks and not prep.overridden:
         return silent(f"Prep record {prep.record_id} says PASS but lists no checks, so there is nothing to cite.",
                       "prep_no_checks", refs=[prep.record_id], basis=[_basis(prep, "consulted")])
-    if ctx.policy.single_unit_lines_only and line.quantity not in (None, 1):
-        return silent(f"The fee line covers {line.quantity} units but Prep inspected one (F-08).", "quantity_scope",
+    if ctx.policy.single_unit_lines_only and line.quantity != 1:
+        return silent(f"The fee line covers {_units(line)} but Prep inspected one (F-08).", "quantity_scope",
                       refs=[prep.record_id], basis=[_basis(prep, "consulted")],
                       settle="Prep evidence for each unit on the line")
-    captured = str(prep.record.get("captured_at") or "")[:10]
-    if ctx.policy.evidence_must_precede_charge and captured and line.posted_date and captured > line.posted_date:
+    captured = _captured_day(prep)
+    if _after_charge(prep, line, ctx):
         return silent(f"Prep record {prep.record_id} was captured {captured}, after the charge was posted "
                       f"({line.posted_date}), so it cannot show the unit's state when it was inspected.",
                       "evidence_after_charge", refs=[prep.record_id], basis=[_basis(prep, "consulted")])
@@ -269,18 +284,32 @@ def refund_issued_item_not_returned(line: FeeLine, ctx: Ctx) -> Position:
         return silent(f"Returns record {ret.record_id} exists, but {why}; a seller-side inspection is not shown to be "
                       "the item the channel refunded.", code, refs=[ret.record_id], basis=[_basis(ret, "consulted")],
                       settle="the organisers ruling on F-11/F-12, or channel-side return data")
-    key = "decision" if ret.overridden else "identity_match"
-    identity = ret.verdict if ret.overridden else (ret.check("identity_match") or {}).get("verdict", "UNCERTAIN")
+    # The identity CHECK decides, not the record-level verdict: a person overriding the decision does not change what the
+    # identity check found. A claim also needs the record to be a clean, settled PASS with the unit actually present.
+    identity = (ret.check("identity_match") or {}).get("verdict", "UNCERTAIN")
+    presence = (ret.check("unit_presence") or {}).get("verdict")
     note = _override_note(ret)
-    if identity == "PASS":
+    clean = ret.verdict == "PASS" and not ret.needs_person and presence in (None, "PASS")
+    if identity == "PASS" and clean:
+        captured = _captured_day(ret)
+        if _after_charge(ret, line, ctx):
+            return silent(f"Returns record {ret.record_id} was captured {captured}, after the refund was posted "
+                          f"({line.posted_date}), so it cannot show what came back at the time.", "evidence_after_charge",
+                          refs=[ret.record_id], basis=[_basis(ret, "consulted")])
         return Position("CONTRADICTED", f"Returns record {ret.record_id} shows the item came back and is what was "
                         f"sold{note}, which contradicts a refund issued for an item not returned.", refs=[ret.record_id],
-                        basis=[_basis(ret, "supports_claim", key, identity)], claim=line.amount)
-    if identity == "FAIL":
+                        basis=[_basis(ret, "supports_claim", "identity_match", identity)], claim=line.amount)
+    if identity == "FAIL" and ret.verdict == "FAIL":
         return Position("SUPPORTED", f"Returns record {ret.record_id} shows the item that came back is not what was sold"
                         f"{note}; the sold item was not returned.", refs=[ret.record_id],
-                        basis=[_basis(ret, "supports_charge", key, identity)])
-    return silent(f"Returns record {ret.record_id} could not confirm the item's identity{note}.", "returns_uncertain",
+                        basis=[_basis(ret, "supports_charge", "identity_match", identity)])
+    if identity == "PASS":
+        why = ("still asks for a person" if ret.needs_person else "is not a clean pass"
+               if ret.verdict != "PASS" else "does not show the unit present")
+        return silent(f"Returns record {ret.record_id} found the identity matched, but the record {why}{note}, so it is "
+                      "not a basis for a claim.", "returns_not_cleared", refs=[ret.record_id],
+                      basis=[_basis(ret, "consulted")], settle="a person resolving the Returns record")
+    return silent(f"Returns record {ret.record_id} could not settle the item's identity{note}.", "returns_uncertain",
                   refs=[ret.record_id], basis=[_basis(ret, "consulted")])
 
 
@@ -311,6 +340,14 @@ def fulfilment_fee_weight_tier(line: FeeLine, ctx: Ctx) -> Position:
     up, m = found
     w = Decimal(str(m["weight_g"]))
     basis = [_basis(up, "consulted")]
+    if ctx.policy.single_unit_lines_only and line.quantity != 1:
+        return silent(f"The fee line covers {_units(line)} but {up.record_id} measured one unit, so the line total "
+                      "cannot be compared with one unit's tier (F-08).", "quantity_scope", refs=[up.record_id],
+                      basis=basis, settle="a measurement for each unit on the line, or a per-unit fee")
+    if _after_charge(up, line, ctx):
+        return silent(f"{up.record_id} was captured {_captured_day(up)}, after the charge was posted "
+                      f"({line.posted_date}), so it cannot show the unit's weight when it was billed.",
+                      "evidence_after_charge", refs=[up.record_id], basis=basis)
     if ctx.tiers is None:
         why = ctx.tiers_problem or "no fee schedule is configured (RECOVERY_TIER_TABLE); tiers are not guessed"
         return silent(f"{up.record_id} recorded {w} g, but {why}, so the charged tier cannot be compared (F-07).",
