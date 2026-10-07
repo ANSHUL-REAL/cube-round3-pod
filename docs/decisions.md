@@ -110,3 +110,43 @@ _Add entries below._
 - Why: a model that is too slow should produce a retryable pending record that keeps the photo, not an orchestrator timeout.
 - Consequences: a rare slow-but-correct answer is abandoned at 12 s and retried. Revisit if the retry rate is high.
 
+
+### D-V01 · Receiving: the model reads the delivery and is never shown the purchase order
+- Date / Owner: 2026-10-07 / @cherryy-x23 (Round 2 author), ported by @ANSHUL-REAL
+- Context: Round 2's prompt listed the expected SKU, colour, variant, components and totals "for context", and its live path read server-side file paths, so no uploaded photo ever reached the model.
+- Options considered: A) keep the order in the prompt; B) hide the order and compare in code; C) two calls (read, then judge).
+- Decision: B. One batched call per delivery carries the photos as bytes and asks only what is visible (identifiers, counts, damage, colour, variant, parts, clarity). Rules in `rules.py` compare that with the PO line.
+- Why: a model told what to expect tends to confirm it, which is the failure that hurts a supplier claim most. A test asserts no PO value reaches the request.
+- Consequences: the model cannot use the order to disambiguate a poor label, so more cases end UNCERTAIN. Not measured: no real-model run exists yet.
+
+### D-V02 · Receiving: how the checks become an outcome
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL (owner to confirm)
+- Context: the contract names four outcomes but not when each applies, and no source says what is acceptable at receipt.
+- Decision: all PASS is `accept`; any FAIL is `accept_with_exceptions`, except a FAIL on `identity_match` (wrong goods), which is `reject`; no FAIL and any UNCERTAIN is `pending_review` with `needs_human`; a FAIL with an unresolved check keeps the FAIL and also sets `needs_human`.
+- Why: short, over, damaged or off-spec stock is usable and its evidence is what a supplier dispute needs; wrong goods are not. The organiser stub also maps FAIL to `accept_with_exceptions`.
+- Consequences: every damage type counts as a FAIL; there is no severity scale, because we have no rule to cite for one (we did not invent one). Revisit if the owner or the organisers define reject thresholds.
+
+### D-V03 · Receiving: unclear photos and unsure readings can only produce UNCERTAIN
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: if the model's `image_clarity` is under 0.5, or its self-reported confidence for a group of readings is under 0.6, every check built on those readings is UNCERTAIN (`poor_image` or `insufficient_evidence`). Conflicting evidence (identity signals disagreeing; a direct unit count disagreeing with cartons x units) is UNCERTAIN `conflicting_evidence`. Check `confidence` is null.
+- Why: Round 2 extracted clarity and ignored it, and hard-coded `confidence: 1.0` on identity. A count read off a blur must not become a supplier claim, and the model's self-reported confidence is not a calibrated probability, so we do not publish it as the check's confidence.
+- Consequences: 0.5 and 0.6 are untuned guesses (README, Limits). They cost a human look when wrong; they cannot cause a wrong PASS or FAIL.
+
+### D-V04 · Receiving: where the PO line comes from, and how F-08 and F-10 are handled
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: `context.order` if it carries the subject's `org_id`, otherwise the organisers' `receiving_sample.csv` by (`unit_id`, `org_id`), reading only the ordered and spec columns. Anything else raises `LookupError` (404). `subject.unit_scope` is `po_line` (F-08) and the PO keys go in `subject.refs`. A shortfall is recorded with `payload.shortfall_scope = "supplier_inbound"` (F-10) so Recovery cannot mistake it for channel loss.
+- Why: the received, damage and identity columns are the answers the agent is meant to find from photos. Reading them would make the agent a stub. We assume `unit_id` is the PO line; revisit when the organisers rule on F-08.
+- Consequences: `captured_at` is the sample row's value (or `context.order.captured_at`), not a photo timestamp; the README says so.
+
+### D-V05 · The organiser's orchestration tests run Receiving on the organiser stub
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: Receiving runs in every workflow. A real Receiving with no photos and no key answers `pending`, so eight organiser tests (workflow state, examples, HTTP, contract) that were written for a stage that always answers started failing. They test the plumbing, not Receiving.
+- Options considered: A) leave them failing; B) a CSV-replay mode inside the real agent; C) keep the organiser stub as a test fixture and route those tests to it.
+- Decision: C. `tests/stubs/receiving_stub.py` is the organiser's stub verbatim; `tests/conftest.py` (`STUB_STAGES`) routes plumbing tests to it, and a module with `REAL_AGENTS = {"receiving"}` tests the real agent. `test_agent_level_override_is_append_only` now picks a record that has checks. `agent.json` stays honest: it describes the real agent.
+- Why: B would put a stub inside the product, which the contract forbids ("do not call a stub an agent"). A hides real regressions behind known failures.
+- Consequences: every stage that becomes real will need the same line in `STUB_STAGES`. Receiving's real behaviour in a workflow is covered by `test_receiving_agent.py` (scripted model).
+
+### D-V06 · Receiving: model time budget and fail-open codes
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: 2 attempts x 12 s plus the 2 s back-off (26 s worst case, enforced by a test) inside the orchestrator's 30 s stage timeout; retry only on 429/5xx and connection errors, never on a malformed answer. `model.calls` counts requests actually sent. Missing capture, altered capture, no key, model failure and bad PO data each return a pending record with a distinct `error.code`, the photos kept, and no invented checks.
+- Why: a slow model should produce a retryable pending record that keeps the capture, not an orchestrator timeout that loses it. Same reasoning as D-P05.
