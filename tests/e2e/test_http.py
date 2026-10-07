@@ -14,6 +14,7 @@ import uvicorn
 
 from orchestration.orchestrator import load_flow, run_workflow
 from tests.conftest import AGENTS, make_input
+from tests.helpers import needs_stubs
 
 pytestmark = pytest.mark.http
 
@@ -69,6 +70,7 @@ def test_bad_input_is_422_and_wrong_tenant_is_404(http_mode, cases):
     assert httpx.post(f"{url}/run", json=make_input("recovery", case)).status_code == 422, "an agent refuses another stage's input"
 
 
+@needs_stubs("prep")
 def test_full_workflow_over_http_matches_in_process(http_mode, cases, monkeypatch):
     case = next(c for c in cases if c["route"] == "fba" and c["returned"])
     over_http = run_workflow(case)

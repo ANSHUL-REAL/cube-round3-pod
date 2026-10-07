@@ -8,6 +8,7 @@ import pytest
 from orchestration.orchestrator import apply_override, bundle, discover_inputs, flow_stages, load_flow, resume, run_workflow
 from orchestration.store import FileStore, MemoryStore
 from shared.utils.schema import errors
+from tests.helpers import needs_stubs
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTCOMES = {"CLEAN", "CLAIM_RECOMMENDED", "EXCEPTION", "NEEDS_REVIEW", "INCOMPLETE"}
@@ -37,6 +38,7 @@ def test_audit_trail_explains_every_stage(cases):
     assert any(t["event"] == "status_changed" and t["to_status"] == wf["status"] for t in wf["transitions"])
 
 
+@needs_stubs("prep")
 def test_claim_names_amount_and_cites_evidence(cases):
     if "prep" not in flow_stages():
         pytest.skip("Specialist flow has no Prep evidence, so the sample contains no claimable charge")

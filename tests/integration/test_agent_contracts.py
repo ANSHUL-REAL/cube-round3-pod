@@ -10,6 +10,7 @@ from shared.utils.hashing import verify
 from shared.utils.records import add_agent_override
 from shared.utils.schema import errors
 from tests.conftest import AGENTS, applies, make_input
+from tests.helpers import needs_stubs
 
 PREFIX = {"receiving": "RCV", "prep": "PRP", "pack": "PCK", "returns": "RTN", "recovery": "RCY"}
 
@@ -63,6 +64,7 @@ def test_each_stage_can_consume_the_previous_stages_output(cases):
         previous.append(out["evidence"])
 
 
+@needs_stubs("prep")
 def test_recovery_honours_overrides_of_previous_evidence(cases):
     """Prep PASS makes the inbound-defect fee contradicted. A person overriding Prep to FAIL must change that."""
     if "recovery" not in AGENTS or "prep" not in AGENTS:

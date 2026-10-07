@@ -1,5 +1,9 @@
 """Fake agents for failure/UNCERTAIN/override tests: they return crafted, contract-valid outputs."""
 import copy
+import json
+from pathlib import Path
+
+import pytest
 
 from orchestration.clients import AgentRejected, AgentTimeout, AgentUnavailable, client_for
 from shared.utils.records import PREFIX, build_output, build_record, check
@@ -66,3 +70,18 @@ class Mangle:
 
 
 __all__ = ["Fake", "Boom", "Flaky", "Mangle", "AgentRejected", "AgentTimeout", "AgentUnavailable"]
+
+
+def stock_stub(stage: str) -> bool:
+    """True while agents/<stage> is still the organiser stub (agent.json says so)."""
+    manifest = json.loads((Path(__file__).resolve().parents[1] / "agents" / stage / "agent.json").read_text())
+    return manifest["implementation"] == "organiser-stub"
+
+
+def needs_stubs(*stages: str):
+    """Skip a test that is pinned to the organiser stubs' outcomes once one of those agents is real.
+
+    The replaced agent's own tests (tests/integration/test_<stage>_agent.py) cover what the skipped test used to.
+    """
+    missing = [s for s in stages if not stock_stub(s)]
+    return pytest.mark.skipif(bool(missing), reason=f"pinned to the organiser stub; {', '.join(missing)} is now a real agent")

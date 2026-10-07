@@ -7,6 +7,7 @@ import pytest
 from orchestration.orchestrator import load_flow, run_workflow
 from orchestration.store import MemoryStore
 from shared.utils.schema import errors
+from tests.helpers import needs_stubs
 
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 BY_PREFIX = {"agent-input": "agent-input", "agent-output": "agent-output", "workflow-state": "workflow-state",
@@ -24,6 +25,7 @@ def test_example_validates(path):
     assert errors(BY_PREFIX[path.name.split(".")[0]], json.loads(path.read_text())) == []
 
 
+@needs_stubs("prep")
 @pytest.mark.parametrize("folder", ["happy-path", "uncertain-path", "end-to-end"])
 def test_example_cases_still_produce_the_documented_outcome(folder):
     """Re-run each example case with the stock stubs: the documented final outcome must still be what you get."""
