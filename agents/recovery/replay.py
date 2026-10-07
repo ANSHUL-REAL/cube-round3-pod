@@ -1,0 +1,162 @@
+"""Offline replay: run the sample units through the real orchestrator and report what Recovery decides.
+
+    python -m agents.recovery.replay                        # standard flow and the Specialist flow, printed
+    python -m agents.recovery.replay --write-md agents/recovery/REPLAY.md --json out/recovery-replay.json
+
+THIS IS NOT AN ACCURACY MEASURE. The organisers' sample has no ground-truth labels (nobody has said which charges
+are wrong), and the upstream stages in the flow are whatever agents/<stage>/agent.json points at: today mostly the
+organiser stubs, which replay CSV rows. So the numbers say how the rules behave on this data, with these upstream
+records. They do not say how many of the claims would be right. Recovery's own wording of that: false positives and
+false negatives cannot be counted without labels, so none are reported here.
+
+No network, no model, no key. Deterministic: running it twice gives the same counts.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from collections import Counter
+from pathlib import Path
+
+from orchestration.clients import load_manifest
+from orchestration.orchestrator import flow_stages, load_flow, run_workflow
+from orchestration.store import MemoryStore
+from shared.utils.schema import errors
+
+ROOT = Path(__file__).resolve().parents[2]
+STANDARD = ROOT / "orchestration" / "flow.json"
+SPECIALIST = ROOT / "orchestration" / "flow.specialist.json"
+ASSESSMENTS = ("SUPPORTED", "CONTRADICTED", "DUPLICATE", "ALREADY_REIMBURSED", "CREDIT", "SILENT")
+
+
+def replay(flow_path: Path, cases: list[dict]) -> dict:
+    """Run every case through run_workflow and gather what Recovery recorded."""
+    previous = os.environ.get("ORCH_FLOW")
+    os.environ["ORCH_FLOW"] = str(flow_path)  # lets the agent word "no Prep record" correctly for this flow
+    try:
+        flow, store = load_flow(flow_path), MemoryStore()
+        charges, claims, wf_status, wf_outcome = [], [], Counter(), Counter()
+        no_lines = needs_human = invalid = 0
+        upstream_models: Counter = Counter()
+        stage_errors: Counter = Counter()
+        for case in cases:
+            wf = run_workflow(case, flow, store)
+            invalid += bool(errors("workflow-state", wf))
+            wf_status[wf["status"]] += 1
+            stage_errors.update(s["stage"] for s in wf["stage_results"] if s["state"] == "error")
+            wf_outcome[(wf["final_outcome"] or {}).get("outcome")] += 1
+            sr = next(s for s in wf["stage_results"] if s["stage"] == "recovery")
+            rec = store.get_evidence(sr["record_id"]) if sr["record_id"] else None
+            if rec is None or rec["status"] != "completed":
+                continue
+            invalid += bool(errors("evidence", rec))
+            needs_human += bool(rec["decision"].get("needs_human"))
+            no_lines += not rec["payload"]["charges"]
+            for u in rec["payload"]["upstream"]:
+                upstream_models[f"{u['stage']}:{u['model']}"] += 1
+            for c in rec["payload"]["charges"]:
+                charges.append({**c, "unit_id": case["unit_id"], "org_id": case["org_id"], "route": case["route"],
+                                "record_id": rec["record_id"]})
+            claims += [{**c, "unit_id": case["unit_id"], "record_id": rec["record_id"]} for c in rec["payload"]["claims"]]
+    finally:
+        if previous is None:
+            os.environ.pop("ORCH_FLOW", None)
+        else:
+            os.environ["ORCH_FLOW"] = previous
+    stages = flow_stages(flow)
+    agents = {s: {"agent_id": load_manifest(s)["agent_id"], "implementation": load_manifest(s)["implementation"]}
+              for s in stages}
+    return {"flow": flow["flow_id"], "stages": stages, "agents": agents, "units": len(cases), "charges": charges,
+            "claims": claims, "workflow_status": dict(wf_status), "workflow_outcome": dict(wf_outcome),
+            "units_without_fee_lines": no_lines, "records_asking_for_a_person": needs_human,
+            "invalid_documents": invalid, "upstream_models": dict(upstream_models),
+            "stage_errors": dict(stage_errors)}
+
+
+def tables(r: dict) -> dict:
+    by_type: dict[str, Counter] = {}
+    money: dict[str, float] = {}
+    claim_usd: dict[str, float] = {}
+    for c in r["charges"]:
+        t = c["charge_type"]
+        by_type.setdefault(t, Counter())[c["assessment"]] += 1
+        money[t] = round(money.get(t, 0) + (c["amount_usd"] or 0), 2)
+        claim_usd[t] = round(claim_usd.get(t, 0) + c["claim_usd"], 2)
+    codes = Counter()
+    for c in r["charges"]:
+        if c["position"] == "SILENT":
+            for code in c["codes"]:
+                codes[(code, ",".join(c["findings"]))] += 1
+    return {"by_type": by_type, "money": money, "claim_usd": claim_usd, "codes": codes}
+
+
+def render(results: list[dict]) -> str:
+    out = ["# Recovery replay on the organisers' sample", "",
+           "Generated by `python -m agents.recovery.replay --write-md agents/recovery/REPLAY.md`. Deterministic, offline, "
+           "no model, no key.", "",
+           "> **This is not an accuracy measure.** The sample has no ground-truth labels: nobody has said which charges "
+           "are wrong. The upstream stages below are mostly organiser stubs that replay CSV rows, so every claim here "
+           "rests on stub evidence. The tables show how the rules behave on this data, not how many claims would be right. "
+           "False positives and false negatives cannot be counted without labels, so none are reported.", ""]
+    for r in results:
+        t = tables(r)
+        out += [f"## Flow `{r['flow']}` ({r['units']} units, stages: {' > '.join(r['stages'])})", "",
+                "Upstream agents in this run:", ""]
+        out += [f"- `{s}`: `{a['agent_id']}`" for s, a in r["agents"].items() if s != "recovery"]
+        out += ["", f"Records produced upstream by model: {', '.join(f'{k} x{v}' for k, v in sorted(r['upstream_models'].items()))}.",
+                "", "### Charges by type and assessment", "",
+                "| Charge type | Lines | Billed $ | " + " | ".join(ASSESSMENTS) + " | Claimable $ |",
+                "|---|---:|---:|" + "---:|" * len(ASSESSMENTS) + "---:|"]
+        for ty in sorted(t["by_type"]):
+            row = t["by_type"][ty]
+            out.append(f"| {ty} | {sum(row.values())} | {t['money'][ty]:.2f} | "
+                       + " | ".join(str(row.get(a, 0)) for a in ASSESSMENTS) + f" | {t['claim_usd'][ty]:.2f} |")
+        tot = Counter()
+        for row in t["by_type"].values():
+            tot.update(row)
+        out.append(f"| **all** | {sum(tot.values())} | {sum(t['money'].values()):.2f} | "
+                   + " | ".join(str(tot.get(a, 0)) for a in ASSESSMENTS) + f" | {sum(t['claim_usd'].values()):.2f} |")
+        out += ["", "### Claims it would file", ""]
+        if r["claims"]:
+            out += ["| Unit | Line | Type | $ | Basis | Evidence records |", "|---|---|---|---:|---|---|"]
+            out += [f"| {c['unit_id']} | {c['line_id']} | {c['charge_type']} | {c['claim_usd']:.2f} | {c['basis_kind']} | "
+                    f"{', '.join(c['evidence_record_ids']) or ', '.join(c['fee_line_refs'])} |" for c in r["claims"]]
+        else:
+            out.append("None.")
+        out += ["", "### Why charges were left alone (SILENT)", "", "A line can carry several reason codes, so these rows can add up to more than the SILENT count.", "", "| Reason code | Finding | Lines |", "|---|---|---:|"]
+        out += [f"| {code} | {f or '-'} | {n} |" for (code, f), n in sorted(t["codes"].items(), key=lambda kv: -kv[1])]
+        out += ["", "### Whole-workflow results (orchestrator-derived)", "",
+                f"- Workflow status: {', '.join(f'{k}={v}' for k, v in sorted(r['workflow_status'].items()))}",
+                f"- Final outcome: {', '.join(f'{k}={v}' for k, v in sorted(r['workflow_outcome'].items(), key=lambda kv: str(kv[0])))}",
+                f"- Units with no fee-report lines: {r['units_without_fee_lines']} (Recovery records UNCERTAIN, outcome no_claim)",
+                f"- Recovery records asking for a person: {r['records_asking_for_a_person']}",
+                f"- Stages that ended in error across the workflows: "
+                + (", ".join(f"{k} x{v}" for k, v in sorted(r["stage_errors"].items())) or "none")
+                + " (an upstream error is recorded by the orchestrator and drives FAILED/INCOMPLETE; Recovery still runs)",
+                f"- Schema-invalid documents: {r['invalid_documents']}", ""]
+    return "\n".join(out)
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--flow", action="append", help="a flow file; repeat for several (default: standard and specialist)")
+    ap.add_argument("--cases", default=str(ROOT / "data/sample/cases.json"))
+    ap.add_argument("--limit", type=int)
+    ap.add_argument("--json", help="write the raw replay results here")
+    ap.add_argument("--write-md", help="write the markdown summary here")
+    args = ap.parse_args(argv)
+    cases = json.loads(Path(args.cases).read_text())[: args.limit]
+    results = [replay(Path(f), cases) for f in (args.flow or [STANDARD, SPECIALIST])]
+    md = render(results)
+    if args.json:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json).write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    if args.write_md:
+        Path(args.write_md).write_text(md + "\n", encoding="utf-8")
+    print(md)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

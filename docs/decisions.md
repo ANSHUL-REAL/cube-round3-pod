@@ -259,3 +259,76 @@ _Add entries below._
 - Context: `test_examples.py::test_example_cases_still_produce_the_documented_outcome` and `test_http.py::test_full_workflow_over_http_matches_in_process` replay the stock stubs and expect every stage to complete. The starter already skips its golden-outcome test under the same condition ("not the stock stubs").
 - Decision: the same skip (`implementation != "organiser-stub"`) on those two tests. No assertion was changed or removed, and the real behaviour is covered by `tests/integration/test_returns_agent.py`.
 - Consequences: other members replacing stubs will make the same edit; the hunks are identical, so the merge should be trivial. Pod-level: decide whether to rewrite those tests against fixtures.
+### D-RC01 · Recovery: rebuild the Round 2 rules on the organisers' schema, do not port the engine
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL for @DaKaufeeBoii's stage
+- Context: the Round 2 engine has its own schema, keyword matching and 8 hand-made scenarios. It never read the organisers' fee report or the pod's evidence records, and its Agent Output does not validate against our schema.
+- Options considered: (A) wrap the Round 2 engine behind an adapter; (B) keep its rules, rebuild the plumbing on `fee_report_sample.csv` and the pod's records.
+- Decision: B. Rule ideas kept (Prep PASS contradicts, Receiving damage makes it a conflict, F-07/F-09/F-10 silent, duplicates, prior reimbursement). Dropped: the generic "any PASS contradicts any unmatched fee" fallback, keyword matching, shipment-keyed duplicates.
+- Why: run as-is on the organisers' fee report, the Round 2 engine classed 14 unrelated weight-tier fees ($53.70) as actionable duplicates, because the sample shares a shipment id across units. A wrapper would have filed them.
+- Consequences: no Round 2 file is reused; PROVENANCE.md lists what was kept and why. The Round 2 "100% on 10 charges" is not carried over.
+
+### D-RC02 · Recovery: F-07 weight-tier fees are silent unless a measurement and a sourced schedule both exist
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: all 42 sample weight-tier fees are SILENT (`no_measurements`). If an earlier record carries `payload.measurements.weight_g` the fee can be judged only against a fee schedule the operator supplies (`RECOVERY_TIER_TABLE`) that names its `source_url` and `retrieved` date, and only for the difference from the schedule's fee, not the whole line; a weight within the scale's tolerance of a tier boundary is SILENT. No schedule ships with the repository.
+- Why: the fee line carries neither the billed weight nor the tier, and inventing Amazon's tiers would be a model's memory dressed as a rule. Rejected: claiming whenever a measurement exists.
+- Consequences: that path is tested only against a test-only schedule. Revisit when Prep records real weights and someone supplies a real, dated schedule.
+
+### D-RC03 · Recovery: F-08 unit_id ambiguity is handled by joining on refs and by narrow claims
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: Recovery sets `unit_scope: unit` and takes `sku`, `fnsku`, `fba_shipment_id` from the fee lines. A fee line and an earlier record that both carry a SKU, FNSKU, shipment or order id and disagree are `conflicting_evidence` (no claim, a person may resolve it). Receiving's PO-line record never supports or contradicts a unit's charge (it only blocks, see D-RC06). A line with quantity other than 1 is not contradicted by one unit's Prep record. A repeated line is a duplicate claim only with the same non-empty order id.
+- Why: a bare unit id can join records about different physical things; every one of these guards costs only a missed claim.
+- Consequences: change `policy.single_unit_lines_only` / `policy.duplicate_needs_order_id` when the organisers rule on F-08.
+
+### D-RC04 · Recovery: a zero amount is never a claim, in every rule (F-09, extends D-005)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: a line of 0.00, a negative amount or an unreadable amount is SILENT whatever the evidence says. The record keeps `underlying_position` ("CONTRADICTS") so a reviewer can see what the evidence would have said if the amount were real.
+- Why: a claim for $0 is meaningless whichever way "0.00" is read (not reimbursed, or amount missing); a negative amount has an unknown sign convention.
+- Consequences: all 9 zero-amount `lost_inbound` and `refund_issued_item_not_returned` lines in the sample are silent. This is not a switch.
+
+### D-RC05 · Recovery: a supplier shortfall is shown and set aside, never used for a channel loss (F-10)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: `lost_inbound` is always SILENT. If Receiving recorded a shortfall it is named in the reason as a supplier shortfall, listed in `basis` with role `set_aside`, and not counted for or against the charge.
+- Why: it happened before the goods reached the channel, so it cannot support or contradict a channel-side loss. Nothing in this pod comes from the channel's side of the dock.
+- Consequences: Recovery can never file a `lost_inbound` claim until a channel-side record exists.
+
+### D-RC06 · Recovery: Prep PASS contradicts an inbound-defect fee only if Receiving saw no defect; a conflict asks a person
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: Prep PASS (effective, completed, at least one check, captured before the charge, same refs) contradicts the fee. If Receiving recorded damage or a quality flag on the unit, that is `conflicting_evidence`: no claim, outcome `pending_review`, `needs_human: true` (only when the line's amount is above zero). If Receiving was UNCERTAIN or did not complete on those checks, SILENT with `needs_human: false`. A claim in the same record still goes out; the conflict is flagged beside it.
+- Why: the Round 2 author's own scenario 6. A defect recorded at receipt can be the real cause of a channel's inbound-defect charge. A person can resolve it by overriding either record.
+- Consequences: in the sample 3 of the 9 inbound-defect fees are held back by this and ask for review (`BLOCKED` / `NEEDS_REVIEW`). That is deliberate and visible. Switch: `policy.receiving_defect_blocks_claim`. How many real claims it costs is not measured.
+
+### D-RC07 · Recovery: no Prep evidence means silent, in either flow, and Pack does not stand in
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: with no usable Prep record an inbound-defect charge is SILENT (`no_prep_evidence`). The reason says whether this pod's flow has no Prep stage (Specialist flow, read from `pod.json` or `ORCH_FLOW`) or Prep did not run for this unit. Pack evidence is read and cited but not used for these charges.
+- Why: the Specialist flow has no Prep Manager; guessing from Pack or Receiving would invent evidence. The replay shows the effect on the organiser sample: 4 claims ($6.00) in the standard flow, 0 in the Specialist flow.
+- Consequences: a Specialist Pod's Recovery can only claim duplicates and, on merchant-fulfilled units, refunds without return.
+
+### D-RC08 · Recovery: F-11 and F-12, a seller-side Returns record does not contradict a channel refund on an FBA or route-unknown unit
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: `refund_issued_item_not_returned` is contradicted by a Returns `identity_match` PASS only when the unit's route is `mfn`. On `fba` (F-11) and `unknown` (F-12) the charge is SILENT with the Returns record cited as consulted.
+- Why: it is unsettled whether an FBA return reaches the seller, and a unit with neither Prep nor Pack has no known route. The organiser stub contradicted on any route.
+- Consequences: all 4 such lines in the sample are silent (they are also 0.00). One switch: `policy.fba_returns_can_contradict`; tested both ways.
+
+### D-RC09 · Recovery: overrides are read, never rewritten, and the latest one wins
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: each earlier record's verdict is `effective_verdict` (latest workflow override). The original and the effective verdict are both recorded in `payload.upstream` and in each charge's `basis`, and the reason text names who overrode what. An override of Receiving counts the same way (it can create or clear the defect conflict). The previous record is never edited.
+- Why: EVIDENCE-CONTRACT section 6; the Round 2 code patched the upstream checks in place.
+- Consequences: Prep PASS -> FAIL flips a contradicted charge to supported and withdraws the claim (tested).
+
+### D-RC10 · Recovery: what PASS and UNCERTAIN mean for lines that are not disputed charges
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: a reimbursement credit (`report_type: reimbursement_report`) and a charge already credited are PASS ("supported or settled": nothing to claim), with assessment `CREDIT` / `ALREADY_REIMBURSED`. A unit with no fee lines is `UNCERTAIN` / `no_claim` (the contract's empty-checklist default), not PASS.
+- Why: a PASS line must never produce a claim; but "no fee lines" is not evidence that the unit was charged fairly (reports lag).
+- Consequences: 56 of 100 sample units have no fee lines and are UNCERTAIN in Recovery; with `needs_human: false` they do not block anything. Open for the owner: a reviewer may prefer PASS.
+
+### D-RC11 · Recovery: the same request gives the identical record, hash included
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Decision: `record_id = RCY-<request_id>`, and `produced_at` and `latency_ms` are measured once per (request id, inputs) and reused. A re-run of the stage (new request id) gets a new record.
+- Why: the store refuses a second record with the same id and a different hash, so a retry after a timeout would otherwise be rejected.
+- Consequences: the pin is process memory; after a restart the same request would get a new timestamp.
+
+### D-RC12 · Recovery: open, a late override leaves a stale claim (candidate finding, not fixed here)
+- Date / Owner: 2026-10-07 / @ANSHUL-REAL
+- Context: `apply_override` re-derives status and outcome from stored records but never re-runs Recovery, and `resume` skips completed stages. Overriding Prep PASS to FAIL on UNIT-0014 after the claim was filed leaves `CLAIM_RECOMMENDED $2.00`, whose basis is the overridden record.
+- Decision: no change to `orchestration/` (shared). Recovery honours any override present when it runs; the README states the gap.
+- Consequences: needs a pod decision: re-run downstream stages of an overridden record, or mark a claim stale when its basis record is overridden.
