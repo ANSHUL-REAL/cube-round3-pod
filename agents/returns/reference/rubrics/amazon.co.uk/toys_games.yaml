@@ -1,0 +1,71 @@
+schema: condition-rubric/v1
+version: 1.0.0
+snapshot_id: amazon-uk-condition-guidelines-2020-12-toys-games
+source_id: amazon-uk-condition-guidelines-pdf
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+category_key: toys_games
+source_pages:
+- 1
+- 14
+grades:
+- code: new
+  label: New
+  text: A brand-new, unused, unopened toy, in perfect condition.
+- code: used_like_new
+  label: Used - Like New
+  text: an apparently unused toy in perfect condition (although it may be out of its
+    original wrapping). All original parts of the toy are present and in perfect condition.
+    The toy is unmarked with no sign of wear. Suitable for presenting as a gift.
+- code: used_very_good
+  label: Used - Very Good
+  text: a well cared-for-caredfor toy that has been played with, but remains in great
+    condition. The toy may show limited signs of wear, but all original parts are
+    present and in great condition.
+- code: used_good
+  label: Used - Good
+  text: the toy is still in a good condition to play with, though shows some signs
+    of wear. It is undamaged, and the original parts are present and in good condition.
+- code: used_acceptable
+  label: Used - Acceptable
+  text: the toy is in a condition such that it can still be played with, but it is
+    otherwise the worse for wear. Some parts of the toys may be damaged or marked,
+    but all original parts are present. The toy may have identification markings of
+    its owner.
+unacceptable_conditions:
+- code: not_working
+  text: Item does not work perfectly in every regard.
+- code: not_clean
+  text: Item is not clean, having signs of mould, heavy staining, or corrosion.
+- code: damaged_hard_to_use
+  text: Item is damaged in a way that renders it difficult to use.
+- code: missing_essential
+  text: Item is missing essential accompanying material or parts. (This does not necessarily
+    include instructions.)
+- code: needs_repair
+  text: Item requires repair or service.
+- code: counterfeit_or_copy
+  text: Item was not created by the original manufacturer or copyright holder. This
+    includes copies, counterfeits, replicas and imitations.
+- code: promotional_copy
+  text: Item was originally distributed as a promotional copy, promotional bundle,
+    product sample or advance reading copy.
+- code: obscured_details
+  text: Any aspect of the item is obscured and not able to be read or viewed because
+    of markings, stickers or other damage.
+- code: expired
+  text: Item has passed the expiration date (includes “best by” and “sell by” dates),
+    has an unacceptable portion of its shelf life remaining, or has had the expiration
+    date removed or tampered with.
+- code: prohibited
+  text: Item is prohibited for sale on Amazon.co.uk.
+- code: designated_unsellable
+  text: Item was intended for destruction or disposal or otherwise designated as unsellable
+    by the manufacturer or a supplier, vendor, or retailer.
+- code: toys_missing_essential_parts
+  text: toys that have missing parts that are essential to the workings of the toy.
+- code: toys_unsafe
+  text: All toys, whether new or used, must be safe (that is, there is no risk that
+    the equipment will cause death, personal injury or damage to property).
+content_sha256: bc0e3fbb8e2181a7cda4fa847225efcb5f2eaaa8c6e45d0969acb9e0a1232c9e

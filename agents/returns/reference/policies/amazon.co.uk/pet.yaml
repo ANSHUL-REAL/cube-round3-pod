@@ -1,0 +1,32 @@
+schema: category-policy/v1
+version: 1.1.0
+policy_id: amazon-uk-2020-12-pet
+category_key: pet
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+fields:
+  listing_conditions_allowed:
+    value:
+    - new
+    source_type: amazon_guideline
+    source_ref: 'Condition Guidelines p.14-15: Baby, Pet and Grocery NEW ONLY'
+  consumable_ingestible_or_topical:
+    value: false
+    source_type: amazon_guideline
+    source_ref: Pet accessories category
+  functional_verification_required_for_used:
+    value: false
+    source_type: assumption
+    source_ref: Used listing not allowed
+  opened_item_route:
+    value: liquidate
+    source_type: business_policy
+    source_ref: 'Seller policy (build prompt §12.2 R07 example "pet -> liquidate"):
+      opened pet items cannot be relisted as new; the unit is liquidated when its
+      salvage value justifies it, else disposed'
+  damaged_item_route:
+    value: dispose
+    source_type: business_policy
+    source_ref: 'Seller policy: dispose damaged pet items'
+content_sha256: baebf33d13387847bd5dc37a4afbbe06f8613a6cd12e039e5fe528f8169a4cd9

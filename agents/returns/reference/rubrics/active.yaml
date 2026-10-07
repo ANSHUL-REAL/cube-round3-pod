@@ -1,0 +1,10 @@
+schema: rubrics-active/v1
+version: 1.0.0
+active_snapshots:
+  electronics: amazon-uk-condition-guidelines-2020-12-electronics
+  toys_games: amazon-uk-condition-guidelines-2020-12-toys-games
+  home_kitchen: amazon-uk-condition-guidelines-2020-12-home-kitchen
+  pet: amazon-uk-condition-guidelines-2020-12-pet
+  beauty_topical: amazon-uk-condition-guidelines-2020-12-beauty-topical
+  grocery_ingestible: amazon-uk-condition-guidelines-2020-12-grocery-ingestible
+content_sha256: 7571b6c879b5ad9000e8e13355f6ed964b13dd8dd1a864c98ad63412fbc0fba2

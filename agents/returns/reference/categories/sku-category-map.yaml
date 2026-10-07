@@ -1,0 +1,55 @@
+schema: sku-category-map/v1
+version: 1.0.0
+mapping:
+  SKU-LAMP-LED:
+    category_key: electronics
+    rationale: mains/USB-powered LED desk lamp; electrical safety test applies for
+      used items
+    status: interpretation_needs_verification
+  SKU-PUZZLE-500:
+    category_key: toys_games
+    rationale: 500-piece jigsaw puzzle with reference poster; non-electrical toy
+    status: interpretation_needs_verification
+  SKU-TOWEL-BLU:
+    category_key: home_kitchen
+    rationale: bath towel textile; home and kitchen linen guidelines apply
+    status: interpretation_needs_verification
+  SKU-BOTTLE-750:
+    category_key: home_kitchen
+    rationale: 750ml reusable drink bottle with lid; food contact surface
+    status: interpretation_needs_verification
+  SKU-SERUM-30:
+    category_key: beauty_topical
+    rationale: 30ml facial serum bottle with dropper; topical cosmetic product (New-only)
+    status: interpretation_needs_verification
+  SKU-PROT-1KG:
+    category_key: grocery_ingestible
+    rationale: 1kg protein powder tub with scoop; ingestible food supplement (New-only)
+    status: interpretation_needs_verification
+  SKU-LEASH-6FT:
+    category_key: pet
+    rationale: 6ft dog walking leash; pet supply category (New-only)
+    status: interpretation_needs_verification
+  SKU-CANDLE-3:
+    category_key: home_kitchen
+    rationale: set of 3 scented candles in gift box; consumable home product, used
+      parts prohibited
+    status: interpretation_needs_verification
+  SKU-MUG-11:
+    category_key: home_kitchen
+    rationale: set of 2 11oz ceramic mugs; fragile tableware
+    status: interpretation_needs_verification
+  SKU-CABLE-USBC:
+    category_key: electronics
+    rationale: USB-C charging and data cable; electrical accessory, safety test applies
+      for used
+    status: interpretation_needs_verification
+  SKU-PHONE-IQOO9:
+    category_key: electronics
+    rationale: smartphone with 120W fast charger; consumer electronics category
+    status: interpretation_needs_verification
+  SKU-LAPTOP-DELL:
+    category_key: electronics
+    rationale: laptop computer with power adapter and carrying case; consumer electronics
+    status: interpretation_needs_verification
+content_sha256: 105e4eee5556ab3cdb06508fe74ad4584a30c0e487dc5c569dda58dfea827f8e

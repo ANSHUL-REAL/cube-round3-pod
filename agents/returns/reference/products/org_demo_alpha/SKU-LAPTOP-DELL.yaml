@@ -1,0 +1,85 @@
+schema: product-card/v1
+version: 1.0.0
+org_id: org_demo_alpha
+sku: SKU-LAPTOP-DELL
+identifiers:
+  asin: B0DELL1234
+  fnsku: null
+  gtin: null
+  model_numbers:
+  - Inspiron 15
+  - Vostro 15
+  barcode_values: []
+title: Dell 15-inch Laptop with AC Power Adapter and Carrying Bag
+brand: Dell
+category_key: electronics
+distinguishing_features:
+- id: df_dell_logo
+  description: Circular silver Dell logo centered on top matte black lid
+  location: product_body
+  importance: critical
+- id: df_laptop_form
+  description: Clamshell dark grey / black laptop chassis with rear hinge
+  location: product_body
+  importance: critical
+similar_skus: []
+components:
+- id: laptop_unit
+  name: Dell Laptop Unit
+  quantity: 1
+  essential: true
+  replaceable: false
+  verifiable_by_photo: true
+  visual_cues: Dark grey / black laptop chassis with circular silver Dell logo centered
+    on top lid
+  source:
+    type: seller_catalogue
+    ref: cat row 101
+    retrieved_at: null
+- id: power_adapter
+  name: Dell AC Power Adapter and Cable
+  quantity: 1
+  essential: true
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: Black rectangular AC power adapter brick with power cord and three-prong
+    plug
+  source:
+    type: seller_catalogue
+    ref: cat row 101
+    retrieved_at: null
+- id: laptop_bag
+  name: Grey Laptop Carrying Bag
+  quantity: 1
+  essential: false
+  replaceable: true
+  verifiable_by_photo: true
+  visual_cues: Grey fabric laptop carrying case with shoulder strap, handles and cable
+    pouch
+  source:
+    type: seller_catalogue
+    ref: cat row 101
+    retrieved_at: null
+reference_images:
+- id: ref_contents
+  view: contents_layout
+  path: SKU-LAPTOP-DELL/ref_contents.jpg
+  sha256: 70f65097f1444900b9db3c87ad937e89c132e4f6303387dd1729fb63c0a91e65
+consumable: false
+value:
+  synthetic: true
+  list_price:
+    amount_minor: 4999900
+    currency: INR
+  recovery_rate_bp:
+    restock_new: 10000
+    restock_used: 7500
+    refurbish: 6000
+    liquidate: 3000
+    dispose: 0
+  refurbish_cost:
+    amount_minor: 350000
+    currency: INR
+provenance_notes: Reference card for Dell laptop created from user-provided pre-sale
+  reference photo.
+content_sha256: ef9101b82ed58d0219bb5012434fb6c14bc1ba3101c634a240e18003fe9dcf04

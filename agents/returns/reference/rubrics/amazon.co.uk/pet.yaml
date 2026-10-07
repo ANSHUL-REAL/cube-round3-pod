@@ -1,0 +1,53 @@
+schema: condition-rubric/v1
+version: 1.0.0
+snapshot_id: amazon-uk-condition-guidelines-2020-12-pet
+source_id: amazon-uk-condition-guidelines-pdf
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+category_key: pet
+source_pages:
+- 1
+- 14
+- 15
+grades:
+- code: new
+  label: New
+  text: A brand-new, unused, unopened item in its original packaging, with all original
+    packaging materials included. Original protective wrapping, if any, is intact.
+    Original manufacturer's warranty, if any, still applies, with warranty details
+    included in the listing comments. Item should be within expiry date, if applicable.
+unacceptable_conditions:
+- code: not_working
+  text: Item does not work perfectly in every regard.
+- code: not_clean
+  text: Item is not clean, having signs of mould, heavy staining, or corrosion.
+- code: damaged_hard_to_use
+  text: Item is damaged in a way that renders it difficult to use.
+- code: missing_essential
+  text: Item is missing essential accompanying material or parts. (This does not necessarily
+    include instructions.)
+- code: needs_repair
+  text: Item requires repair or service.
+- code: counterfeit_or_copy
+  text: Item was not created by the original manufacturer or copyright holder. This
+    includes copies, counterfeits, replicas and imitations.
+- code: promotional_copy
+  text: Item was originally distributed as a promotional copy, promotional bundle,
+    product sample or advance reading copy.
+- code: obscured_details
+  text: Any aspect of the item is obscured and not able to be read or viewed because
+    of markings, stickers or other damage.
+- code: expired
+  text: Item has passed the expiration date (includes “best by” and “sell by” dates),
+    has an unacceptable portion of its shelf life remaining, or has had the expiration
+    date removed or tampered with.
+- code: prohibited
+  text: Item is prohibited for sale on Amazon.co.uk.
+- code: designated_unsellable
+  text: Item was intended for destruction or disposal or otherwise designated as unsellable
+    by the manufacturer or a supplier, vendor, or retailer.
+- code: pet_new_only
+  text: Only New items are permitted to be sold in the these product categories on
+    Amazon.co.uk.
+content_sha256: 59e655652fdf89058b5361ecd9c1692797dfa485cb243a40aef061c049247121

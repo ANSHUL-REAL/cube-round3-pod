@@ -1,0 +1,30 @@
+schema: category-policy/v1
+version: 1.0.0
+policy_id: amazon-uk-2020-12-grocery-ingestible
+category_key: grocery_ingestible
+source_marketplace: amazon.co.uk
+applies_to_marketplace: amazon.in
+verification_status: unverified_substitute
+fields:
+  listing_conditions_allowed:
+    value:
+    - new
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines p.15 Consumable, Ingestible, and/or Topical Products
+  consumable_ingestible_or_topical:
+    value: true
+    source_type: amazon_guideline
+    source_ref: Condition Guidelines p.15
+  functional_verification_required_for_used:
+    value: false
+    source_type: assumption
+    source_ref: Used listing not allowed
+  opened_item_route:
+    value: dispose
+    source_type: business_policy
+    source_ref: 'Seller policy: opened ingestible items must be disposed'
+  damaged_item_route:
+    value: dispose
+    source_type: business_policy
+    source_ref: 'Seller policy: dispose damaged grocery items'
+content_sha256: 2c513e4a415b39d7b483a801c4e136f19ca6591b6428039924ac1bc14741cb78

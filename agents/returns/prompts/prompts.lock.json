@@ -1,0 +1,10 @@
+{
+  "judgment": {
+    "version": "1.1.0",
+    "sha256": "305b6b82ad7de33d764b9d64f65fc46d041529b252c1c463892ebcf88090ddf2"
+  },
+  "judgment_task": {
+    "version": "1.0.0",
+    "sha256": "42d609ae1d092198abfacea10ea9e85511c161aa2bc9bb56d82d95f37c9d97d2"
+  }
+}

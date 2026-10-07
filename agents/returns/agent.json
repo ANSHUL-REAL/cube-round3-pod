@@ -1,10 +1,10 @@
 {
   "stage": "returns",
-  "agent_id": "returns-stub@0",
-  "owner": "@github-handle-of-the-owner",
+  "agent_id": "returns-manager@0.1.0",
+  "owner": "@krishnababuprodduturu",
   "mode": "inproc",
   "url": "http://localhost:8104",
   "module": "agents.returns.app",
-  "implementation": "organiser-stub",
-  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+  "implementation": "Round 2 Returns Manager (Prodduturu Krishna Babu, RTN-0038), adapted for the pod. One batched Gemini call per returned unit only OBSERVES (identity features, parts present, defects, a proposed grade from Amazon's condition rubric). Deterministic code validates that report, grades condition against the rubric snapshot and decides restock / refurbish / liquidate / dispose or pending_review. It reads Pack's order and box count and Receiving's flags (latest overrides applied) and says UNCERTAIN when they conflict. No key, no photo, no verified product reference, or a model error means a pending record, not a guess. The condition scale is an unverified substitute (Amazon UK 2020 guidelines used for amazon.in). See agents/returns/README.md and PROVENANCE.md.",
+  "notes": "Needs GEMINI_API_KEY for live checks. Return photos go in data/input/<unit_id>/returns/. A product needs a card with reference images under agents/returns/reference/products/<org_id>/ or it is not judged. Tests use a scripted model and need no key."
 }

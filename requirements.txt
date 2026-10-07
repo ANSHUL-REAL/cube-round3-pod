@@ -12,3 +12,7 @@ opencv-python-headless>=4.9
 numpy>=1.26
 pillow>=10.0
 pillow-heif>=0.18
+# Returns Manager (agents/returns). Also uses pydantic, google-genai, opencv, numpy, pillow and pillow-heif from above.
+pyyaml>=6.0
+rfc8785>=0.1.4
+zxing-cpp>=2.0   # barcode decoding of return photos; optional at runtime (no decoder = no barcode evidence)
