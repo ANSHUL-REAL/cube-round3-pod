@@ -1,88 +1,95 @@
-"""Recovery Manager: agent entry point.
+"""Recovery Manager: the pod's Round 3 agent entry point.
 
-========================  REPLACE ME  ========================
-ORGANISER STUB. It reads the previous evidence in `request["previous_evidence"]` plus the sample fee report, and
-labels each charge CONTRADICTS / SUPPORTS / SILENT. The matching rules below are ILLUSTRATIVE ONLY, not claim
-logic. In particular they ignore the open Round 2 findings (docs/decisions.md, F-07 to F-12).
-Member 5: bring your Round 2 Recovery Manager here.
+Recovery has no camera. For one unit it reads the organisers' fee-report lines (tenant-scoped) and ALL the evidence the
+earlier stages left, and decides charge by charge whether the evidence contradicts the charge (a claim), supports it,
+or is silent (never a claim). Deterministic rules decide; no model is called.
 
-Check semantics for Recovery: the condition is "this charge is supported by evidence".
-  PASS      evidence supports the charge     -> no claim
-  FAIL      evidence contradicts the charge  -> claim
-  UNCERTAIN evidence is silent / insufficient -> cannot claim; say why
-A wrongly filed claim costs standing with the channel, so SILENT must never become a claim.
-Recovery reads the accumulated evidence; it does not rewrite it or the workflow state.
+The condition behind every check is "this charge is supported by evidence":
+    FAIL = contradicted = a claim, with the evidence attached     PASS = supported or settled
+    UNCERTAIN = SILENT = never a claim, listed with the reason
+
+Fail open: an unexpected error returns a *pending* record (UNCERTAIN, with the error), never an exception and never
+an invented verdict. A subject that is not under `subject.org_id` raises LookupError (HTTP 404).
+
 Run:  uvicorn agents.recovery.app:app --port 8105
-===============================================================
 """
-from shared.utils import sample_data
-from shared.utils.records import build_output, build_record, check, utcnow
+from __future__ import annotations
+
+import hashlib
+import os
+import time
+
+from shared.utils.hashing import canonical_json
+from shared.utils.log import get_logger
+from shared.utils.records import build_output, pending_output, utcnow
 from shared.utils.server import make_app
-from shared.utils.stubs import STUB_MODEL, effective_verdict, previous
 
-STAGE = "recovery"
-AGENT_ID = "recovery-stub@0"
+from . import __version__, adapter, fees, policy as policy_module
+from .rules import Ctx, assess, find_duplicates, load_tier_table
+from .upstream import Evidence
+
+STAGE = adapter.STAGE
+AGENT_ID = adapter.AGENT_ID
+log = get_logger("recovery")
+
+# Same request over the same inputs gives the same record, byte for byte. produced_at and latency are measured once
+# and reused, so a retry after a timeout cannot collide with (and be refused as) a different record of the same id.
+_PINNED: dict[tuple[str, str], tuple[str, int]] = {}
+_PINNED_MAX = 5000
 
 
-def position(line: dict, request: dict) -> tuple[str, str, list[str]]:
-    """(CONTRADICTS | SUPPORTS | SILENT, detail, evidence record ids). Uses EFFECTIVE verdicts (overrides applied)."""
-    ctype = line["charge_type"]
-    if ctype == "inbound_defect_fee":
-        prep = previous(request, "prep")
-        if not prep or prep["status"] != "completed":
-            return "SILENT", "no usable Prep record for this subject", []
-        v = effective_verdict(request, prep)
-        if v == "PASS":
-            return "CONTRADICTS", "Prep evidence shows the unit compliant", [prep["record_id"]]
-        if v == "FAIL":
-            return "SUPPORTS", "Prep evidence shows a defect", [prep["record_id"]]
-        return "SILENT", "Prep evidence is uncertain", [prep["record_id"]]
-    if ctype == "refund_issued_item_not_returned":
-        ret = previous(request, "returns")
-        if ret and ret["status"] == "completed" and ret["checks"] and ret["checks"][0]["verdict"] == "PASS":
-            return "CONTRADICTS", "Returns record shows the right item came back", [ret["record_id"]]
-        return "SILENT", "no usable Returns record", []
-    if ctype == "fulfilment_fee_weight_tier":
-        return "SILENT", "no measured weight/dimensions upstream (finding F-07)", []
-    if ctype == "lost_inbound":
-        return "SILENT", "receiving shortfall is supplier-side, not channel-side loss (finding F-10)", []
-    return "SILENT", f"no rule for {ctype}", []
+def _flow() -> list[str] | None:
+    """The stages of this pod's flow (pod.json), so "no Prep record" can say whether Prep was ever going to run."""
+    try:
+        from orchestration.orchestrator import flow_stages, load_flow
+
+        return flow_stages(load_flow(os.environ.get("ORCH_FLOW") or None))
+    except Exception:  # an agent served on its own has no flow file; the reason text just gets less specific
+        return None
+
+
+def _decide(request: dict) -> dict:
+    t0 = time.monotonic()
+    subject = request["subject"]
+    org_id, unit_id = subject["org_id"], subject["subject_id"]
+    if not fees.known_subject(unit_id, org_id):
+        raise LookupError(f"unknown subject {unit_id} in {org_id}")  # tenancy: refuse, never answer "no claim"
+    evidence = Evidence(request)  # LookupError if it carries another organisation's evidence
+    lines = fees.lines_for(unit_id, org_id)
+    tiers, tiers_problem = load_tier_table()
+    ctx = Ctx(request=request, ev=evidence, lines=lines, flow=_flow(), tiers=tiers, tiers_problem=tiers_problem,
+              duplicate_of=find_duplicates(lines), policy=policy_module.POLICY)
+    positions = [assess(ln, ctx) for ln in lines]
+
+    inputs_digest = canonical_json({
+        "lines": [ln.raw for ln in lines], "previous": [(r["record_id"], r["content_hash"]) for r in
+                                                        request.get("previous_evidence") or []],
+        "overrides": (request.get("context") or {}).get("overrides") or [], "route": ctx.route,
+        "policy": ctx.policy.snapshot(), "flow": ctx.flow, "tiers": tiers})
+    key = (request["request_id"], hashlib.sha256(inputs_digest).hexdigest())
+    if key not in _PINNED:
+        if len(_PINNED) >= _PINNED_MAX:
+            _PINNED.clear()
+        _PINNED[key] = (utcnow(), int((time.monotonic() - t0) * 1000))
+    stamp, latency = _PINNED[key]
+    record = adapter.build(request, lines, positions, ctx, stamp=stamp, latency_ms=latency)
+    d = record["decision"]
+    log.info("recovery_decided", extra={"ctx": {"workflow_id": request["workflow_id"], "stage": STAGE, "org_id": org_id,
+                                                "subject_id": unit_id, "outcome": d["outcome"],
+                                                "claimable_usd": record["payload"]["claimable_usd"]}})
+    return build_output(record, next_step="review" if d.get("needs_human") else "complete")
 
 
 def handle(request: dict) -> dict:
-    s = request["subject"]
-    if not sample_data.has("receiving", s["subject_id"], s["org_id"]):
-        raise LookupError(f"unknown subject {s['subject_id']} in {s['org_id']}")  # tenancy: refuse, don't say "no claim"
-    lines = sample_data.fee_lines(s["subject_id"], s["org_id"])
-    checks, charges, claimable = [], [], 0.0
-    for line in lines:
-        pos, why, ids = position(line, request)
-        amount = float(line["amount_usd"])
-        if pos == "CONTRADICTS" and amount <= 0:
-            pos, why = "SILENT", "amount is 0.00: nothing to claim, or the amount is missing (finding F-09)"
-        verdict = {"CONTRADICTS": "FAIL", "SUPPORTS": "PASS", "SILENT": "UNCERTAIN"}[pos]
-        checks.append(check(f"charge_{line['line_id'].lower().replace('-', '_')}", verdict, None,
-                            expected="charge supported by evidence", observed=pos, detail=why,
-                            evidence_refs=ids, uncertain_reason="insufficient_evidence"))
-        if pos == "CONTRADICTS":
-            claimable += amount
-        charges.append({"line_id": line["line_id"], "charge_type": line["charge_type"], "amount_usd": amount,
-                        "position": pos, "reason": why, "evidence_record_ids": ids})
-    claim = any(c["position"] == "CONTRADICTS" for c in charges)
-    silent = any(c["position"] == "SILENT" for c in charges)
-    verdict = "FAIL" if claim else ("UNCERTAIN" if silent else "PASS")
-    outcome = "claim_recommended" if claim else ("insufficient_evidence" if silent else "no_claim")
-    record = build_record(
-        request, agent_id=AGENT_ID, record_id=f"RCY-{s['subject_id']}", model=STUB_MODEL,
-        captured_at=max((l["posted_date"] + "T00:00:00Z" for l in lines), default=utcnow()),
-        checks=checks, outcome=outcome, verdict=verdict,
-        # SILENT means "cannot claim", not "a human must look": do not flood reviewers.
-        needs_human=False,
-        reason=f"stub: {len(charges)} charge(s), {sum(c['position'] == 'CONTRADICTS' for c in charges)} contradicted",
-        payload={"charges": charges, "claimable_usd": round(claimable, 2),
-                 "unclaimable": [c for c in charges if c["position"] != "CONTRADICTS"]},
-    )
-    return build_output(record, next_step="complete")
+    try:
+        return _decide(request)
+    except LookupError:
+        raise
+    except Exception as exc:  # fail open: a record exists, it says why, and it claims nothing
+        log.error("recovery_failed", extra={"ctx": {"workflow_id": request.get("workflow_id"), "stage": STAGE,
+                                                    "detail": f"{type(exc).__name__}: {exc}"}})
+        return pending_output(request, code="agent_exception", message=f"{type(exc).__name__}: {exc}", retryable=True,
+                              agent_id=AGENT_ID)
 
 
-app = make_app(STAGE, handle)
+app = make_app(STAGE, handle, version=__version__)

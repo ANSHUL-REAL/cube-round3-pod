@@ -1,10 +1,10 @@
 {
   "stage": "recovery",
-  "agent_id": "recovery-stub@0",
-  "owner": "@github-handle-of-the-owner",
+  "agent_id": "recovery-manager@0.2.0",
+  "owner": "@DaKaufeeBoii",
   "mode": "inproc",
   "url": "http://localhost:8105",
   "module": "agents.recovery.app",
-  "implementation": "organiser-stub",
-  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+  "implementation": "Round 2 Recovery Manager rules (Sai Tarun Reddy Velagala), rebuilt for Round 3 on the organisers' fee-report schema by Anshul Nautiyal. Deterministic rules, no model call: one check per fee line (charge_<line_id>), reads all previous evidence with the latest override applied, claims only where evidence contradicts a charge, never on SILENT. See agents/recovery/README.md and PROVENANCE.md.",
+  "notes": "No API key and no network needed. Fee lines come from data/sample/fee_report_sample.csv (organiser sample, dummy values). Offline replay: python -m agents.recovery.replay. Open findings F-07 to F-12: the side taken is in agents/recovery/policy.py and docs/decisions.md (D-RC01 onwards)."
 }
