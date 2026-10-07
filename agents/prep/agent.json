@@ -1,10 +1,10 @@
 {
   "stage": "prep",
-  "agent_id": "prep-stub@0",
-  "owner": "@github-handle-of-the-owner",
+  "agent_id": "prep-manager@0.1.0",
+  "owner": "@Devisri-074",
   "mode": "inproc",
   "url": "http://localhost:8102",
   "module": "agents.prep.app",
-  "implementation": "organiser-stub",
-  "notes": "Set mode to \"http\" if your agent is not Python or runs as its own service. Change implementation to a short honest description of what you built."
+  "implementation": "Prep Manager ported to Python from Manvith111's Round 2 reference (TypeScript). One batched Gemini call per unit reports only what is visible on the prepped unit; fixed rules compare that with the unit's work order and return compliant / non_compliant / pending_review. Rule sources are unverified demo rules. Not yet run against a real model. See agents/prep/README.md and PROVENANCE.md.",
+  "notes": "Needs GEMINI_API_KEY for live checks. Photos go in data/input/<unit_id>/prep/. Tests use a scripted model and need no key. No key, no photo or a model error gives a pending record, not a guess."
 }
