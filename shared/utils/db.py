@@ -96,11 +96,21 @@ create table if not exists {SCHEMA}.faults (
 
 
 def url() -> str | None:
-    return os.environ.get("DATABASE_URL") or None
+    """DATABASE_URL, checked before anything uses it: a value pasted into the wrong box (an API key, say) must stop the
+    server with a plain message, never reach the driver, whose errors would print a piece of it into the logs."""
+    value = (os.environ.get("DATABASE_URL") or "").strip()
+    if not value:
+        return None
+    if not value.startswith(("postgresql://", "postgres://")):
+        raise RuntimeError("DATABASE_URL is set but is not a postgresql:// connection string (was another value pasted "
+                           "into it?). Its value is not printed. Use Supabase > Connect > Session pooler.")
+    if "[YOUR-PASSWORD]" in value.upper():
+        raise RuntimeError("DATABASE_URL still contains [YOUR-PASSWORD]: put the database password in its place.")
+    return value
 
 
 def enabled() -> bool:
-    return url() is not None
+    return bool((os.environ.get("DATABASE_URL") or "").strip())
 
 
 def pool():

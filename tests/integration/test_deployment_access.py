@@ -194,3 +194,15 @@ def test_without_settings_a_laptop_stays_open(tmp_path, monkeypatch):
         monkeypatch.delenv(v, raising=False)
     c = remote()
     assert c.get("/").status_code == 200 and c.get("/whoami").json()["access_control"] is False
+
+
+def test_a_wrong_value_in_database_url_stops_the_server_without_printing_it(monkeypatch):
+    from shared.utils import db
+
+    monkeypatch.setenv("DATABASE_URL", "AIzaSy-this-is-an-api-key-not-a-database")
+    with pytest.raises(RuntimeError) as exc:
+        db.url()
+    assert "AIza" not in str(exc.value) and "not printed" in str(exc.value)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres.x:[YOUR-PASSWORD]@h:5432/postgres")
+    with pytest.raises(RuntimeError, match="YOUR-PASSWORD"):
+        db.url()
