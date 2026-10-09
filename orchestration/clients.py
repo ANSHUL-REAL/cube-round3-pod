@@ -46,10 +46,13 @@ class HttpClient:
     def run(self, request: dict, timeout_s: float) -> dict:
         try:
             resp = httpx.post(f"{self.url}/run", json=request, timeout=timeout_s)
+        except httpx.ConnectTimeout as exc:
+            raise AgentUnavailable(f"{type(exc).__name__}: {exc}") from exc
         except httpx.TimeoutException as exc:
             raise AgentTimeout(f"{type(exc).__name__}: {exc}") from exc
         except httpx.HTTPError as exc:
             raise AgentUnavailable(f"{type(exc).__name__}: {exc}") from exc
+
         if 400 <= resp.status_code < 500:
             raise AgentRejected(f"HTTP {resp.status_code}: {resp.text[:300]}")
         if resp.status_code >= 500:
