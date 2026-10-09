@@ -8,7 +8,8 @@
     <h1 class="mono">{{ wf.subject_id }}</h1>
     <p class="lede">{{ 'FBA' if wf.context.get('route') == 'fba' else ('Merchant-fulfilled' if wf.context.get('route') == 'mfn' else 'Route ' ~ wf.context.get('route', 'unknown')) }}{% if wf.context.get('returned') %}, returned{% endif %}.{% if story %} {{ story }}{% endif %}</p>
   </div>
-  <div class="ph-actions"><span class="chip {{ wf.status | lower }}" title="{{ wf.status_reason }}" style="font-size:14px;padding:6px 14px">{{ wf.status | replace('_', ' ') }}</span></div>
+  <div class="ph-actions"><span class="chip {{ wf.status | lower }}" title="{{ wf.status_reason }}" style="font-size:14px;padding:6px 14px">{{ wf.status | replace('_', ' ') }}</span>
+    {% if wf.evidence_references %}<a class="btn alt small" href="/ui/w/{{ wf.workflow_id }}/receipt">🧾 Receipt</a><a class="btn alt small" href="/ui/w/{{ wf.workflow_id }}/receipt.json">⬇ JSON</a>{% endif %}</div>
 </div>
 
 <div class="mode-banner mode-{{ mode }}">

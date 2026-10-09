@@ -442,6 +442,67 @@ def workflow(request: Request, workflow_id: str):
                    timeline=list(reversed(wf["transitions"][-40:])))
 
 
+def _receipt(workflow_id: str) -> dict:
+    """A unit's receipt: the workflow, every evidence record it cites, each record's hash re-checked now, and one
+    fingerprint over them all (SHA-256 of the record ids and their content hashes, in order) to quote in a claim."""
+    import hashlib
+
+    from shared.utils.hashing import canonical_json, verify
+
+    from ..orchestrator import bundle
+    from .access import current
+
+    store = _api().STORE
+    wf = store.load_workflow(_wf_id(workflow_id))
+    if wf is None:
+        raise HTTPException(404, "no such workflow")
+    b = bundle(wf, store)
+    checked = {rid: bool(rec) and verify(rec) for rid, rec in b["evidence"].items()}
+    chain = [[rid, (rec or {}).get("content_hash")] for rid, rec in b["evidence"].items()]
+    return {"receipt": {
+        "product": _brand.NAME, "workflow_id": wf["workflow_id"], "unit": wf["subject_id"], "seller_id": wf["org_id"],
+        "seller": _brand.org_name(wf["org_id"]), "exported_at": _now_utc(), "exported_by": current().name,
+        "final_outcome": wf.get("final_outcome"), "status": wf["status"], "records": len(chain),
+        "hashes_ok": all(checked.values()) and bool(checked), "hash_check": checked,
+        "fingerprint": hashlib.sha256(canonical_json({"workflow_id": wf["workflow_id"], "records": chain})).hexdigest(),
+        "how_to_check": "Each record's content_hash is the SHA-256 of its canonical JSON (keys sorted, no spaces, "
+                        "UTF-8) without 'content_hash' and 'overrides' (shared/utils/hashing.py). The fingerprint is "
+                        "the SHA-256 of the canonical JSON of {workflow_id, records: [[record_id, content_hash], ...]}. "
+                        "A content hash shows a record was not changed after it was sealed; it is not a signature."},
+        "workflow": wf, "evidence": b["evidence"]}
+
+
+def _now_utc() -> str:
+    from shared.utils import db
+
+    return db.now()
+
+
+@router.get("/ui/w/{workflow_id}/receipt.json")
+def receipt_json(workflow_id: str):
+    from fastapi.responses import JSONResponse
+
+    from .access import audit
+
+    r = _receipt(workflow_id)
+    audit("receipt_exported", r["receipt"]["workflow_id"], org=r["receipt"]["seller_id"], format="json")
+    name = f"{_brand.NAME.lower()}-receipt-{r['receipt']['unit']}.json"
+    return JSONResponse(r, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@router.get("/ui/w/{workflow_id}/receipt", response_class=HTMLResponse)
+def receipt_page(request: Request, workflow_id: str):
+    r = _receipt(workflow_id)
+    wf = r["workflow"]
+    stages = []
+    for sr in wf["stage_results"]:
+        rec = r["evidence"].get(sr.get("record_id")) if sr.get("record_id") else None
+        icon, name, _ = STAGES.get(sr["stage"], ("•", sr["stage"].title(), ""))
+        stages.append({"sr": sr, "rec": rec, "icon": icon, "name": name, "ok": r["receipt"]["hash_check"].get(sr.get("record_id")),
+                       "overrides": [o for o in wf["overrides"] if rec and o["supersedes"]["record_id"] == rec["record_id"]]})
+    return _render(request, "receipt.html", r=r["receipt"], wf=wf, stages=stages)
+
+
 @router.get("/ui/w/{workflow_id}/r/{record_id}", response_class=HTMLResponse)
 def record(request: Request, workflow_id: str, record_id: str):
     store = _api().STORE

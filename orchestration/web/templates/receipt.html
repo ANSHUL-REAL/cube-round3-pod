@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Receipt · {{ r.unit }} · {{ brand.name }}{% endblock %}
+{% block body %}
+<style>
+  .rc { max-width: 980px; margin: 0 auto; }
+  .rc-head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .rc-seal { border: 2.5px solid var(--line); border-radius: 14px; padding: 12px 16px; background: var(--card-2); min-width: 0; }
+  .rc-seal b { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  .rc-fp { font: 700 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .rc-stage { border-top: 2px dashed var(--rule); padding: 14px 0; }
+  .rc-stage:first-of-type { border-top: 0; }
+  .rc-stage h3 { margin: 0 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .rc-kv { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 12px; font-size: 14px; margin: 8px 0; }
+  .rc-kv dt { color: var(--muted); font-weight: 700; }
+  .rc-kv dd { margin: 0; overflow-wrap: anywhere; }
+  .rc table { font-size: 13px; }
+  .rc-ok { color: #12703a; font-weight: 900; }
+  .rc-bad { color: #b3261e; font-weight: 900; }
+  :root[data-theme="dark"] .rc-ok { color: #7fe0a6; } :root[data-theme="dark"] .rc-bad { color: #ff9a8f; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rc-ok { color: #7fe0a6; } :root:not([data-theme="light"]) .rc-bad { color: #ff9a8f; } }
+  @media (max-width: 560px) { .rc-kv { grid-template-columns: 1fr; } .rc-kv dt { margin-top: 6px; } }
+  @media print {
+    header, nav, .topbar, .crumbs, .no-print, footer, .flash, .banner { display: none !important; }
+    body { background: #fff !important; color: #000 !important; }
+    .card { box-shadow: none !important; border: 1.5px solid #000 !important; background: #fff !important; break-inside: avoid; }
+    .rc-seal { background: #fff !important; }
+    a { color: #000 !important; text-decoration: none !important; }
+  }
+</style>
+<div class="rc">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span class="sep">/</span><a class="mono" href="/ui/w/{{ r.workflow_id }}">{{ r.unit }}</a><span class="sep">/</span><span>Receipt</span></nav>
+
+<section class="card section">
+  <div class="rc-head">
+    <div>
+      <p class="eyebrow"><span class="tick" aria-hidden="true"></span>{{ brand.name }} evidence receipt · {{ r.seller }}</p>
+      <h1 class="mono" style="margin:4px 0">{{ r.unit }}</h1>
+      <p class="lede" style="margin:0">{% if r.final_outcome %}<b>{{ r.final_outcome.outcome | replace('_', ' ') }}</b> · {{ r.final_outcome.reason }}{% else %}No final outcome yet ({{ r.status | replace('_', ' ') | lower }}).{% endif %}
+        {% if r.final_outcome and r.final_outcome.claimable_usd %}<br>Claimable: <b>${{ '%.2f' | format(r.final_outcome.claimable_usd) }}</b>{% endif %}</p>
+    </div>
+    <div class="rc-seal">
+      <b>{% if r.hashes_ok %}<span class="rc-ok">✓ All {{ r.records }} record hashes check out</span>{% elif r.records %}<span class="rc-bad">✗ A record does not match its hash</span>{% else %}No records yet{% endif %}</b>
+      <span class="muted small">Fingerprint (SHA-256)</span>
+      <div class="rc-fp">{{ r.fingerprint }}</div>
+      <span class="muted small">Checked {{ r.exported_at }} for {{ r.exported_by }}</span>
+    </div>
+  </div>
+  <p class="btn-row no-print" style="margin-top:14px">
+    <button class="btn" type="button" onclick="window.print()">🖨 Print or save as PDF</button>
+    <a class="btn alt" href="/ui/w/{{ r.workflow_id }}/receipt.json">⬇ Download JSON</a>
+    <a class="btn alt" href="/ui/w/{{ r.workflow_id }}">Back to the unit</a>
+  </p>
+</section>
+
+<section class="card section">
+  <h2 style="margin-top:0">What each agent decided</h2>
+  {% for s in stages %}
+  <div class="rc-stage">
+    <h3><span aria-hidden="true">{{ s.icon }}</span>{{ s.name }}
+      {% if s.rec %}<span class="chip {{ s.rec.decision.verdict | lower }}">{{ s.rec.decision.verdict }}</span>{% else %}<span class="chip pending">{{ s.sr.state }}</span>{% endif %}
+      {% for o in s.overrides %}<span class="chip pinkc">→ {{ o.new_verdict }} by {{ o.actor }}</span>{% endfor %}</h3>
+    {% if s.rec %}
+    <p style="margin:0">{{ s.rec.decision.reason }}</p>
+    <dl class="rc-kv">
+      <dt>Record</dt><dd class="mono"><a href="/ui/w/{{ r.workflow_id }}/r/{{ s.rec.record_id }}">{{ s.rec.record_id }}</a> · {{ s.rec.agent_id }}</dd>
+      <dt>Content hash</dt><dd class="mono">{{ s.rec.content_hash }} {% if s.ok %}<span class="rc-ok">✓</span>{% else %}<span class="rc-bad">✗ does not match</span>{% endif %}</dd>
+      <dt>Model</dt><dd>{{ s.rec.model.name }}{% if s.rec.model.version %} {{ s.rec.model.version }}{% endif %}{% if s.rec.model.calls is not none %} · {{ s.rec.model.calls }} call(s){% endif %}</dd>
+      <dt>Produced</dt><dd>{{ s.rec.produced_at }}{% if s.rec.operator_id %} · operator {{ s.rec.operator_id }}{% endif %}</dd>
+      {% if s.rec.upstream_refs %}<dt>Built on</dt><dd class="mono">{{ s.rec.upstream_refs | join(', ') }}</dd>{% endif %}
+      {% set photos = s.rec.inputs | selectattr('kind', 'equalto', 'image') | list %}
+      {% if photos %}<dt>Photos</dt><dd>{% for p in photos %}<span class="mono">{{ p.ref }}</span>{% if p.sha256 %} <span class="muted small mono">sha256 {{ p.sha256[:16] }}…</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
+    </dl>
+    {% if s.rec.checks %}
+    <div class="tablewrap"><table>
+      <thead><tr><th>Check</th><th>Verdict</th><th>Expected</th><th>Observed</th></tr></thead>
+      <tbody>{% for c in s.rec.checks %}<tr><td class="mono">{{ c.check_key }}</td><td><span class="chip {{ c.verdict | lower }}">{{ c.verdict }}</span></td><td>{{ c.expected if c.expected is not none else '—' }}</td><td>{{ c.observed if c.observed is not none else '—' }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    {% for o in s.overrides %}<p class="muted small">{{ o.override_id }}: {{ o.actor }} changed {{ o.previous_verdict }} → {{ o.new_verdict }} at {{ o.at }}. Reason: “{{ o.reason }}”. The original record is unchanged.</p>{% endfor %}
+    {% elif s.sr.state == 'skipped' %}<p class="muted" style="margin:0">Not part of this unit's route{% if s.sr.skipped_reason %} ({{ s.sr.skipped_reason }}){% endif %}.</p>
+    {% else %}<p class="muted" style="margin:0">No record yet{% if s.sr.error %}: {{ s.sr.error.message if s.sr.error.message else s.sr.error }}{% endif %}.</p>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<section class="card section">
+  <h2 style="margin-top:0">How to check this receipt</h2>
+  <p class="muted" style="margin:0">{{ r.how_to_check }}</p>
+</section>
+</div>
+{% endblock %}
