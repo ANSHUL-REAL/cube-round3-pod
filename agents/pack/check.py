@@ -19,9 +19,11 @@ from orchestration.orchestrator import discover_inputs
 from . import app as pack
 from .captures import capture_root
 from .orders import resolve_order
+from shared.utils.console import utf8_console
 
 
 def main(argv: list[str] | None = None) -> int:
+    utf8_console()
     ap = argparse.ArgumentParser(prog="python -m agents.pack.check", description=__doc__.split("\n")[0])
     ap.add_argument("photos", nargs="+", help="1 to 3 photos of the open box")
     ap.add_argument("--unit", required=True, help="unit id, e.g. UNIT-0008")

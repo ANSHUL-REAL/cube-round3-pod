@@ -19,11 +19,13 @@ from shared.utils.schema import errors
 
 from .orchestrator import apply_override, default_flow_path, load_flow, resume, run_workflow
 from .store import FileStore
+from shared.utils.console import utf8_console
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
+    utf8_console()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cases", default=str(ROOT / "data/sample/cases.json"))
     ap.add_argument("--case", help="a single case JSON file")

@@ -21,9 +21,11 @@ from orchestration.orchestrator import discover_inputs
 from . import app as receiving
 from .captures import capture_root
 from .orders import resolve_order
+from shared.utils.console import utf8_console
 
 
 def main(argv: list[str] | None = None) -> int:
+    utf8_console()
     ap = argparse.ArgumentParser(prog="python -m agents.receiving.check", description=__doc__.split("\n")[0])
     ap.add_argument("photos", nargs="+", help="1 to 6 photos of the delivery (pallet, carton, unit, barcode)")
     ap.add_argument("--unit", required=True, help="unit id (a PO line in Receiving), e.g. UNIT-0003")

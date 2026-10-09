@@ -19,9 +19,11 @@ from orchestration.orchestrator import discover_inputs
 from . import app as prep
 from .captures import capture_root
 from .workorders import resolve
+from shared.utils.console import utf8_console
 
 
 def main(argv: list[str] | None = None) -> int:
+    utf8_console()
     ap = argparse.ArgumentParser(prog="python -m agents.prep.check", description=__doc__.split("\n")[0])
     ap.add_argument("photos", nargs="+", help="photos of the prepped unit (the first 6 are used)")
     ap.add_argument("--unit", required=True, help="unit id, e.g. UNIT-0002")

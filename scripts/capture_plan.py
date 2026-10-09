@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from shared.utils import sample_data as sd  # noqa: E402
+from shared.utils.console import utf8_console  # noqa: E402
 
 PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
@@ -81,6 +82,7 @@ def plan(unit: str) -> list[tuple[str, int, str]]:
 
 
 def main() -> int:
+    utf8_console()
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--unit", help="one unit instead of the whole demo set")
     ap.add_argument("--check", action="store_true", help="exit 1 if any needed folder is empty")
