@@ -6,6 +6,20 @@
 
 **New here? Read [`START-HERE.md`](START-HERE.md) first.** This README is the concise overview; the detailed rules live in the guides.
 
+## Watch the demo (1 min 51 s)
+
+[![Pod 12 live simulator: five agents, one evidence trail](docs/media/pod12-simulator.jpg)](docs/media/pod12-simulator.mp4)
+
+**[▶ Play the video](docs/media/pod12-simulator.mp4)**: a screen recording of our console on localhost
+(`python scripts/serve.py`, then <http://localhost:8100/ui/sim>). It steps through UNIT-0014 one agent at a time, ends
+in Recovery recommending a $2.00 claim, opens the evidence record behind it, then a person overrides Prep to FAIL and
+Recovery runs again and withdraws the claim. The last part runs our real Receiving agent live, before any photo is taken,
+and it records "no capture" instead of guessing.
+
+Honest note: in the UNIT-0014 story the organisers' recorded evidence answers for Receiving, Prep and Returns and our
+real Recovery agent decides; the console labels this as a replay on every page. To run it yourself, see
+[docs/LIVE-DEMO.md](docs/LIVE-DEMO.md).
+
 ## Pod 12: what is built, and what is not
 
 Five agents plus the orchestrator, one `agents/<stage>/` folder each. Every stage is a real agent that reads photos (or, for Recovery, the fee report and all earlier evidence) and returns a Round 3 Evidence Record. **No stage is a stub.**
