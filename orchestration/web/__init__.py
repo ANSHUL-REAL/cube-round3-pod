@@ -34,6 +34,10 @@ from ..orchestrator import (WorkflowConflict, apply_override, load_flow, restart
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 templates = Jinja2Templates(directory=str(HERE / "templates"))
+from . import brand as _brand  # noqa: E402
+
+templates.env.filters["org"] = _brand.org_name  # {{ wf.org_id | org }} -> "Alpha Retail"
+templates.env.globals["brand"] = _brand.context()["brand"]
 
 STAGES = {
     "receiving": ("📥", "Receiving", "Checks the delivery against the purchase order"),
@@ -283,7 +287,53 @@ def home(request: Request):
     rows = [_unit_row(c, workflows) for c in _cases()]
     demo = [r for r in rows if r["unit"] in DEMO]
     demo.sort(key=lambda r: list(DEMO).index(r["unit"]))
-    return _render(request, "home.html", demo=demo, rows=rows, total=len(rows), stub_mode=stub_mode())
+    return _render(request, "home.html", demo=demo, rows=rows, total=len(rows), stub_mode=stub_mode(), nav="home",
+                   kpi=_kpis(list(workflows.values()), len(rows)), recent=_recent(), agents=_agent_status())
+
+
+def _kpis(wfs: list[dict], units: int) -> dict:
+    """The dashboard's numbers, for the orgs the person asking may see."""
+    outcome = lambda w: (w.get("final_outcome") or {}).get("outcome")  # noqa: E731
+    by_stage: dict[str, dict[str, int]] = {s: {"PASS": 0, "FAIL": 0, "UNCERTAIN": 0, "error": 0} for s in STAGES}
+    claim_usd = 0.0
+    for w in wfs:
+        for sr in w["stage_results"]:
+            if sr["stage"] in by_stage:
+                if sr["state"] == "error":
+                    by_stage[sr["stage"]]["error"] += 1
+                elif sr["state"] == "completed" and sr.get("verdict") in by_stage[sr["stage"]]:
+                    by_stage[sr["stage"]][sr["verdict"]] += 1
+        if outcome(w) == "CLAIM_RECOMMENDED":
+            claim_usd += float((w.get("final_outcome") or {}).get("claimable_usd") or 0)
+    return {
+        "units": units, "workflows": len(wfs),
+        "clean": sum(1 for w in wfs if outcome(w) == "CLEAN"),
+        "exceptions": sum(1 for w in wfs if outcome(w) == "EXCEPTION"),
+        "claims": sum(1 for w in wfs if outcome(w) == "CLAIM_RECOMMENDED"), "claim_usd": round(claim_usd, 2),
+        "review": sum(1 for w in wfs if w.get("status") in ("BLOCKED", "NEEDS_REVIEW")),
+        "failed": sum(1 for w in wfs if w.get("status") in ("FAILED", "INCOMPLETE")),
+        "running": sum(1 for w in wfs if w.get("status") in ("IN_PROGRESS", "PENDING")),
+        "by_stage": by_stage,
+    }
+
+
+def _recent(limit: int = 8) -> list[dict]:
+    """Latest audit lines the person may see: everything for the admin, their own org's for an org's code."""
+    from .access import audit_log, current
+
+    who = current()
+    if who.orgs is None:
+        return audit_log(limit)
+    if len(who.orgs) == 1:
+        return audit_log(limit, org=next(iter(who.orgs)))
+    return []
+
+
+def _agent_status() -> dict:
+    try:
+        return _api().health()["agents"]
+    except Exception:  # the dashboard renders even if a health probe fails
+        return {}
 
 
 @router.post("/ui/run")
