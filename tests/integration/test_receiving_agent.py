@@ -18,7 +18,7 @@ from PIL import Image
 from agents.receiving import app as rcv
 from agents.receiving import vision
 from agents.receiving.config import Settings
-from agents.receiving.models import Observation, OrderError, Perception, PurchaseOrderLine
+from agents.receiving.models import Observation, OrderError, Perception, PurchaseOrderLine, tokens
 from agents.receiving.orders import resolve_order
 from agents.receiving.vision import GeminiPerceiver, PerceptionError
 from orchestration.orchestrator import discover_inputs
@@ -184,6 +184,20 @@ def test_spellings_of_the_same_thing_are_not_flagged(tmp_path, monkeypatch):
     po = po_for("UNIT-0002", ALPHA)  # cream, 3-pack, "candle x3;gift box"
     obs = clean(po, observed_colour=" Cream ", observed_variant="pack of 3", observed_components=["Soy candle", "gift box"])
     assert by_key(inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, obs)[0])["quality_flags"]["verdict"] == "PASS"
+
+
+def test_a_plural_names_the_same_component_but_a_missing_word_is_still_missing(tmp_path, monkeypatch):
+    """'candles' is the required 'candle x3'; a plain 'box' is not the required 'gift box'."""
+    po = po_for("UNIT-0002", ALPHA)  # "candle x3;gift box"
+    obs = clean(po, observed_components=["candles", "Gift Boxes"])
+    assert by_key(inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, obs)[0])["quality_flags"]["verdict"] == "PASS"
+    out, _ = inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, clean(po, observed_components=["candles", "box"]))
+    assert out["evidence"]["payload"]["missing_components"] == ["gift box"]
+
+
+def test_singular_keeps_words_that_only_look_plural():
+    assert tokens("candles") == tokens("candle") and tokens("boxes") == tokens("box")
+    assert tokens("batteries") == {"battery"} and tokens("glass") == {"glass"} and tokens("gas") == {"gas"}
 
 
 def test_unit_water_damage_fails_only_the_unit_check(tmp_path, monkeypatch):

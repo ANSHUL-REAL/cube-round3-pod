@@ -105,7 +105,18 @@ def norm_id(text: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (text or "").upper())
 
 
+def _singular(w: str) -> str:
+    """'candles' == 'candle', 'boxes' == 'box', 'batteries' == 'battery'; 'glass' and short words are left alone."""
+    if len(w) <= 3 or w.endswith(("ss", "us", "is")):
+        return w
+    if w.endswith("ies"):
+        return w[:-3] + "y"
+    if w.endswith(("xes", "ches", "shes", "sses", "zes")):
+        return w[:-2]
+    return w[:-1] if w.endswith("s") else w
+
+
 def tokens(text: str | None) -> frozenset[str]:
-    """Order-insensitive words, with a trailing quantity ('x2') and the filler word 'of' dropped."""
+    """Order-insensitive singular words, with a trailing quantity ('x2') and the filler word 'of' dropped."""
     t = re.sub(r"\bx\s*\d+\b", " ", (text or "").lower())
-    return frozenset(w for w in re.findall(r"[a-z0-9]+", t) if w != "of")
+    return frozenset(_singular(w) for w in re.findall(r"[a-z0-9]+", t) if w != "of")
