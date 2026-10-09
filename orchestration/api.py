@@ -55,7 +55,7 @@ def _restore() -> None:
         db.restore_files()
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])  # HEAD: uptime monitors
 def health() -> dict:
     agents = {}
     for stage in flow_stages(load_flow(FLOW)):

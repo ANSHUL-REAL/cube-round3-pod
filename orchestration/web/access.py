@@ -344,7 +344,8 @@ async def guard(request: Request, call_next):
         if acc.role == "anon" and not (path in PUBLIC or path.startswith("/ui/static/")):
             api = not (path == "/" or path.startswith(("/ui", "/admin")))
             if request.method == "GET" and not api:
-                return RedirectResponse(f"/join?next={quote(path)}", status_code=303)
+                to = "/login" if path.startswith("/admin") else "/join"  # the admin page asks for the admin password
+                return RedirectResponse(f"{to}?next={quote(path)}", status_code=303)
             if api:
                 return JSONResponse({"detail": "sign in: Authorization: Bearer <access code>"}, status_code=401)
             return Response("access code required", status_code=403)

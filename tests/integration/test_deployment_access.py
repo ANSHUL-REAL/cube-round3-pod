@@ -62,7 +62,8 @@ def test_a_stranger_gets_nothing_but_health(deployed):
     c = remote()
     assert c.get("/health").status_code == 200, "organisers' /health stays public"
     assert c.get("/").headers["location"].startswith("/join")
-    assert c.get("/admin").headers["location"].startswith("/join")
+    assert c.get("/admin").headers["location"].startswith("/login"), "the admin page asks for the admin password"
+    assert c.head("/health").status_code == 200, "uptime monitors use HEAD"
     assert c.get("/whoami").status_code == 401
     assert c.get("/workflows").status_code == 401
     assert c.post("/workflows", json={"org_id": ALPHA, "unit_id": A_UNIT}).status_code == 401
