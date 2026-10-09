@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Add a unit · {{ brand.name }}{% endblock %}
+{% block body %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span class="sep">/</span><span>Add a unit</span></nav>
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>New unit</p>
+    <h1>Add a unit</h1>
+    <p class="lede">Type in the order. Every agent checks its photos against what you write here: the delivery against the purchase order, the box against the customer's order, the prepped unit against the work order. The agents never see these answers; they compare after they look.</p>
+  </div>
+</div>
+
+<form method="post" action="/ui/units" class="unit-form">
+  <section class="card section">
+    <div class="card-head"><span class="icon" aria-hidden="true">🏷️</span><h2 class="grow">Seller and product</h2></div>
+    <div class="uf-grid">
+      <label><span>Seller</span>
+        {% if orgs | length == 1 %}<input type="hidden" name="org" value="{{ orgs[0] }}"><input value="{{ orgs[0] | org }}" disabled>
+        {% else %}<select name="org" required>{% for o in orgs %}<option value="{{ o }}" {{ 'selected' if o == org }}>{{ o | org }}</option>{% endfor %}</select>{% endif %}
+        <small>Only this seller's people will see the unit</small></label>
+      <label class="wide"><span>Product</span>
+        <select name="sku" id="uf-sku" required>
+          {% for p in products %}<option value="{{ p.sku }}" {{ 'selected' if p.sku == sku }}>{{ p.title }} · {{ p.sku }}</option>{% endfor %}
+          <option value="__new__" {{ 'selected' if sku == '__new__' }}>➕ A new product…</option>
+        </select>
+        <small>From the catalogue, or add one below</small></label>
+    </div>
+    <fieldset class="uf-new" id="uf-new">
+      <legend>New product</legend>
+      <div class="uf-grid">
+        <label><span>Name</span><input name="title" maxlength="80" placeholder="Ceramic Planter"><small>As the seller lists it</small></label>
+        <label><span>Colour</span><input name="colour" maxlength="40" placeholder="terracotta"></label>
+        <label><span>Variant or size</span><input name="variant" maxlength="40" placeholder="15 cm"></label>
+        <label class="wide"><span>Parts in one unit</span><input name="components" maxlength="400" placeholder="planter, saucer"><small>Separate with commas; Receiving checks each is there</small></label>
+        <label class="wide"><span>What one unit looks like</span><input name="looks" maxlength="200" placeholder="one terracotta pot standing on a matching saucer"><small>Pack uses this to tell it from other products</small></label>
+      </div>
+    </fieldset>
+  </section>
+
+  <section class="card section">
+    <div class="card-head"><span class="icon" aria-hidden="true">📦</span><h2 class="grow">The delivery (Receiving)</h2></div>
+    <div class="uf-grid">
+      <label><span>Cartons ordered</span><input name="cartons" type="number" min="1" max="500" value="{{ form.cartons or 2 }}" required></label>
+      <label><span>Units per carton</span><input name="per_carton" type="number" min="1" max="10000" value="{{ form.per_carton or 12 }}" required></label>
+      <label><span>Purchase order</span><input name="po_number" maxlength="40" placeholder="PO-auto"><small>Optional</small></label>
+      <label><span>Supplier</span><input name="supplier" maxlength="80" placeholder="Supplier"><small>Optional</small></label>
+    </div>
+  </section>
+
+  <section class="card section">
+    <div class="card-head"><span class="icon" aria-hidden="true">🧭</span><h2 class="grow">Where it goes</h2></div>
+    <div class="uf-routes">
+      <label class="uf-route"><input type="radio" name="route" value="mfn" {{ 'checked' if form.route != 'fba' }}>
+        <span><b>📦 To a customer</b><small>Pack checks the open box against the customer's order before it is sealed.</small></span></label>
+      <label class="uf-route"><input type="radio" name="route" value="fba" {{ 'checked' if form.route == 'fba' }}>
+        <span><b>🏷️ To Amazon FBA</b><small>Prep checks the labelled, bagged unit against the work order.</small></span></label>
+    </div>
+    <div class="uf-grid uf-mfn">
+      <label><span>Units in the box</span><input name="in_box" type="number" min="1" max="50" value="{{ form.in_box or 1 }}"></label>
+      <label><span>Customer order</span><input name="order_id" maxlength="40" placeholder="ORD-auto"><small>Optional</small></label>
+      <label><span>Sales channel</span><select name="channel">{% for c in ('shopify', 'amazon_mfn', 'ebay', 'website') %}<option>{{ c }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="uf-grid uf-fba">
+      <label><span>FNSKU</span><input name="fnsku" maxlength="20" placeholder="X00-auto"><small>Optional</small></label>
+      <label><span>FBA shipment</span><input name="shipment" maxlength="40" placeholder="FBA-auto"><small>Optional</small></label>
+      <div class="uf-checks wide"><span class="uf-label">The work order asks for</span>
+        <label class="uf-check"><input type="checkbox" name="polybag" value="1"> Polybag with a suffocation warning</label>
+        <label class="uf-check"><input type="checkbox" name="expiry" value="1"> An expiry date on the unit</label>
+        {% for m, label in (('fragile', 'A "Fragile" mark'), ('this_way_up', 'A "This way up" mark'), ('keep_dry', 'A "Keep dry" mark')) %}
+        <label class="uf-check"><input type="checkbox" name="mark_{{ m }}" value="1"> {{ label }}</label>{% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="card section">
+    <div class="card-head"><span class="icon" aria-hidden="true">↩️</span><h2 class="grow">Returned?</h2></div>
+    <label class="uf-check"><input type="checkbox" name="returned" value="1" {{ 'checked' if form.returned }}> The customer sent it back: add a Returns step</label>
+    <p class="muted small">Returns compares the parcel with a reference photo of the product as sold. A product without one gets a clear "no reference" answer, and its photo page lets you add one.</p>
+  </section>
+
+  <p class="btn-row section"><button class="btn" type="submit">Add the unit and take photos →</button><a class="btn alt" href="/">Cancel</a></p>
+</form>
+<script>
+(function () {
+  var sku = document.getElementById("uf-sku"), box = document.getElementById("uf-new");
+  function sync() { var on = sku.value === "__new__"; box.hidden = !on; box.querySelector("[name=title]").required = on; }
+  sku.addEventListener("change", sync); sync();
+  var org = document.querySelector("select[name=org]");  // each seller has its own products
+  if (org) org.addEventListener("change", function () { location.href = "/ui/units/new?org=" + encodeURIComponent(org.value); });
+})();
+</script>
+{% endblock %}

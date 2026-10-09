@@ -100,6 +100,13 @@ create table if not exists {SCHEMA}.sellers (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+create table if not exists {SCHEMA}.units (
+    unit_id    text primary key,
+    org_id     text not null,
+    data       jsonb not null,
+    created_by text not null,
+    created_at timestamptz not null default now()
+);
 """
 
 
@@ -171,7 +178,8 @@ def ping() -> dict:
         rows = fetchall(f"select 'workflows', count(*) from {SCHEMA}.workflows union all "
                         f"select 'evidence', count(*) from {SCHEMA}.evidence union all "
                         f"select 'files', count(*) from {SCHEMA}.files union all "
-                        f"select 'audit', count(*) from {SCHEMA}.audit")
+                        f"select 'audit', count(*) from {SCHEMA}.audit union all "
+                        f"select 'units', count(*) from {SCHEMA}.units")
         return {"status": "ok", "rows": {k: n for k, n in rows}}
     except Exception as exc:  # the page must say the database is down, not crash
         return {"status": "down", "detail": type(exc).__name__}
@@ -185,6 +193,8 @@ def area_root(area: str) -> Path:
         return Path(os.environ.get("INPUT_DIR", root / "data" / "input")).resolve()
     if area == "reference":
         return (root / "agents" / "returns" / "reference").resolve()
+    if area == "catalogue":
+        return (root / "agents" / "pack" / "catalogue").resolve()
     if area == "ledger":
         return Path(os.environ.get("PACK_LEDGER_PATH", root / "out" / "pack-ledger.json")).resolve().parent
     raise ValueError(f"unknown file area {area!r}")

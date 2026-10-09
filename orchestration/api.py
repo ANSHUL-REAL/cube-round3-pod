@@ -137,8 +137,11 @@ def create(body: dict) -> dict:
         raise HTTPException(422, "org_id and unit_id must be text made of letters, digits, '.', '_' and '-'")
     if not current().sees(org):  # a code for one org cannot start (or learn about) work for another
         raise HTTPException(404, f"no org {org} for this access code")
-    case = {"org_id": org, "unit_id": subject, "route": body.get("route") or sample_data.route(subject, org),
-            "returned": body.get("returned", sample_data.has("returns", subject, org))}
+    from .web import units  # a unit added from the app carries its own order
+
+    added = next((c for c in units.stored() if c["org_id"] == org and c["unit_id"] == subject), None)
+    case = added or {"org_id": org, "unit_id": subject, "route": body.get("route") or sample_data.route(subject, org),
+                     "returned": body.get("returned", sample_data.has("returns", subject, org))}
     try:
         return run_workflow(case, load_flow(FLOW), STORE)
     except WorkflowConflict as exc:

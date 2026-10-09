@@ -28,6 +28,7 @@
   </div>
   <div class="ph-actions">
     <a class="btn alt" href="/ui/review">Review queue{% if kpi.review %} <span class="count">{{ kpi.review }}</span>{% endif %}</a>
+    {% if not who.stage %}<a class="btn alt" href="/ui/units/new">＋ Add a unit</a>{% endif %}
     <a class="btn" href="/ui/sim">▶ Run the demo</a>
   </div>
 </div>
@@ -98,7 +99,7 @@
       <label class="searchbox"><span class="sr-only">Filter units</span><input type="text" class="filter" data-filter="#all tbody tr" data-count="#units-count" placeholder="Filter: unit, seller, route, status…"></label></div>
   </div>
   {% if not rows %}
-  <div class="card"><div class="empty"><span class="big-ico" aria-hidden="true">📦</span><b>No units yet</b>This seller's units appear here once its orders are imported. Then each step's photos can be added and the agents run.</div></div>
+  <div class="card"><div class="empty"><span class="big-ico" aria-hidden="true">📦</span><b>No units yet</b>Add a unit from an order: what was bought, how it arrives, and where it goes. Then add each step's photos and run the agents.{% if not who.stage %}<p class="btn-row" style="justify-content:center;margin-top:14px"><a class="btn" href="/ui/units/new">＋ Add a unit</a></p>{% endif %}</div></div>
   {% else %}
   <div class="card table-card">
     <div class="tablewrap" id="all">

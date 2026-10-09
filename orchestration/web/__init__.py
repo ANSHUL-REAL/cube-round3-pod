@@ -119,8 +119,15 @@ def _wf_clients(wf_id: str) -> dict | None:
 
 
 @lru_cache(maxsize=1)
-def _all_cases() -> list[dict]:
+def _sample_cases() -> list[dict]:
     return json.loads((ROOT / "data" / "sample" / "cases.json").read_text())
+
+
+def _all_cases() -> list[dict]:
+    """Every unit: the sample units, then the ones added from the app (web/units.py), which carry their own order."""
+    from . import units
+
+    return _sample_cases() + units.stored()
 
 
 def _cases() -> list[dict]:
@@ -164,7 +171,27 @@ def _stages_for(case: dict) -> list[str]:
     return ["receiving", "prep" if case["route"] == "fba" else "pack", *(["returns"] if case["returned"] else [])]
 
 
+def _added_shoot(stage: str, case: dict) -> str | None:
+    """Photo directions for a unit added from the app, from its own order (the sample units' come from the CSVs)."""
+    o = case.get("order") or {}
+    item, parts = o.get("product_title") or "the product", ", ".join(o.get("spec_components") or [])
+    if stage == "receiving":
+        return (f"The delivery: all {o.get('cartons_ordered')} carton(s) together with their labels showing, then one "
+                f"{item} up close{f' with its parts ({parts})' if parts else ''}.")
+    if stage == "pack":
+        return (f"The open box from above before it is sealed, every item visible. The order is "
+                f"{o.get('lines', '').split(':')[-1]} x {item}.")
+    if stage == "prep":
+        return f"The prepped {item}: front, back, and the FNSKU label ({o.get('fnsku')}) close enough to read."
+    if stage == "returns":
+        return f"The returned parcel opened, with the {item} and every part it came with laid out."
+    return None
+
+
 def _what_to_shoot(stage: str, unit: str, org: str) -> str:
+    case = next((c for c in _all_cases() if c["org_id"] == org and c["unit_id"] == unit and c.get("order")), None)
+    if case and (text := _added_shoot(stage, case)):
+        return text
     try:
         return importlib.import_module("scripts.capture_plan").what_to_shoot(stage, unit, org)
     except Exception:  # the helper reads sample CSVs; a missing row must not break the page
@@ -539,12 +566,75 @@ def state_view(workflow_id: str):
             "final_outcome": wf.get("final_outcome")}
 
 
+# ---------------------------------------------------------------- adding units
+def _unit_orgs() -> list[str]:
+    """The sellers the person asking may add a unit to: every seller for the admin, their own for a seller's code."""
+    from .access import current
+
+    who = current()
+    return sorted(o for o in {c["org_id"] for c in _all_cases()} | set(_brand.org_names()) if who.sees(o))
+
+
+@router.get("/ui/units/new", response_class=HTMLResponse)
+def unit_new(request: Request, org: str = ""):
+    from . import units
+    from .access import current
+
+    if current().stage:
+        raise HTTPException(403, f"This code is for the {current().stage} station only.")
+    orgs = _unit_orgs()
+    if not orgs:
+        raise HTTPException(404, "no seller to add a unit to")
+    org = org if org in orgs else orgs[0]
+    return _render(request, "unit_new.html", orgs=orgs, org=org, products=units.products(org),
+                   sku=request.query_params.get("sku", ""), form={}, nav="home")
+
+
+@router.post("/ui/units")
+async def unit_add(request: Request):
+    """A seller's order typed in: a new unit whose order every agent checks its photos against."""
+    from . import units
+    from .access import audit, current
+
+    form = {k: v for k, v in (await request.form()).items() if isinstance(v, str)}
+    org = form.get("org", "")
+    if org not in _unit_orgs():
+        raise HTTPException(404, "no such seller")
+    who = current()
+    again = f"/ui/units/new?org={org}"
+    try:
+        units.build_case(org, "UNIT-0000", {"sku": "SKU-CHECK", "title": "check"}, form, who.name)  # the numbers, first
+        if form.get("sku") == "__new__":
+            item = units.add_product(org, form.get("title", ""), form.get("colour", ""), form.get("variant", ""),
+                                     form.get("components", ""), form.get("looks", ""))
+        else:
+            item = next((p for p in units.products(org) if p["sku"] == form.get("sku")), None)
+            if item is None:
+                raise units.UnitError("Choose a product from the list.")
+        for _ in range(5):  # another worker may take the same next id: take the one after
+            unit_id = units.next_unit_id({c["unit_id"] for c in _all_cases()})
+            case = units.build_case(org, unit_id, item, form, who.name)
+            if units.save(case, who.name):
+                break
+        else:
+            raise units.UnitError("Could not pick a free unit id; try again.")
+    except units.UnitError as exc:
+        return _back(again, str(exc), bad=True)
+    audit("unit_added", unit_id, org=org, product=item["sku"], route=case["route"], returned=case["returned"],
+          qty=case["order"]["qty_ordered"])
+    where = "Pack" if case["route"] == "mfn" else "Prep"
+    return _back(f"/ui/capture/{org}/{unit_id}",
+                 f"{unit_id} added: {item['title']}, {case['order']['qty_ordered']} units, Receiving then {where}"
+                 f"{' then Returns' if case['returned'] else ''}. Add each step's photos, then run it.")
+
+
 # ---------------------------------------------------------------- photos
 def _reference(org: str, unit: str) -> dict | None:
     """Returns judges only a product that has a reference photo on its card (agents/returns/onboard.py). For a returned
     unit: which product was ordered, and how many reference photos its card holds."""
+    given = next((c.get("return") for c in _cases() if c["org_id"] == org and c["unit_id"] == unit), None)
     try:
-        sku = sample_data.row("returns", unit, org)["ordered_sku"]
+        sku = given["ordered_sku"] if given else sample_data.row("returns", unit, org)["ordered_sku"]
     except LookupError:
         return None
     from agents.returns.core.refs import load_card

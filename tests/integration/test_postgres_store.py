@@ -139,3 +139,17 @@ def test_sellers_added_on_the_admin_page_live_in_the_database(pg):
     brand.save_seller("org_demo_bravo", "Bravo Wholesale", "admin")
     assert brand.org_name("org_demo_bravo") == "Bravo Wholesale"
     brand._CACHE[1] = None
+
+
+def test_units_added_from_the_app_live_in_the_database(pg):
+    from orchestration.web import units
+
+    units._CACHE[1] = None
+    item = next(p for p in units.products(ALPHA) if p["sku"] == "SKU-CABLE-USBC")
+    case = units.build_case(ALPHA, "UNIT-0101", item, {"cartons": "1", "per_carton": "10", "route": "mfn"}, "admin")
+    assert units.save(case, "admin") is True
+    assert units.save(case, "admin") is False, "an id taken by another worker is refused, not overwritten"
+    units._CACHE[1] = None  # as another worker would read it
+    assert units.stored() == [case]
+    assert db.ping()["rows"]["units"] == 1
+    units._CACHE[1] = None

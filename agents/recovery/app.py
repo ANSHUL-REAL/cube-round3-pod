@@ -48,11 +48,20 @@ def _flow() -> list[str] | None:
         return None
 
 
+def _ordered_here(request: dict) -> bool:
+    """A unit added from the app has no sample row: it is known when the request carries its order (or its return)
+    under the unit's own organisation, the same test the other agents apply before reading an order."""
+    subject = request["subject"]
+    case = (request.get("context") or {}).get("case") or {}
+    return any(isinstance(case.get(k), dict) and case[k].get("org_id") == subject["org_id"]
+               and case[k].get("unit_id", subject["subject_id"]) == subject["subject_id"] for k in ("order", "return"))
+
+
 def _decide(request: dict) -> dict:
     t0 = time.monotonic()
     subject = request["subject"]
     org_id, unit_id = subject["org_id"], subject["subject_id"]
-    if not fees.known_subject(unit_id, org_id):
+    if not (fees.known_subject(unit_id, org_id) or _ordered_here(request)):
         raise LookupError(f"unknown subject {unit_id} in {org_id}")  # tenancy: refuse, never answer "no claim"
     evidence = Evidence(request)  # LookupError if it carries another organisation's evidence
     lines = fees.lines_for(unit_id, org_id)
