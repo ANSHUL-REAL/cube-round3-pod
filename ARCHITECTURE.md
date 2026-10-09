@@ -187,7 +187,10 @@ Enforced in three places: every agent refuses another organisation's unit (`Look
 refuses evidence whose subject or organisation is not the workflow's (D-O02); photo inputs must sit in the unit's own
 folder, by hash. Workflow ids are validated before they touch the file system. Tested per agent
 (`tests/integration/test_*_agent.py`), in `tests/integration/test_*_hardening.py`, and by `scripts/evaluate.py`
-(a `wrong_tenant` injection on every stage, 100 units each). **There is no sign-in:** run the console on 127.0.0.1.
+(a `wrong_tenant` injection on every stage, 100 units each). On the deployment, a fourth place: every page, photo
+and API call is checked against the org(s) of the signed-in access code, and the store's list queries name those orgs,
+so another org's case, workflow, record or photo answers 404 (`orchestration/web/access.py`,
+`tests/integration/test_deployment_access.py`).
 
 ### 6. Failure model
 
@@ -195,11 +198,19 @@ folder, by hash. Workflow ids are validated before they touch the file system. T
 organisation) across all 100 sample units: 2,500 workflows, 1,575 of which reach the broken stage, **0 crashes, 0 reported as clean**; every one records the
 error on the right stage and ends FAILED or INCOMPLETE (`docs/evaluation.md`). In the demo: start a live workflow
 with no photo, or with the model key removed, and the stage shows a recorded `no_capture` / `model_not_configured`
-error; the workflow is FAILED, never clean.
+error; the workflow is FAILED, never clean. On the deployment, an admin switches any agent off live (down, timeout or
+contract-breaking output, `orchestration/faults.py`): the stage records the error, the workflow ends FAILED or
+INCOMPLETE, and after the switch is restored, Resume finishes it.
 
 ### 7. Deployment
 
-Not deployed. One command, local, on the submitted commit:
+**Live on Render, state in Supabase Postgres** (`Dockerfile`, `render.yaml`, [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)):
+one container runs the console, the API and the five agents in-process; Postgres (schema `pod12`) holds workflows,
+evidence (write-once), capture and reference photos, the Pack ledger, the audit log, access codes and fault switches.
+The public front page explains the system; the admin signs in with a password, everyone else with their own access
+code (one org, optionally one station), and every step records who ran it.
+
+Locally, one command on the submitted commit, no database, no sign-in:
 
 ```bash
 python scripts/serve.py --data D:/pod12-demo
@@ -214,5 +225,7 @@ git-ignored `.env` (`GEMINI_API_KEY`); without it every model stage records `mod
   boxes); none yet for Receiving, Prep or Returns, and no two-person agreement figure (`docs/evaluation.md`).
 - Prep's rules and Returns' condition scale were not looked up from Amazon's published sources; both say so.
 - The sample data is invented and unlabelled, so claim precision against the truth is unknown.
-- No authentication on the console or the API; no database (files only).
+- One container, one worker: two people pressing Run on the same unit at the same moment can race (the phone
+  stations take turns by design). Photos are stored in Postgres as bytes: fine for a demo, not for production.
+- Access codes and sessions are a demo-grade account system: no per-person passwords, no SSO.
 - A timed-out in-process agent keeps running in its thread until it returns.

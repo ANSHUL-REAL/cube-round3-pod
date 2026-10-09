@@ -61,7 +61,10 @@ def issue(c: TestClient, org: str, label: str = "judges") -> str:
 def test_a_stranger_gets_nothing_but_health(deployed):
     c = remote()
     assert c.get("/health").status_code == 200, "organisers' /health stays public"
-    assert c.get("/").headers["location"].startswith("/join")
+    home = c.get("/")  # the public website: how it works and the two ways in, no data
+    assert home.status_code == 200 and 'href="/join"' in home.text and 'href="/login"' in home.text
+    assert A_UNIT not in home.text and "org_demo_alpha" not in home.text
+    assert c.get("/ui/sim").headers["location"].startswith("/join")
     assert c.get("/admin").headers["location"].startswith("/login"), "the admin page asks for the admin password"
     assert c.head("/health").status_code == 200, "uptime monitors use HEAD"
     assert c.get("/whoami").status_code == 401
@@ -207,3 +210,46 @@ def test_a_wrong_value_in_database_url_stops_the_server_without_printing_it(monk
     monkeypatch.setenv("DATABASE_URL", "postgresql://postgres.x:[YOUR-PASSWORD]@h:5432/postgres")
     with pytest.raises(RuntimeError, match="YOUR-PASSWORD"):
         db.url()
+
+
+def test_a_station_code_runs_only_its_own_step_and_the_step_says_who(deployed, monkeypatch):
+    boss = admin()
+    r = boss.post("/admin/codes", data={"label": "Priya", "org": ALPHA, "role": "operator", "stage": "receiving"})
+    import re
+
+    code = re.search(r'class="bigcode-inline mono"[^>]*>(\d{8})<', r.text).group(1)
+    assert access.list_codes()[0]["stage"] == "receiving"
+    priya = remote()
+    landed = priya.post("/join", data={"code": code})
+    assert landed.headers["location"] == "/ui/station/receiving", "straight to her own station"
+    # her own step: allowed (the station runs the real Receiving agent; no key here, so it answers pending)
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8), (200, 30, 90)).save(buf, "JPEG")
+    ok = priya.post(f"/ui/station/receiving/{ALPHA}/{A_UNIT}", files=[("files", ("p.jpg", buf.getvalue(), "image/jpeg"))])
+    assert ok.status_code == 303
+    # anyone else's step, the whole-unit run, overrides and the API: refused
+    assert priya.post(f"/ui/station/prep/{ALPHA}/{A_UNIT}").status_code == 403
+    assert priya.post("/ui/run", data={"org": ALPHA, "unit": A_UNIT}).status_code == 403
+    assert priya.post("/workflows", json={"org_id": ALPHA, "unit_id": A_UNIT}).status_code == 403
+    assert priya.get(f"/ui/w/WF-{ALPHA}-{A_UNIT}").status_code == 200, "she can still read"
+    wf = api.STORE.load_workflow(f"WF-{ALPHA}-{A_UNIT}")
+    done = [t for t in wf["transitions"] if t["event"] in ("stage_completed", "stage_error") and t["stage"] == "receiving"]
+    assert done and done[-1]["by"] == "Priya", "the step records who ran it"
+    assert "👤 Priya" in priya.get(f"/ui/w/WF-{ALPHA}-{A_UNIT}").text
+
+
+def test_a_pasted_model_key_is_tidied(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", '  GEMINI_API_KEY="AIzaFAKEFAKEFAKE"  ')
+    api._tidy_key()
+    import os
+
+    assert os.environ["GEMINI_API_KEY"] == "AIzaFAKEFAKEFAKE"
+
+
+def test_the_admin_page_says_when_the_model_key_is_missing(deployed):
+    boss = admin()
+    assert "no GEMINI_API_KEY" in boss.get("/admin").text

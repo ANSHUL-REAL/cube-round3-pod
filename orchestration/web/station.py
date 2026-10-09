@@ -91,7 +91,8 @@ def join(request: Request, code: str = Form(...), next: str = Form("/ui/station"
         return RedirectResponse(f"/join?msg={quote('Wrong code. Ask whoever runs the demo.')}&bad=1", status_code=303)
     _WRONG.pop(visitor(request), None)
     audit("signed_in", "access code", acc=acc, org=None if acc.orgs is None else ",".join(sorted(acc.orgs)))
-    resp = RedirectResponse(_safe_next(next), status_code=303)
+    land = f"/ui/station/{acc.stage}" if acc.stage else "/ui/station"  # a station code goes straight to its station
+    resp = RedirectResponse(_safe_next(next, land) if next != "/ui/station" else land, status_code=303)
     set_session(resp, acc, request)
     return resp
 

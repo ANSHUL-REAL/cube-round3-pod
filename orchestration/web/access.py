@@ -41,7 +41,7 @@ PROXY_HEADERS = ("cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-real-ip", "
 SESSION_S = 12 * 3600
 MAX_WRONG = 10
 MAX_WRONG_TOTAL = 50  # from anywhere: a forwarded address can be faked, so the total is capped too
-PUBLIC = ("/join", "/login", "/health", "/favicon.ico")
+PUBLIC = ("/join", "/login", "/health", "/favicon.ico", "/about")  # and GET "/": the website (web.home)
 _WRONG: dict[str, int] = defaultdict(int)
 _SECRET = os.environ.get("SESSION_SECRET") or secrets.token_hex(32)  # no setting: sessions end when the server stops
 _CODES: dict[int, dict] = {}  # issued codes when there is no database (tests, a laptop)
@@ -57,7 +57,13 @@ class Access:
     actor: str = "anonymous"
     team: bool = False  # may see the team code and its QR (the presenter)
     cid: str = ""  # what the session rests on: "admin", "team:<hash>", or an issued code's id
+    stage: str | None = None  # a station code: may run only this agent's step (read-only everywhere else)
     extra: dict = field(default_factory=dict, compare=False)
+
+    @property
+    def name(self) -> str:
+        """For people: "Priya (Pack)" rather than "code:Priya (Pack)"."""
+        return self.actor[5:] if self.actor.startswith("code:") else self.actor
 
     def sees(self, org: str | None) -> bool:
         return self.role != "anon" and (self.orgs is None or org in self.orgs)
@@ -137,7 +143,7 @@ def check_code(code: str) -> Access | None:
     if row is None:
         return None
     orgs = None if row["org_id"] is None else frozenset({row["org_id"]})
-    return Access(row["role"], orgs, f"code:{row['label']}", team=False, cid=str(row["id"]))
+    return Access(row["role"], orgs, f"code:{row['label']}", team=False, cid=str(row["id"]), stage=row.get("stage"))
 
 
 def check_admin(password: str) -> Access | None:
@@ -151,9 +157,9 @@ def _find_code(sha: str) -> dict | None:
     from shared.utils import db
 
     if db.enabled():
-        r = db.fetchone(f"select id, label, org_id, role from {db.SCHEMA}.access_codes where code_sha256=%s "
+        r = db.fetchone(f"select id, label, org_id, role, stage from {db.SCHEMA}.access_codes where code_sha256=%s "
                         f"and revoked_at is null", (sha,))
-        return {"id": r[0], "label": r[1], "org_id": r[2], "role": r[3]} if r else None
+        return {"id": r[0], "label": r[1], "org_id": r[2], "role": r[3], "stage": r[4]} if r else None
     with _LOCK:
         return next((dict(c) for c in _CODES.values() if c["sha"] == sha and not c["revoked_at"]), None)
 
@@ -175,12 +181,18 @@ def _code_alive(cid: int) -> bool:
 
 
 # ---------------------------------------------------------------- issued codes (admin page)
-def issue_code(label: str, org_id: str | None, role: str = "operator") -> str:
-    """Make a new 8-digit code for `org_id` (None: every org). Returns the code; only its hash is kept."""
+STATIONS = ("receiving", "prep", "pack", "returns", "recovery")
+
+
+def issue_code(label: str, org_id: str | None, role: str = "operator", stage: str | None = None) -> str:
+    """Make a new 8-digit code for `org_id` (None: every org), optionally for one station only. Returns the code;
+    only its hash is kept. `label` is the person's name: it is what the audit log and every step they run show."""
     from shared.utils import db
 
     if role not in ("operator", "admin"):
         raise ValueError("role must be operator or admin")
+    if stage is not None and (stage not in STATIONS or role == "admin"):
+        raise ValueError("a station code is an operator code for one of the five stations")
     label = " ".join((label or "").split())[:60] or "unnamed"
     for _ in range(20):
         code = f"{secrets.randbelow(10**8):08d}"
@@ -188,12 +200,12 @@ def issue_code(label: str, org_id: str | None, role: str = "operator") -> str:
         if _find_code(sha) is not None or code == lan_code():
             continue
         if db.enabled():
-            db.execute(f"insert into {db.SCHEMA}.access_codes (label, org_id, role, code_sha256, created_by) "
-                       f"values (%s,%s,%s,%s,%s)", (label, org_id, role, sha, current().actor))
+            db.execute(f"insert into {db.SCHEMA}.access_codes (label, org_id, role, code_sha256, created_by, stage) "
+                       f"values (%s,%s,%s,%s,%s,%s)", (label, org_id, role, sha, current().actor, stage))
         else:
             with _LOCK:
                 cid = max(_CODES, default=0) + 1
-                _CODES[cid] = {"id": cid, "label": label, "org_id": org_id, "role": role, "sha": sha,
+                _CODES[cid] = {"id": cid, "label": label, "org_id": org_id, "role": role, "sha": sha, "stage": stage,
                                "created_by": current().actor, "created_at": db.now(), "revoked_at": None}
         return code
     raise RuntimeError("could not find a free code")
@@ -203,11 +215,12 @@ def list_codes() -> list[dict]:
     from shared.utils import db
 
     if db.enabled():
-        rows = db.fetchall(f"select id, label, org_id, role, created_by, created_at, revoked_at from "
+        rows = db.fetchall(f"select id, label, org_id, role, created_by, created_at, revoked_at, stage from "
                            f"{db.SCHEMA}.access_codes order by id desc")
-        return [{"id": i, "label": lb, "org_id": o, "role": r, "created_by": by,
+        return [{"id": i, "label": lb, "org_id": o, "role": r, "created_by": by, "stage": st,
                  "created_at": at.strftime("%Y-%m-%d %H:%M UTC"),
-                 "revoked_at": rv.strftime("%Y-%m-%d %H:%M UTC") if rv else None} for i, lb, o, r, by, at, rv in rows]
+                 "revoked_at": rv.strftime("%Y-%m-%d %H:%M UTC") if rv else None}
+                for i, lb, o, r, by, at, rv, st in rows]
     with _LOCK:
         return [{k: v for k, v in c.items() if k != "sha"} for c in sorted(_CODES.values(), key=lambda c: -c["id"])]
 
@@ -238,7 +251,7 @@ def _unb64(s: str) -> bytes:
 
 def session_token(acc: Access) -> str:
     body = _b64(json.dumps({"r": acc.role, "o": None if acc.orgs is None else sorted(acc.orgs), "a": acc.actor,
-                            "t": acc.team, "c": acc.cid, "x": int(time.time()) + SESSION_S}).encode())
+                            "t": acc.team, "c": acc.cid, "s": acc.stage, "x": int(time.time()) + SESSION_S}).encode())
     return f"{body}.{_b64(hmac.new(_SECRET.encode(), body.encode(), hashlib.sha256).digest())}"
 
 
@@ -261,7 +274,8 @@ def from_token(token: str) -> Access | None:
             return None
     elif not (cid.isdigit() and _code_alive(int(cid))):
         return None
-    return Access(p["r"], None if p.get("o") is None else frozenset(p["o"]), p.get("a", "?"), bool(p.get("t")), cid)
+    return Access(p["r"], None if p.get("o") is None else frozenset(p["o"]), p.get("a", "?"), bool(p.get("t")), cid,
+                  stage=p.get("s"))
 
 
 def set_session(resp: Response, acc: Access, request: Request) -> None:
@@ -326,6 +340,18 @@ def audit_log(limit: int = 200, org: str | None = None) -> list[dict]:
 
 
 # ---------------------------------------------------------------- the middleware
+def station_may(stage: str, path: str) -> bool:
+    """What a station code may change: photos and the run of its own step, nothing else (it can still read)."""
+    import re
+
+    s = re.escape(stage)
+    allowed = (rf"^/ui/station/{s}/[^/]+/[^/]+(/reference)?$", rf"^/ui/capture/[^/]+/[^/]+/{s}(/delete)?$",
+               r"^/logout$", r"^/join$")
+    if stage == "returns":
+        allowed += (r"^/ui/reference/[^/]+/[^/]+$",)  # the product-as-sold photo Returns judges against
+    return any(re.match(a, path) for a in allowed)
+
+
 def _org_in(path: str) -> str | None:
     from . import _all_cases
 
@@ -341,7 +367,8 @@ async def guard(request: Request, call_next):
     token = _CURRENT.set(acc)
     try:
         path = request.url.path
-        if acc.role == "anon" and not (path in PUBLIC or path.startswith("/ui/static/")):
+        public = path in PUBLIC or path.startswith("/ui/static/") or (path == "/" and request.method == "GET")
+        if acc.role == "anon" and not public:
             api = not (path == "/" or path.startswith(("/ui", "/admin")))
             if request.method == "GET" and not api:
                 to = "/login" if path.startswith("/admin") else "/join"  # the admin page asks for the admin password
@@ -349,11 +376,21 @@ async def guard(request: Request, call_next):
             if api:
                 return JSONResponse({"detail": "sign in: Authorization: Bearer <access code>"}, status_code=401)
             return Response("access code required", status_code=403)
+        if acc.stage and request.method == "POST" and not station_may(acc.stage, path):
+            if path.startswith(("/workflows", "/evidence")):
+                return JSONResponse({"detail": f"this code is for the {acc.stage} station only"}, status_code=403)
+            return Response(f"This code is for the {acc.stage} station only.", status_code=403)
         if path.startswith("/admin") and not acc.is_admin and path != "/admin/login":
             if request.method == "GET":
                 return RedirectResponse(f"/login?next={quote(path)}", status_code=303)
             return Response("admin only", status_code=403)
-        resp = await call_next(request)
+        from orchestration.orchestrator import ACTOR
+
+        actor_token = ACTOR.set(acc.name if guard_on() and acc.role != "anon" else None)
+        try:
+            resp = await call_next(request)
+        finally:
+            ACTOR.reset(actor_token)
         if request.method in ("POST", "PUT", "PATCH", "DELETE") and path not in ("/join", "/login") and guard_on():
             await run_in_threadpool(lambda: audit("request", f"{request.method} {path}", status=resp.status_code,
                                                   org=_org_in(path), acc=acc))

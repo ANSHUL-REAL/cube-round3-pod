@@ -86,6 +86,7 @@ create table if not exists {SCHEMA}.access_codes (
     created_at  timestamptz not null default now(),
     revoked_at  timestamptz
 );
+alter table {SCHEMA}.access_codes add column if not exists stage text;
 create table if not exists {SCHEMA}.faults (
     stage  text primary key,
     mode   text not null,

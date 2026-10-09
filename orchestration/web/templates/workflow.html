@@ -43,6 +43,7 @@
       {% if s.verdict %}<span class="chip {{ s.verdict | lower }}">{{ s.verdict | lower }}</span>{% endif %}
       {% if s.outcome %}<span class="chip {{ s.outcome | lower }}">{{ s.outcome | replace('_', ' ') }}</span>{% endif %}
       {% if s.needs_human %}<span class="chip pending_review">needs a person</span>{% endif %}
+      {% if s.run_by and s.state != 'pending' %}<span class="chip" title="signed in when this step ran">👤 {{ s.run_by }}</span>{% endif %}
     </div>
     {% if s.overridden %}<div class="override-note">👤 <b>{{ s.overridden.actor }}</b> changed this to <span class="chip {{ s.overridden.new_verdict | lower }}">{{ s.overridden.new_verdict | lower }}</span><br><span class="muted small">“{{ s.overridden.reason }}” · the agent's own record is unchanged</span></div>{% endif %}
     {% if s.stage == next_stage %}<div class="upnext">Up next</div>{% endif %}
@@ -115,6 +116,7 @@
       <ol class="timeline">{% for t in timeline %}
         <li class="ev-{{ t.event }}"><span class="mono when">{{ t.at[11:19] if t.at else '' }}</span>
           <b>{{ t.event | replace('_', ' ') }}</b>{% if t.stage %} · {{ stages_meta[t.stage][0] if t.stage in stages_meta }} {{ t.stage }}{% endif %}
+          {% if t.by %} · <span class="small">👤 {{ t.by }}</span>{% endif %}
           {% if t.detail %}<div class="muted small">{{ t.detail }}</div>{% endif %}</li>{% endfor %}
       </ol>{% if wf.transitions | length > 40 %}<p class="muted small">Showing the latest 40. The full trail is in <a href="/ui/w/{{ wf.workflow_id }}/state">the workflow file</a>.</p>{% endif %}
     </details>

@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pod 12 · Five agents, one evidence trail</title>
+<meta name="description" content="Pod 12, CUBE Buildathon 2026 Grand Finale: five agents check one warehouse unit from delivery to reimbursement claim, and every decision is backed by photos and a sealed evidence record.">
+<script>
+  try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700;800;900&display=swap">
+<link rel="stylesheet" href="/ui/static/ui.css?v={{ asset_v }}">
+<link rel="stylesheet" href="/ui/static/landing.css?v={{ asset_v }}">
+</head>
+{#- Public front page: GET / for anyone not signed in, /about for everyone. Facts only: every number is live (stats)
+    or comes from docs/evaluation.md. -#}
+{%- set hcls = {'ok': 'pass', 'degraded': 'uncertain'}.get(health, 'l-n') -%}
+{%- set dcls = {'ok': 'pass', 'down': 'fail'}.get(stats.database, 'l-n') -%}
+{%- macro stage_card(key, n, route, engine, extra='') -%}
+  {%- set m = stages_meta[key] -%}
+  <article class="card l-stage l-c-{{ key }} {{ extra }}">
+    <div class="l-stage-head"><span class="icon" aria-hidden="true">{{ m[0] }}</span><span class="l-stage-n" aria-hidden="true">{{ n }}</span></div>
+    <h3>{{ m[1] }}</h3>
+    <p class="l-stage-d">{{ m[2] }}.</p>
+    <p class="l-stage-tags"><span class="chip l-y">{{ route }}</span><span class="chip l-n">{{ engine }}</span></p>
+    {%- if owners[key] %}
+    <p class="l-owner"><span>Owner</span><a href="https://github.com/{{ owners[key].lstrip('@') }}" rel="noopener">{{ owners[key] }}</a></p>
+    {%- endif %}
+  </article>
+{%- endmacro -%}
+{%- macro wave(from, to, shape=1) -%}
+  <div class="l-wave from-{{ from }} to-{{ to }}" aria-hidden="true">
+    <svg viewBox="0 0 1440 64" preserveAspectRatio="none" focusable="false">
+    {%- if shape == 1 %}
+      <path class="wf" d="M0 30 C 120 0, 240 0, 360 30 S 600 60, 720 30 S 960 0, 1080 30 S 1320 60, 1440 30 L1440 64 L0 64 Z"/>
+      <path class="ws" d="M0 30 C 120 0, 240 0, 360 30 S 600 60, 720 30 S 960 0, 1080 30 S 1320 60, 1440 30"/>
+    {%- else %}
+      <path class="wf" d="M0 34 C 160 64, 320 64, 480 34 S 800 4, 960 34 S 1280 64, 1440 34 L1440 64 L0 64 Z"/>
+      <path class="ws" d="M0 34 C 160 64, 320 64, 480 34 S 800 4, 960 34 S 1280 64, 1440 34"/>
+    {%- endif %}
+    </svg>
+  </div>
+{%- endmacro %}
+<body class="landing">
+<a class="l-skip" href="#main">Skip to content</a>
+
+<header class="topbar l-top">
+  <div class="wrap">
+    <a class="brand" href="/about" aria-label="Pod 12, front page">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false"><g stroke="#17131a" stroke-width="1.6" stroke-linejoin="round">
+          <path d="M12 3 21 7.5 12 12 3 7.5Z" fill="#fdf6e6"/><path d="M3 7.5 12 12v9l-9-4.5Z" fill="#f7c948"/><path d="M12 12l9-4.5v9L12 21Z" fill="#ff7a1a"/></g></svg>
+      </span><span>Pod 12</span>
+    </a>
+    <nav class="l-nav" aria-label="On this page">
+      <a href="#pipeline">Pipeline</a><a href="#decision">Decisions</a><a href="#evidence">Evidence</a><a href="#safety">Failure</a><a href="#numbers">Numbers</a>
+    </nav>
+    <span class="spacer"></span>
+    {% if signed_in %}<a class="btn small l-hide-sm" href="/">Console →</a>{% endif %}
+    <a class="btn small alt" href="/join">Sign in</a>
+    <button class="toggle l-toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15Z" fill="currentColor"/></svg>
+      <span class="l-toggle-t">Theme</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+<!-- ============================================================ hero -->
+<section class="l-hero" id="top">
+  <div class="wrap l-hero-grid">
+    <div class="l-hero-copy">
+      {% if msg %}<div class="flash {{ 'bad' if bad }}" role="status">{{ msg }}</div>{% endif %}
+      <p class="l-eyebrow"><span class="chip l-k">CUBE Buildathon 2026</span><span>Grand Finale · Commerce Context</span></p>
+      <h1 class="l-title">
+        <span class="l-word">pod&nbsp;12</span>
+        <span class="l-headline"><span>Five agents.</span> <span>One unit.</span> <span><mark>One evidence trail.</mark></span></span>
+      </h1>
+      <p class="l-lead">A warehouse unit, followed from the delivery dock to a reimbursement claim. Five agents check it in turn,
+        and every decision is backed by photos and a sealed record you can open.</p>
+      <div class="l-cta">
+        {% if signed_in %}
+        <a class="btn l-btn-xl" href="/">Open the console →</a>
+        <a class="btn alt l-btn-xl" href="/join">Team / judge sign-in</a>
+        {% else %}
+        <a class="btn l-btn-xl" href="/join">Team / judge sign-in →</a>
+        {% endif %}
+        <a class="btn alt l-btn-xl" href="/login">Admin</a>
+      </div>
+      <p class="l-cta-note">Teammates and judges: sign in with the 8-digit access code you were given.
+        {% if signed_in %}You are signed in{% if who and who.actor %} as <b>{{ who.actor }}</b>{% endif %}.{% endif %}</p>
+      <div class="l-status">
+        <span class="chip {{ hcls }}"><i class="l-dot" aria-hidden="true"></i>System {{ health }}</span>
+        <span class="chip {{ dcls }}"><i class="l-dot" aria-hidden="true"></i>Database {{ stats.database }}</span>
+        <a class="l-status-link" href="/health">Live status <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+
+    <div class="l-hero-art" aria-hidden="true">
+      <svg class="l-art" viewBox="0 0 440 400" focusable="false">
+        <circle cx="222" cy="200" r="168" class="f-card s-line" stroke-width="3"/>
+        <circle cx="222" cy="200" r="132" fill="none" class="s-line" stroke-width="2.5" stroke-dasharray="3 11" stroke-linecap="round"/>
+        <!-- camera viewfinder -->
+        <g class="s-hero" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M62 86V52h34"/><path d="M344 52h34v34"/><path d="M378 318v34h-34"/><path d="M96 352H62v-34"/>
+        </g>
+        <!-- the parcel -->
+        <path d="M232 92 352 152v120l-120 60-120-60V152Z" class="f-shadow"/>
+        <g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+          <path d="M220 80 340 140 220 200 100 140Z" fill="#ffd66e"/>
+          <path d="M100 140 220 200v120l-120-60Z" fill="#f7b733"/>
+          <path d="M220 200 340 140v120l-120 60Z" fill="#e2951f"/>
+          <path d="M172.5 103.7 147.5 116.3 267.5 176.3 292.5 163.7Z" fill="#f19be4"/>
+          <path d="M267.5 176.3 292.5 163.7v120l-25 12.6Z" fill="#f19be4"/>
+        </g>
+        <!-- shipping label on the left face -->
+        <g transform="matrix(1 .5 0 1 100 140)">
+          <rect x="16" y="30" width="88" height="66" rx="4" fill="#fffdf8" stroke="#17131a" stroke-width="2.5"/>
+          <rect x="24" y="38" width="42" height="5" rx="2" fill="#17131a"/>
+          <rect x="24" y="47" width="26" height="4" rx="2" fill="#17131a"/>
+          <g fill="#17131a">
+            <rect x="24" y="58" width="3" height="28"/><rect x="29" y="58" width="2" height="28"/><rect x="33" y="58" width="5" height="28"/>
+            <rect x="40" y="58" width="2" height="28"/><rect x="45" y="58" width="3" height="28"/><rect x="50" y="58" width="2" height="28"/>
+            <rect x="54" y="58" width="5" height="28"/><rect x="61" y="58" width="2" height="28"/><rect x="66" y="58" width="3" height="28"/>
+            <rect x="71" y="58" width="2" height="28"/><rect x="75" y="58" width="5" height="28"/><rect x="82" y="58" width="2" height="28"/>
+            <rect x="86" y="58" width="3" height="28"/><rect x="91" y="58" width="5" height="28"/>
+          </g>
+        </g>
+        <!-- this way up -->
+        <g transform="matrix(1 -.5 0 1 220 200)" stroke="#17131a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M88 72V42m-8 9 8-9 8 9"/><path d="M106 72V42m-8 9 8-9 8 9"/><path d="M80 82h34"/>
+        </g>
+        <!-- PASS sticker -->
+        <g transform="rotate(10 352 92)">
+          <circle cx="358" cy="98" r="36" class="f-shadow"/>
+          <circle cx="352" cy="92" r="36" fill="#7be0a4" stroke="#17131a" stroke-width="3"/>
+          <path d="M335 92l11 11 22-24" fill="none" stroke="#17131a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <!-- the sealed record -->
+        <g transform="rotate(-7 106 318)">
+          <rect x="48" y="276" width="132" height="92" rx="10" class="f-shadow" transform="translate(6 6)"/>
+          <rect x="48" y="276" width="132" height="92" rx="10" class="f-card s-line" stroke-width="3"/>
+          <text x="62" y="300" class="f-text l-svg-k">EVIDENCE</text>
+          <g class="f-text">
+            <rect x="62" y="310" width="64" height="5" rx="2"/><rect x="62" y="320" width="44" height="5" rx="2"/>
+            <rect x="62" y="340" width="4" height="14"/><rect x="69" y="340" width="4" height="9"/><rect x="76" y="340" width="4" height="14"/>
+            <rect x="83" y="340" width="4" height="6"/><rect x="90" y="340" width="4" height="12"/><rect x="97" y="340" width="4" height="14"/>
+            <rect x="104" y="340" width="4" height="8"/><rect x="111" y="340" width="4" height="13"/>
+          </g>
+          <circle cx="152" cy="336" r="17" fill="#ff7a1a" stroke="#17131a" stroke-width="3"/>
+          <path d="M144 336l5 5 10-11" fill="none" stroke="#17131a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <!-- sparkles -->
+        <g fill="#f7c948" stroke="#17131a" stroke-width="2.5" stroke-linejoin="round">
+          <path d="M400 210l6 14 14 6-14 6-6 14-6-14-14-6 14-6Z"/>
+          <path d="M40 160l4 10 10 4-10 4-4 10-4-10-10-4 10-4Z"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+{{ wave('hero', 'bg', 1) }}
+
+<!-- ============================================================ 01 pipeline -->
+<section class="l-sec l-bg" id="pipeline" aria-labelledby="h-pipeline">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>01</b>The pipeline</p>
+      <h2 id="h-pipeline">One unit. Five agents. Each with an owner.</h2>
+      <p class="l-sub">Every stage is a real agent built by one teammate. The unit's route decides which stages it visits.</p>
+    </div>
+
+    <div class="l-orch">
+      <b>Orchestrator</b>
+      <span>routes the unit · hands each agent all the earlier evidence · checks what comes back · stores it · works out the final outcome</span>
+    </div>
+    <ol class="l-flow">
+      <li class="l-col">{{ stage_card('receiving', 1, 'Every unit', 'Gemini + rules') }}</li>
+      <li class="l-col l-fork">
+        {{ stage_card('prep', 2, 'FBA units', 'Gemini + rules') }}
+        <span class="l-or">or</span>
+        {{ stage_card('pack', 3, 'Merchant-fulfilled (MFN)', 'Gemini + rules') }}
+      </li>
+      <li class="l-col">{{ stage_card('returns', 4, 'Only if returned', 'Gemini + rules', 'is-optional') }}</li>
+      <li class="l-col">{{ stage_card('recovery', 5, 'Every unit · runs last', 'Rules only, no model') }}</li>
+    </ol>
+
+    <div class="l-callout">
+      <svg class="l-callout-art" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+          <path d="M60 60 22 22M60 60 98 22M60 60 22 98M60 60 98 98M60 60V8" fill="none" class="s-line"/>
+          <circle cx="22" cy="22" r="11" fill="#f19be4"/><circle cx="98" cy="22" r="11" fill="#f7c948"/><circle cx="22" cy="98" r="11" fill="#ff7a1a"/>
+          <circle cx="98" cy="98" r="11" fill="#bcd3ff"/><circle cx="60" cy="10" r="9" fill="#7be0a4"/>
+          <rect x="40" y="44" width="40" height="32" rx="9" fill="#17131a" class="s-line"/>
+        </g>
+      </svg>
+      <div>
+        <h3>Agents never call each other.</h3>
+        <p>One orchestrator calls each agent in turn and hands it every earlier record. Routing lives in one file
+          (<span class="l-code">orchestration/flow.json</span>): Receiving, then Prep for FBA units or Pack for merchant-fulfilled ones,
+          Returns only when the unit came back, and Recovery last, on everything. An agent's answer informs the workflow;
+          only the orchestrator sets its state.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{{ wave('bg', 'sun', 2) }}
+
+<!-- ============================================================ 02 decision -->
+<section class="l-sec l-sun" id="decision" aria-labelledby="h-decision">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>02</b>How a decision is made</p>
+      <h2 id="h-decision">The model looks. Fixed rules decide.</h2>
+      <p class="l-sub">The four photo agents (Receiving, Prep, Pack, Returns) use Gemini only to report what is visible.
+        The verdict comes from code that compares that report with the order.</p>
+    </div>
+    <ol class="l-steps">
+      <li class="card l-step">
+        <svg class="l-ico" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+          <rect x="21" y="9" width="18" height="11" rx="3" fill="#f19be4"/><rect x="5" y="17" width="54" height="38" rx="9" fill="#f19be4"/>
+          <circle cx="32" cy="36" r="12" fill="#fffdf8"/><circle cx="32" cy="36" r="5" fill="#17131a"/><rect x="45" y="23" width="8" height="5" rx="2" fill="#f7c948"/></g></svg>
+        <h3><span class="l-sn">1</span> Photo</h3>
+        <p>Taken at the station with a phone or laptop camera. Each photo is stored and named by its SHA-256 hash. No photo, no verdict: the stage records <span class="l-code">no_capture</span>.</p>
+      </li>
+      <li class="card l-step">
+        <svg class="l-ico" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+          <path d="M4 34C16 15 48 15 60 34 48 53 16 53 4 34Z" fill="#fffdf8"/><circle cx="32" cy="34" r="11" fill="#f7c948"/><circle cx="32" cy="34" r="4.5" fill="#17131a"/>
+          <path d="M52 4l2.5 6 6 2.5-6 2.5L52 21l-2.5-6-6-2.5 6-2.5Z" fill="#ff7a1a"/></g></svg>
+        <h3><span class="l-sn">2</span> The model reads</h3>
+        <p>Gemini lists what it can see: items, labels, damage, condition. Receiving, Prep and Pack never show it the order, so it cannot echo the expected answer.</p>
+      </li>
+      <li class="card l-step">
+        <svg class="l-ico" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <rect x="11" y="9" width="42" height="50" rx="7" fill="#fffdf8"/><rect x="22" y="4" width="20" height="10" rx="3" fill="#ff7a1a"/>
+          <path d="M18 26l4 4 7-8M18 40l4 4 7-8" fill="none"/><path d="M34 27h12M34 41h12M19 53h27" fill="none"/></g></svg>
+        <h3><span class="l-sn">3</span> Rules compare</h3>
+        <p>Fixed code checks that report against the purchase order, work order or customer order. Same report in, same answer out.</p>
+      </li>
+      <li class="card l-step">
+        <svg class="l-ico" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+          <circle cx="32" cy="13" r="9" fill="#ff7a1a"/><rect x="26" y="21" width="12" height="17" fill="#fffdf8"/>
+          <rect x="9" y="38" width="46" height="12" rx="4" fill="#7be0a4"/><rect x="5" y="54" width="54" height="6" rx="3" fill="#f19be4"/></g></svg>
+        <h3><span class="l-sn">4</span> Verdict</h3>
+        <p class="l-verdicts"><span class="chip pass">Pass</span><span class="chip fail">Fail</span><span class="chip uncertain">Uncertain</span></p>
+        <p>Check by check, with confidence, the model and its version, and timestamps.</p>
+      </li>
+    </ol>
+
+    <div class="l-lanebox">
+      <h3>UNCERTAIN never becomes PASS.</h3>
+      <p class="l-lanebox-sub">When a check cannot be decided from the photo, a person decides, and the system remembers who.</p>
+      <ol class="l-lane">
+        <li class="l-lane-q"><span class="chip uncertain">Uncertain</span><span>The agent says it cannot tell, and why</span></li>
+        <li><b>Review queue</b><span>The workflow waits for a person</span></li>
+        <li><b>Override</b><span>A person records a verdict, with their name and a reason</span></li>
+        <li><b>Nothing is erased</b><span>The original record is kept; the stages that used it run again</span></li>
+      </ol>
+    </div>
+    <p class="l-aside"><b>Recovery is the exception:</b> it reads no photo and calls no model. Deterministic rules check each fee line
+      against every earlier record, and it claims money only where that evidence contradicts a charge, never on silence.</p>
+  </div>
+</section>
+{{ wave('sun', 'bg', 1) }}
+
+<!-- ============================================================ 03 evidence -->
+<section class="l-sec l-bg" id="evidence" aria-labelledby="h-evidence">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>03</b>Evidence you can trace</p>
+      <h2 id="h-evidence">Follow any outcome back to the photo.</h2>
+      <p class="l-sub">Every agent returns an evidence record. Records are written once and point at what they used.</p>
+    </div>
+    <div class="l-ev">
+      <ul class="l-points">
+        <li class="l-point">
+          <span class="l-pi" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><path d="M12 5 9 27M23 5l-3 22M5 12h23M4 20h23" fill="none" stroke="#17131a" stroke-width="3.5" stroke-linecap="round"/></svg></span>
+          <div><h3>Sealed with a hash</h3>
+            <p>Each record carries a SHA-256 <span class="l-code">content_hash</span> of its own contents. Records are write-once: a second write with a different hash is refused.</p></div>
+        </li>
+        <li class="l-point">
+          <span class="l-pi l-pi-y" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><g fill="none" stroke="#17131a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="7" width="24" height="19" rx="3" fill="#fffdf8"/><circle cx="12" cy="13.5" r="2.5"/><path d="M5 24l8-7 5 5 4-3 6 5"/></g></svg></span>
+          <div><h3>Photos named by hash</h3>
+            <p>A record lists the exact photos it judged, by SHA-256. A photo from another unit is refused.</p></div>
+        </li>
+        <li class="l-point">
+          <span class="l-pi l-pi-o" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><g fill="none" stroke="#17131a" stroke-width="3.2" stroke-linecap="round"><path d="M13.5 18.5l5-5"/><path d="M11 15l-3 3a4.2 4.2 0 0 0 6 6l3-3"/><path d="M21 17l3-3a4.2 4.2 0 0 0-6-6l-3 3"/></g></svg></span>
+          <div><h3>Linked to what it used</h3>
+            <p><span class="l-code">upstream_refs</span> names the earlier records a decision rests on, so a claim points straight at the inspections behind it.</p></div>
+        </li>
+      </ul>
+
+      <ol class="l-trace" aria-label="Tracing an outcome back to its photo">
+        <li class="card l-rung l-rung-out">
+          <span class="l-rk">Final outcome</span>
+          <span class="l-rv">CLAIM_RECOMMENDED</span>
+        </li>
+        <li class="l-link"><span>derived from</span></li>
+        <li class="card l-rung">
+          <span class="l-rk">Recovery record</span>
+          <span class="l-rv mono">RCY-…</span>
+          <span class="l-hash" aria-hidden="true">{% for i in range(18) %}<i></i>{% endfor %}</span>
+        </li>
+        <li class="l-link"><span class="mono">upstream_refs</span></li>
+        <li class="l-pair">
+          <div class="card l-rung"><span class="l-rk">Prep record</span><span class="l-rv mono">PRP-…</span></div>
+          <div class="card l-rung"><span class="l-rk">Receiving record</span><span class="l-rv mono">RCV-…</span></div>
+        </li>
+        <li class="l-link"><span class="mono">inputs[].sha256</span></li>
+        <li class="card l-rung l-rung-photo">
+          <svg viewBox="0 0 92 70" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+            <rect x="4" y="4" width="84" height="62" rx="6" fill="#fffdf8"/><rect x="11" y="11" width="70" height="40" rx="3" fill="#bcd3ff"/>
+            <path d="M34 22l14 7-14 7-14-7Z" fill="#ffd66e"/><path d="M20 29l14 7v10l-14-7Z" fill="#f7b733"/><path d="M34 36l14-7v10l-14 7Z" fill="#e2951f"/></g></svg>
+          <span><span class="l-rk">The photos</span><span class="l-rv">the exact files, by hash</span></span>
+        </li>
+      </ol>
+    </div>
+    <p class="l-fine">Honest limit: a content hash shows a record was not changed by accident. It is not a signature against someone with database access.</p>
+  </div>
+</section>
+{{ wave('bg', 'night', 2) }}
+
+<!-- ============================================================ 04 failure -->
+<section class="l-sec l-night" id="safety" aria-labelledby="h-safety">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>04</b>Built to fail safely</p>
+      <h2 id="h-safety">A broken agent never looks like a clean result.</h2>
+      <p class="l-sub">Failures are recorded against the right stage and never turn into success. You can watch it happen live.</p>
+    </div>
+    <div class="l-safe">
+      <article class="card l-safe-card">
+        <h3>Switch an agent off, live</h3>
+        <p>On the admin page, flip a fault switch for any agent:</p>
+        <ul class="l-switches">
+          <li><span><b>Down</b> does not answer</span><i class="l-sw" aria-hidden="true"></i></li>
+          <li><span><b>Timeout</b> answers too late</span><i class="l-sw" aria-hidden="true"></i></li>
+          <li><span><b>Garbage</b> breaks the contract</span><i class="l-sw" aria-hidden="true"></i></li>
+        </ul>
+        <ol class="l-outcome">
+          <li><span class="chip fail">Stage error</span><span>recorded on that stage</span></li>
+          <li><span class="chip uncertain">Failed / Incomplete</span><span>how the workflow ends</span></li>
+          <li><span class="chip l-n l-never">Clean</span><span class="l-never-t">never</span></li>
+        </ol>
+        <p class="l-small">Switch it back on, press Resume, and the workflow finishes.</p>
+      </article>
+
+      <article class="card l-safe-card l-panel">
+        <h3>Fault-injection run</h3>
+        <p>Every stage broken five ways (down, timeout, invalid output, crash, another organisation's evidence) across all {{ units }} sample units.</p>
+        <div class="l-bignums">
+          <div class="l-bn"><b>2,500</b><span>broken workflows run</span></div>
+          <div class="l-bn"><b>1,575</b><span>reached the broken stage</span></div>
+          <div class="l-bn"><b>0</b><span>crashes</span></div>
+          <div class="l-bn"><b>0</b><span>reported clean</span></div>
+        </div>
+        <p class="l-small">Every affected workflow recorded the error on the right stage and ended FAILED or INCOMPLETE.
+          Source: <span class="l-code">docs/evaluation.md</span>, re-run with <span class="l-code">scripts/evaluate.py</span>.</p>
+      </article>
+
+      <article class="card l-safe-card">
+        <h3>Another company's data stays invisible</h3>
+        <svg class="l-tenancy" viewBox="0 0 300 130" aria-hidden="true" focusable="false">
+          <g stroke="#17131a" stroke-width="3" stroke-linejoin="round">
+            <rect x="8" y="28" width="98" height="78" rx="12" fill="#f19be4"/><rect x="194" y="28" width="98" height="78" rx="12" fill="#f7c948"/>
+            <rect x="134" y="10" width="32" height="112" rx="4" fill="#ff6b6b"/>
+            <path d="M134 38h32M134 66h32M134 94h32M150 10v28M142 38v28M158 66v28M150 94v28" fill="none"/>
+            <path d="M108 66h20" fill="none" stroke-dasharray="5 5" class="s-line"/>
+          </g>
+          <text x="57" y="74" text-anchor="middle" class="l-svg-t">org A</text>
+          <text x="243" y="74" text-anchor="middle" class="l-svg-t">org B</text>
+          <rect x="116" y="49" width="68" height="34" rx="9" fill="#17131a" stroke="#fdf6e6" stroke-width="2.5"/>
+          <text x="150" y="73" text-anchor="middle" class="l-svg-t l-svg-inv">404</text>
+        </svg>
+        <p>A code for one organisation gets <b>404 Not found</b> for the other's units, workflows, records and photos, exactly as if they did not exist.
+          Every agent refuses another organisation's unit too.</p>
+      </article>
+    </div>
+    <div class="l-strip">
+      <b>No photo, no verdict.</b>
+      <span>{{ units }} live workflows with no photos: 215 photo steps, every one answered <span class="l-code">no_capture</span>, 0 verdicts invented.</span>
+    </div>
+  </div>
+</section>
+{{ wave('night', 'bg', 1) }}
+
+<!-- ============================================================ 05 people -->
+<section class="l-sec l-bg" id="people" aria-labelledby="h-people">
+  <div class="wrap l-people">
+    <div class="l-phone" aria-hidden="true">
+      <svg viewBox="0 0 240 430" focusable="false">
+        <rect x="24" y="16" width="200" height="408" rx="34" class="f-shadow"/>
+        <rect x="12" y="4" width="200" height="408" rx="34" fill="#17131a" class="s-line" stroke-width="3"/>
+        <rect x="24" y="38" width="176" height="340" rx="16" fill="#fdf6e6"/>
+        <rect x="86" y="16" width="52" height="10" rx="5" fill="#3a3340"/>
+        <text x="38" y="68" class="l-svg-h">Pick your station</text>
+        <g stroke="#17131a" stroke-width="2.5" stroke-linejoin="round">
+          <rect x="36" y="84" width="152" height="40" rx="10" fill="#fffdf8"/><rect x="44" y="91" width="26" height="26" rx="7" fill="#f19be4"/>
+          <rect x="36" y="132" width="152" height="40" rx="10" fill="#fffdf8"/><rect x="44" y="139" width="26" height="26" rx="7" fill="#f7c948"/>
+          <rect x="36" y="180" width="152" height="40" rx="10" fill="#ffd66e" stroke-width="3"/><rect x="44" y="187" width="26" height="26" rx="7" fill="#ff7a1a"/>
+          <rect x="36" y="228" width="152" height="40" rx="10" fill="#fffdf8"/><rect x="44" y="235" width="26" height="26" rx="7" fill="#bcd3ff"/>
+          <rect x="36" y="276" width="152" height="40" rx="10" fill="#fffdf8"/><rect x="44" y="283" width="26" height="26" rx="7" fill="#7be0a4"/>
+          <rect x="36" y="328" width="152" height="38" rx="10" fill="#ff7a1a"/>
+        </g>
+        <g class="l-svg-row">
+          <text x="80" y="109">Receiving</text><text x="80" y="157">Prep</text><text x="80" y="205">Pack</text><text x="80" y="253">Returns</text><text x="80" y="301">Recovery</text>
+        </g>
+        <text x="112" y="352" text-anchor="middle" class="l-svg-h">Snap &amp; run</text>
+        <rect x="92" y="392" width="40" height="5" rx="2.5" fill="#5b5060"/>
+      </svg>
+    </div>
+    <div>
+      <div class="l-head">
+        <p class="l-kicker"><b>05</b>Who does what</p>
+        <h2 id="h-people">Five people, five stations, one name on every step.</h2>
+      </div>
+      <ol class="l-who">
+        <li class="card"><h3>Your own code</h3>
+          <p>Each teammate and judge signs in at <a href="/join">/join</a> with their own 8-digit access code. A code opens one organisation, or all of them.</p></li>
+        <li class="card"><h3>Your own station, from a phone</h3>
+          <p>Pick your agent, take the photos with the phone camera, press run. A step waits until the steps before it are done. Recovery needs no camera, just a press.</p></li>
+        <li class="card"><h3>Every action has a name</h3>
+          <p>Every run, photo and override records who did it. The admin reads the audit log: every sign-in, failed sign-in, change and admin action.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+{{ wave('bg', 'candy', 2) }}
+
+<!-- ============================================================ 06 numbers -->
+<section class="l-sec l-candy" id="numbers" aria-labelledby="h-numbers">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>06</b>Live numbers</p>
+      <h2 id="h-numbers">Counted right now, on this deployment.</h2>
+      <p class="l-sub">Totals only. Nothing about any unit, organisation or person is shown here.</p>
+    </div>
+    <div class="l-tiles">
+      <div class="card l-tile"><b>{{ '{:,}'.format(stats.workflows) }}</b><span>workflows run</span></div>
+      <div class="card l-tile"><b>{{ '{:,}'.format(stats.evidence) }}</b><span>evidence records</span></div>
+      {% if stats.photos is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.photos) }}</b><span>photos stored</span></div>{% endif %}
+      {% if stats.audit is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.audit) }}</b><span>audit entries</span></div>{% endif %}
+      <div class="card l-tile"><b>{{ units }}</b><span>sample units across {{ orgs }} demo organisations</span></div>
+      <div class="card l-tile l-tile-store">
+        <span class="l-rk">Storage</span>
+        <b class="l-store">{{ stats.storage }}</b>
+        <span class="chip {{ dcls }}"><i class="l-dot" aria-hidden="true"></i>Database {{ stats.database }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+{{ wave('candy', 'bg', 1) }}
+
+<!-- ============================================================ 07 ways in -->
+<section class="l-sec l-bg" id="in" aria-labelledby="h-in">
+  <div class="wrap">
+    <div class="l-head">
+      <p class="l-kicker"><b>07</b>Try it</p>
+      <h2 id="h-in">Two ways in.</h2>
+    </div>
+    <div class="l-doors{{ ' l-doors-3' if signed_in }}">
+      {% if signed_in %}
+      <a class="card l-door l-door-go" href="/">
+        <span class="l-door-k">You are signed in</span>
+        <b>Open the console</b>
+        <span>Units, the live simulator, the review queue and every evidence record.</span>
+        <span class="btn">Open the console →</span>
+      </a>
+      {% endif %}
+      <a class="card l-door" href="/join">
+        <span class="l-door-k">Teammates and judges</span>
+        <b>Team / judge sign-in</b>
+        <span>Enter the 8-digit access code you were given. You see your organisation's units and stations.</span>
+        <span class="btn{{ ' alt' if signed_in }}">Sign in with a code →</span>
+      </a>
+      <a class="card l-door" href="/login">
+        <span class="l-door-k">Pod admin</span>
+        <b>Admin</b>
+        <span>Every organisation, fault switches, access codes and the audit log. Password only.</span>
+        <span class="btn alt">Admin sign-in →</span>
+      </a>
+    </div>
+    <ul class="l-links">
+      <li><a href="/health">Live status</a><span>Public JSON: agent and database health</span></li>
+      <li><a href="/docs">API docs</a><span>Needs sign-in first</span></li>
+    </ul>
+    <div class="l-stack" aria-label="Built with">
+      <span class="l-stack-k">Built with</span>
+      <ul>
+        <li class="s1">FastAPI</li><li class="s2">Gemini</li><li class="s3">Postgres (Supabase)</li><li class="s4">Render</li><li class="s5">Docker</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+{{ wave('bg', 'night', 2) }}
+
+<footer class="l-foot">
+  <div class="wrap">
+    <p class="l-foot-word" aria-hidden="true">pod 12</p>
+    <p class="l-foot-line"><b>Pod 12</b> · CUBE Buildathon 2026 Grand Finale · Thoughtworks Hyderabad</p>
+    <nav class="l-foot-nav" aria-label="Footer">
+      {% if signed_in %}<a href="/">Open the console</a>{% endif %}
+      <a href="/join">Team / judge sign-in</a><a href="/login">Admin</a><a href="/health">Live status</a><a href="/docs">API docs (sign-in)</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll("[data-theme-toggle]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var root = document.documentElement;
+      var dark = root.dataset.theme ? root.dataset.theme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.dataset.theme = dark ? "light" : "dark";
+      try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+    });
+  });
+</script>
+</body>
+</html>

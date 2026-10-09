@@ -6,7 +6,9 @@ every org, and the audit log. The review queue is for anyone signed in, scoped t
 """
 from __future__ import annotations
 
+import hashlib
 import os
+import time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -34,10 +36,38 @@ def _rows(scope: set[str] | None) -> list[dict]:
              "stages": [(s["stage"], s["state"], s.get("verdict")) for s in w["stage_results"]]} for w in rows]
 
 
+_KEY_CHECK: dict[str, tuple[float, str]] = {}
+
+
+def _key_status() -> str:
+    """Does Google accept the model key? "valid", "rejected", "missing" or "unchecked" (no answer). One small call,
+    remembered for 5 minutes; the key itself is never shown or logged."""
+    key = os.environ.get("GEMINI_API_KEY") or ""
+    if not key:
+        return "missing"
+    tag = hashlib.sha256(key.encode()).hexdigest()[:12]
+    hit = _KEY_CHECK.get(tag)
+    if hit and time.monotonic() - hit[0] < 300:
+        return hit[1]
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=key)
+        next(iter(client.models.list(config={"page_size": 1})), None)
+        status = "valid"
+    except Exception as exc:  # the page must say what Google said, not crash
+        msg = str(exc)
+        status = "rejected" if ("API_KEY_INVALID" in msg or "API key not valid" in msg or "PERMISSION_DENIED" in msg) \
+            else "unchecked"
+    _KEY_CHECK[tag] = (time.monotonic(), status)
+    return status
+
+
 def _system() -> dict:
     health = _api().health()
     return {"database": db.ping(), "agents": health["agents"], "status": health["status"],
-            "model_key": bool(os.environ.get("GEMINI_API_KEY")), "model": os.environ.get("GEMINI_MODEL", "(default)"),
+            "model_key": bool(os.environ.get("GEMINI_API_KEY")), "key_status": _key_status(),
+            "model": os.environ.get("GEMINI_MODEL", "(default)"),
             "public_url": os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("POD_PUBLIC_URL") or "",
             "commit": (os.environ.get("RENDER_GIT_COMMIT") or "")[:7]}
 
@@ -60,14 +90,21 @@ def admin(request: Request):
 
 
 @router.post("/admin/codes", response_class=HTMLResponse)
-def new_code(request: Request, label: str = Form(...), org: str = Form("*"), role: str = Form("operator")):
-    """Issue a code. It is shown once, on this page (never in a URL); only its SHA-256 is kept."""
+def new_code(request: Request, label: str = Form(...), org: str = Form("*"), role: str = Form("operator"),
+             stage: str = Form("")):
+    """Issue a code for one person. It is shown once, on this page (never in a URL); only its SHA-256 is kept.
+    With a station, the code can run only that agent's step: the person at the Pack bench packs, nothing else."""
     org_id = None if org == "*" else org
     if org_id is not None and org_id not in _orgs():
         raise HTTPException(422, "unknown org")
-    code = issue_code(label, org_id, role)
-    audit("code_issued", label, org=org_id, role=role)
-    return _page(request, new_code={"code": code, "label": label, "org": org_id or "every org", "role": role})
+    station = stage or None
+    try:
+        code = issue_code(label, org_id, role, station)
+    except ValueError as exc:
+        return _back("/admin#codes", str(exc), bad=True)
+    audit("code_issued", label, org=org_id, role=role, station=station or "any")
+    return _page(request, new_code={"code": code, "label": label, "org": org_id or "every org", "role": role,
+                                    "stage": station})
 
 
 @router.post("/admin/codes/{cid}/revoke")

@@ -40,7 +40,9 @@ Where each stage came from, and what changed, is in its `PROVENANCE.md`. Every d
 - **Returns judges only an onboarded product:** one real photo of the item as sold, hashed into its product card (`python -m agents.returns.onboard`, or the Photos page). The organisers' SKUs ship without one, so out of the box Returns answers `no_product_reference` and calls no model (D-RT10).
 - **Rule sources are unverified** for Prep (compliance rules) and Returns (condition scale): they are labelled so in the records. Nobody looked up Amazon's published rules.
 - **Late overrides:** a person's override takes effect at once, and every later stage that used the overridden record is flagged stale and runs again on `resume` (the console does it for you). The old records are kept, never rewritten (D-RC12, D-O03).
-- **No sign-in** on the API or the console: run them on `127.0.0.1` only (D-O02, D-O03).
+- **Deployed** on Render with Supabase Postgres ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)): a public front page,
+  admin sign-in, per-person access codes scoped to one org (and optionally one station), a review queue, live fault
+  switches and an audit log. Run locally with no settings and there is still no sign-in: keep it on `127.0.0.1`.
 
 ```sh
 make setup && make test          # tests need no API key

@@ -19,6 +19,23 @@ from __future__ import annotations
 
 import os
 
+
+def _tidy_key(name: str = "GEMINI_API_KEY") -> None:
+    """A key pasted into a hosting dashboard often arrives with quotes, spaces or its own "NAME=" in front. Tidy it
+    before any agent reads its settings, so a paste slip is not a 400 from Google on every stage."""
+    value = os.environ.get(name)
+    if value is None:
+        return
+    v = value.strip()
+    if v.upper().startswith(f"{name}="):
+        v = v[len(name) + 1:].strip()
+    v = v.strip('"').strip("'").strip()
+    if v != value:
+        os.environ[name] = v
+
+
+_tidy_key()
+
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 

@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import time
+from contextvars import ContextVar
 from pathlib import Path
 
 from shared.utils.hashing import verify
@@ -80,8 +81,14 @@ def workflow_id_for(case: dict) -> str:
     return f"WF-{case['org_id']}-{case.get('subject_id') or case['unit_id']}"
 
 
+ACTOR: ContextVar[str | None] = ContextVar("pod12_actor", default=None)  # who is signed in (web/access.py sets it)
+
+
 def _log(wf: dict, event: str, stage: str | None = None, detail: str | None = None, **extra) -> None:
-    wf["transitions"].append({"at": utcnow(), "event": event, "stage": stage, "detail": detail, **extra})
+    entry = {"at": utcnow(), "event": event, "stage": stage, "detail": detail, **extra}
+    if ACTOR.get():  # every transition says who caused it: "Priya (Pack)", the admin, the laptop
+        entry["by"] = ACTOR.get()
+    wf["transitions"].append(entry)
     logger.info(event, extra={"ctx": {"workflow_id": wf["workflow_id"], "org_id": wf["org_id"],
                                      "subject_id": wf["subject_id"], "stage": stage, "detail": detail}})
 

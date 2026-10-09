@@ -232,8 +232,52 @@ def _back(url: str, msg: str, bad: bool = False) -> RedirectResponse:
 
 
 # ---------------------------------------------------------------- pages
+def _public_stats() -> dict:
+    """Totals only, for the public landing page: never a unit, an org's data or a name."""
+    from shared.utils import db
+
+    if db.enabled():
+        info = db.ping()
+        rows = info.get("rows", {})
+        return {"workflows": rows.get("workflows", 0), "evidence": rows.get("evidence", 0), "photos": rows.get("files", 0),
+                "audit": rows.get("audit", 0), "database": info["status"], "storage": "Postgres (Supabase)"}
+    store = _api().STORE
+    root = Path(getattr(store, "root", ROOT / "out"))
+    count = lambda d: len(list((root / d).glob("*.json"))) if (root / d).is_dir() else 0  # noqa: E731
+    return {"workflows": count("workflows"), "evidence": count("evidence"), "photos": None, "audit": None,
+            "database": "off", "storage": "files on this machine"}
+
+
+def _landing(request: Request):
+    """The public front page: what the system does and how, live totals, and the two ways to sign in."""
+    from .access import current
+
+    owners = {}
+    for stage in STAGES:
+        try:
+            owners[stage] = json.loads((ROOT / "agents" / stage / "agent.json").read_text(encoding="utf-8")).get("owner", "")
+        except (OSError, ValueError):
+            owners[stage] = ""
+    try:
+        health = _api().health()["status"]
+    except Exception:  # the front page must render even if a health probe fails
+        health = "unknown"
+    return _render(request, "landing.html", stats=_public_stats(), owners=owners, health=health,
+                   signed_in=current().role != "anon", flow=load_flow(_api().FLOW), units=len(_all_cases()),
+                   orgs=len({c["org_id"] for c in _all_cases()}))
+
+
+@router.get("/about", response_class=HTMLResponse)
+def about(request: Request):
+    return _landing(request)
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
+    from .access import current, guard_on
+
+    if guard_on() and current().role == "anon":  # a visitor who has not signed in sees the website, not the console
+        return _landing(request)
     workflows = _workflows()
     rows = [_unit_row(c, workflows) for c in _cases()]
     demo = [r for r in rows if r["unit"] in DEMO]
@@ -256,6 +300,14 @@ def run(org: str = Form(...), unit: str = Form(...)):
     except WorkflowConflict as exc:
         return _back("/", str(exc), bad=True)
     return RedirectResponse(f"/ui/w/{wf_id}", status_code=303)
+
+
+def _run_by(wf: dict, stage: str) -> str | None:
+    """Who ran this step last: the person signed in when it completed (the transition log keeps it)."""
+    for t in reversed(wf.get("transitions") or []):
+        if t.get("stage") == stage and t.get("event") in ("stage_completed", "stage_error"):
+            return t.get("by")
+    return None
 
 
 def _overridden(wf: dict, rec: dict | None) -> dict | None:
@@ -285,6 +337,7 @@ def workflow(request: Request, workflow_id: str):
                       "failed_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "FAIL"],
                       "unsure_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "UNCERTAIN"],
                       "overridden": _overridden(wf, rec),
+                      "run_by": _run_by(wf, sr["stage"]),
                       "photo_count": len(_photos(wf["subject_id"], sr["stage"])),
                       "hint": _what_to_shoot(sr["stage"], wf["subject_id"], wf["org_id"]) if sr["stage"] != "recovery" else "",
                       "max_photos": MAX_PER_STAGE.get(sr["stage"], DEFAULT_MAX)})
