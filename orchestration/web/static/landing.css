@@ -25,6 +25,9 @@ body.landing {
   }
   /* ui.css only recolours chips for an explicit data-theme="dark"; do the same when the system is dark */
   :root:not([data-theme="light"]) body.landing .chip { color: #f5efe6; border-color: #f5efe6; }
+  :root:not([data-theme="light"]) body.landing .l-door-go { background: var(--panel); }
+  :root:not([data-theme="light"]) body.landing .l-door-go, :root:not([data-theme="light"]) body.landing .l-door-go .l-door-k,
+  :root:not([data-theme="light"]) body.landing .l-door-go > span:not(.btn):not(.l-door-k) { color: #f5efe6; }
 }
 body.landing main, body.landing .l-foot { overflow-x: clip; }
 body.landing .wrap { max-width: 1240px; padding: 0 24px; }
@@ -55,6 +58,10 @@ body.landing .chip { font-size: 13px; padding: 4px 11px; border-width: 2.5px; }
 :root body.landing .chip.l-y { background: var(--yellow); color: #17131a; border-color: #17131a; }
 :root body.landing .chip.l-n { background: var(--card); color: var(--text); border-color: var(--line); }
 :root body.landing .chip.l-k { background: #17131a; color: #fdf6e6; border-color: #17131a; }
+/* status chips stay bright with dark ink in both themes (ui.css's dark status colours are too low-contrast for small text) */
+:root body.landing .chip.pass { background: #7be0a4; color: #0c3b21; }
+:root body.landing .chip.uncertain { background: #f7c948; color: #4a3600; }
+:root body.landing .chip.fail { background: #ff6b6b; color: #4a0d0d; }
 .l-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
 .chip.pass .l-dot { animation: l-pulse 1.8s ease-in-out infinite; }
 @keyframes l-pulse { 50% { opacity: .3; } }
@@ -185,8 +192,8 @@ body.landing .l-btn-xl { padding: 16px 22px; font-size: 19px; border-radius: 12p
 .l-rk { display: block; font: 800 12px/1.2 var(--font); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); width: 100%; }
 .l-rv { font: 900 22px/1.15 var(--font); letter-spacing: -.02em; }
 .l-rv.mono { font-family: var(--mono); font-size: 20px; font-weight: 700; letter-spacing: 0; }
-.l-rung-out { background: var(--fail); border-color: #17131a; }
-.l-rung-out .l-rk, .l-rung-out .l-rv { color: var(--fail-ink); }
+.l-rung-out { background: #ff6b6b; border-color: #17131a; }
+.l-rung-out .l-rk, .l-rung-out .l-rv { color: #4a0d0d; }
 .l-hash { display: inline-flex; gap: 3px; align-items: flex-end; height: 22px; margin-left: auto; }
 .l-hash i { width: 4px; height: 100%; background: var(--text); border-radius: 1px; }
 .l-hash i:nth-child(3n) { height: 55%; } .l-hash i:nth-child(4n+1) { height: 80%; } .l-hash i:nth-child(5n+2) { height: 40%; }
@@ -212,7 +219,7 @@ body.landing .l-btn-xl { padding: 16px 22px; font-size: 19px; border-radius: 12p
 .l-outcome { list-style: none; margin: 4px 0 0; padding: 0 0 0 16px; display: grid; gap: 10px; border-left: 3px solid var(--line); }
 .l-outcome li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 15px; font-weight: 700; color: var(--muted); }
 :root body.landing .chip.l-never { text-decoration: line-through; text-decoration-thickness: 3px; opacity: .8; }
-.l-outcome .l-never-t { font-weight: 900; text-transform: uppercase; font-size: 14px; letter-spacing: .06em; color: var(--fail-ink); background: var(--fail);
+.l-outcome .l-never-t { font-weight: 900; text-transform: uppercase; font-size: 14px; letter-spacing: .06em; color: #4a0d0d; background: #ff6b6b;
   border: 2.5px solid #17131a; border-radius: 6px; padding: 1px 7px; transform: rotate(-4deg); }
 body.landing .l-panel { background: var(--panel); }
 .l-bignums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 6px 0; }

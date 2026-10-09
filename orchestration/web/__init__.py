@@ -195,7 +195,8 @@ def _render(request: Request, name: str, **ctx):
     ctx.setdefault("guarded", guard_on())
     ctx.setdefault("db_on", db.enabled())
     ctx.setdefault("phones", {"url": lan_url(), "code": lan_code(), "stations": STATIONS} if show else None)
-    ctx["asset_v"] = int((HERE / "static" / "ui.css").stat().st_mtime)  # a new stylesheet is never served from a stale cache
+    # a new stylesheet is never served from a stale cache: any change to either one gives a new version number
+    ctx["asset_v"] = int(max((HERE / "static" / f).stat().st_mtime for f in ("ui.css", "landing.css")))
     return templates.TemplateResponse(request, name, ctx)
 
 
