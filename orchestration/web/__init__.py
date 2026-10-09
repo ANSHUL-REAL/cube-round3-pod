@@ -28,8 +28,8 @@ from shared.utils.captures import CapturePathError, resolve_capture
 from shared.utils.ids import is_safe_id
 
 from ..clients import AgentRejected
-from ..orchestrator import (WorkflowConflict, apply_override, load_flow, restart, resume, run_workflow, stale_stages, start,
-                            step, workflow_id_for)
+from ..orchestrator import (WorkflowConflict, apply_override, load_flow, restart, resume, run_stage, run_workflow, stale_stages,
+                            start, step, workflow_id_for)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -263,7 +263,10 @@ def workflow(request: Request, workflow_id: str):
                       "photos": [i["ref"] for i in (rec or {}).get("inputs", []) if i.get("kind") == "image" and _photo_exists(i["ref"])],
                       "failed_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "FAIL"],
                       "unsure_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "UNCERTAIN"],
-                      "overridden": _overridden(wf, rec)})
+                      "overridden": _overridden(wf, rec),
+                      "photo_count": len(_photos(wf["subject_id"], sr["stage"])),
+                      "hint": _what_to_shoot(sr["stage"], wf["subject_id"], wf["org_id"]) if sr["stage"] != "recovery" else "",
+                      "max_photos": MAX_PER_STAGE.get(sr["stage"], DEFAULT_MAX)})
     case = {"org_id": wf["org_id"], "unit_id": wf["subject_id"], "route": wf["context"].get("route", "unknown"),
             "returned": wf["context"].get("returned", False)}
     runnable = [st for st in steps if st["state"] != "skipped"]
@@ -361,6 +364,21 @@ def step_view(workflow_id: str, play: str = Form("")):
         raise HTTPException(404, "no such workflow")
     step(workflow_id, load_flow(api.FLOW), api.STORE, _wf_clients(workflow_id))
     return RedirectResponse(f"/ui/w/{workflow_id}{'?play=1' if play else ''}#steps", status_code=303)
+
+
+@router.post("/ui/w/{workflow_id}/run/{stage}")
+def run_stage_view(workflow_id: str, stage: str):
+    """Run one stage now with its current photos (after a camera snap, for example), then show the workflow."""
+    api = _api()
+    if api.STORE.load_workflow(_wf_id(workflow_id)) is None:
+        raise HTTPException(404, "no such workflow")
+    if stage not in STAGES:
+        raise HTTPException(404, "no such stage")
+    try:
+        run_stage(workflow_id, stage, load_flow(api.FLOW), api.STORE, _wf_clients(workflow_id), why="run again with new photos")
+    except ValueError as exc:
+        return _back(f"/ui/w/{workflow_id}", str(exc), bad=True)
+    return RedirectResponse(f"/ui/w/{workflow_id}#steps", status_code=303)
 
 
 @router.post("/ui/w/{workflow_id}/restart")

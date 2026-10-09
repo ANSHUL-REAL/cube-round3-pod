@@ -354,6 +354,31 @@ def step(workflow_id: str, flow: dict | None = None, store=None, clients: dict |
     return advance(wf, flow, store, clients, max_stages=1, retry_errors=False)
 
 
+def run_stage(workflow_id: str, stage: str, flow: dict | None = None, store=None, clients: dict | None = None,
+              *, why: str = "run again on request") -> dict:
+    """Run one named stage now (for example after a new photo was added). A stage that already ran is sent back to
+    `pending` first; any earlier stage that has not run yet runs before it. Later stages that used its old record are
+    sent back to `pending` too (by `advance`), so nothing decides on stale evidence."""
+    flow = flow or load_flow()
+    wf = store.load_workflow(workflow_id)
+    if wf is None:
+        raise KeyError(workflow_id)
+    sr = next((s for s in wf["stage_results"] if s["stage"] == stage), None)
+    if sr is None or sr["state"] == "skipped":
+        raise ValueError(f"{stage} is not a stage of this workflow")
+    if sr["state"] == "completed":
+        _invalidate(wf, {stage}, why)
+    elif sr["state"] == "error":
+        sr["state"] = "pending"
+        _log(wf, "stage_reopened", stage, why)
+    store.save_workflow(wf)
+    for _ in range(len(wf["stage_results"])):
+        wf = step(workflow_id, flow, store, clients)
+        if next(s for s in wf["stage_results"] if s["stage"] == stage)["state"] != "pending":
+            break
+    return wf
+
+
 def restart(workflow_id: str, store, *, why: str) -> dict:
     """Send every stage back to `pending` so the whole flow runs again under new request ids. Nothing is deleted:
     the earlier records stay in the store and in `evidence_references`, and the restart is in the audit trail."""

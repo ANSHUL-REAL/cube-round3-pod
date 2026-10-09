@@ -37,7 +37,8 @@
   {% for s in steps %}
   <article class="step s-{{ s.state }}{{ ' is-next' if s.stage == next_stage }}{{ ' is-last' if wf.current_stage == s.stage and s.state != 'pending' }}" data-stage="{{ s.stage }}">
     <div class="row"><span class="icon">{{ s.icon }}</span><span class="name">{{ s.name }}</span></div>
-    <div class="row">
+    {% if s.state == 'pending' and s.record_id %}<div class="old-note">Earlier result below is out of date: an earlier step ran again. It runs again on the new evidence at its turn.</div>{% endif %}
+    <div class="row{{ ' is-old' if s.state == 'pending' and s.record_id }}">
       <span class="chip {{ s.state }}">{{ s.state }}</span>
       {% if s.verdict %}<span class="chip {{ s.verdict | lower }}">{{ s.verdict | lower }}</span>{% endif %}
       {% if s.outcome %}<span class="chip {{ s.outcome | lower }}">{{ s.outcome | replace('_', ' ') }}</span>{% endif %}
@@ -45,7 +46,7 @@
     </div>
     {% if s.overridden %}<div class="override-note">👤 <b>{{ s.overridden.actor }}</b> changed this to <span class="chip {{ s.overridden.new_verdict | lower }}">{{ s.overridden.new_verdict | lower }}</span><br><span class="muted small">“{{ s.overridden.reason }}” · the agent's own record is unchanged</span></div>{% endif %}
     {% if s.stage == next_stage %}<div class="upnext">Up next</div>{% endif %}
-    <div class="runner" aria-hidden="true"><span></span> asking the agent…</div>
+    <div class="runner" aria-hidden="true"><span></span> asking the agent… <em>0.0 s</em></div>
     {% if s.state == 'skipped' %}
       <p class="why">Not needed for this unit: {{ s.skipped_reason }}.</p>
     {% else %}
@@ -55,6 +56,17 @@
       {% if s.unsure_checks %}<div class="row">{% for c in s.unsure_checks %}<span class="chip uncertain">{{ c }}</span>{% endfor %}</div>{% endif %}
       {% if s.photos %}<div class="thumbs">{% for p in s.photos %}<a href="/ui/photo/{{ p }}" target="_blank"><img src="/ui/photo/{{ p }}" alt="photo for {{ s.name }}" loading="lazy"></a>{% endfor %}</div>{% endif %}
       {% if s.agent_id %}<div class="agent">{{ s.agent_id }}{% if s.model.get('name') %} · {{ s.model.name }}{% endif %}{% if s.duration_ms is not none %} · {{ s.duration_ms }} ms{% endif %}</div>{% endif %}
+    {% endif %}
+    {% if s.state != 'skipped' and s.stage != 'recovery' and mode == 'live' %}
+    <div class="camrow">
+      <span class="chip {{ 'pass' if s.photo_count else 'pending' }}">📷 {{ s.photo_count }} photo{{ '' if s.photo_count == 1 else 's' }}</span>
+      <form method="post" action="/ui/w/{{ wf.workflow_id }}/run/{{ s.stage }}" id="run-{{ s.stage }}" class="js-step js-run" data-stage="{{ s.stage }}"></form>
+      {% if s.photo_count < s.max_photos %}
+      <button type="button" class="btn small" data-camera="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}/{{ s.stage }}" data-max="{{ s.max_photos - s.photo_count }}"
+        data-run="#run-{{ s.stage }}" data-label="{{ s.name }}" data-title="{{ s.icon }} {{ s.name }} · {{ wf.subject_id }}" data-hint="{{ s.hint }}">📸 Snap &amp; run</button>
+      {% endif %}
+      {% if s.photo_count and s.state != 'pending' %}<button type="submit" form="run-{{ s.stage }}" class="btn alt small">↻ Run again</button>{% endif %}
+    </div>
     {% endif %}
     <div class="foot">{% if s.record_id %}<a class="btn alt small" href="/ui/w/{{ wf.workflow_id }}/r/{{ s.record_id }}">Evidence</a>{% endif %}</div>
   </article>
@@ -111,12 +123,17 @@
 <script>
 (function () {
   var steps = document.querySelectorAll("form.js-step");
-  function busy(all) {
-    document.querySelectorAll("#controls button").forEach(function (b) { b.disabled = true; });
-    var cards = document.querySelectorAll(all ? ".step.s-pending, .step.s-error" : ".step.is-next");
+  function busy(all, stage) {
+    document.querySelectorAll("#controls button, .camrow button").forEach(function (b) { b.disabled = true; });
+    var sel = stage ? '.step[data-stage="' + stage + '"]' : (all ? ".step.s-pending, .step.s-error" : ".step.is-next");
+    var cards = document.querySelectorAll(sel), t0 = Date.now();
     cards.forEach(function (c) { c.classList.add("running"); });
+    setInterval(function () {
+      var sec = ((Date.now() - t0) / 1000).toFixed(1);
+      cards.forEach(function (c) { var r = c.querySelector(".runner em"); if (r) r.textContent = sec + " s"; });
+    }, 100);
   }
-  steps.forEach(function (f) { f.addEventListener("submit", function () { busy(f.dataset.all === "1"); }); });
+  steps.forEach(function (f) { f.addEventListener("submit", function () { busy(f.dataset.all === "1", f.dataset.stage); }); });
   var playing = {{ 'true' if play else 'false' }};
   var stop = document.getElementById("stop-play");
   if (stop) stop.addEventListener("click", function () { playing = false; history.replaceState(null, "", location.pathname); stop.remove(); });

@@ -211,3 +211,31 @@ footer { margin: 50px 0 30px; color: var(--muted); font-size: 14px; }
   .progress .bar { transition: none; }
 }
 .override-note { border: 2.5px dashed var(--line); border-radius: 12px; padding: 8px 10px; background: var(--card-2); font-size: 13px; }
+
+/* ---------------------------------------------------------------- camera */
+.camrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.camrow form { display: none; }
+.runner em { font-style: normal; font-family: var(--mono); margin-left: auto; }
+html.cam-open { overflow: hidden; }
+#cam { position: fixed; inset: 0; z-index: 200; background: rgba(23,19,26,.72); display: grid; place-items: center; padding: 16px; }
+#cam[hidden] { display: none; }
+#cam .cam-box { width: min(920px, 100%); max-height: 100%; overflow-y: auto; background: var(--card); color: var(--text); border: 3px solid var(--line);
+  border-radius: 18px; box-shadow: 0 8px 0 var(--shadow); padding: 18px; }
+#cam .cam-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+#cam .cam-stage { position: relative; margin-top: 10px; background: #17131a; border: 2.5px solid var(--line); border-radius: 14px; overflow: hidden; aspect-ratio: 16 / 9; }
+#cam video { width: 100%; height: 100%; object-fit: contain; display: block; }
+#cam .cam-off { position: absolute; inset: 0; display: grid; place-items: center; color: #fdf6e6; font-weight: 800; padding: 20px; text-align: center; }
+#cam .cam-off[hidden] { display: none; }
+#cam .cam-stage.flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: camflash .35s ease-out forwards; }
+@keyframes camflash { from { opacity: .85; } to { opacity: 0; } }
+#cam .cam-shots { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+#cam figure { margin: 0; position: relative; }
+#cam figure img { width: 96px; height: 72px; object-fit: cover; border: 2.5px solid var(--line); border-radius: 10px; display: block; }
+#cam figure button { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #17131a; background: var(--fail); font-weight: 900; cursor: pointer; }
+#cam .cam-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+#cam .cam-device { width: auto; max-width: 240px; }
+#cam .cam-device[hidden] { display: none; }
+#cam .cam-status { margin: 10px 0 0; font-weight: 700; min-height: 1.2em; }
+@media (prefers-reduced-motion: reduce) { #cam .cam-stage.flash::after { animation: none; } }
+.old-note { font-size: 12px; font-weight: 700; border: 2px dashed var(--line); border-radius: 10px; padding: 6px 8px; background: var(--card-2); }
+.step .row.is-old .chip:not(:first-child) { opacity: .45; text-decoration: line-through; }

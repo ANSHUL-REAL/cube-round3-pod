@@ -18,7 +18,9 @@
   {% if ref.images %}<p class="muted">On the card: {% for i in ref.images %}<span class="mono">{{ i }}</span>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
   <form class="drop" method="post" enctype="multipart/form-data" action="/ui/reference/{{ case.org_id }}/{{ case.unit_id }}">
     <input type="file" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
-    <p style="margin:10px 0 0"><button class="btn small" type="submit">Add reference photo</button> <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
+    <p style="margin:10px 0 0"><button class="btn small" type="submit">Add reference photo</button>
+      <button type="button" class="btn alt small" data-camera="/ui/reference/{{ case.org_id }}/{{ case.unit_id }}" data-max="4" data-title="🧾 {{ ref.title }} as sold" data-hint="The real item, new, with every part laid out on a plain surface.">📸 Use camera</button>
+      <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
   </form>
 </section>
 {% endif %}
@@ -37,7 +39,9 @@
     {% if s.photos | length < s.max %}
     <form class="drop" method="post" enctype="multipart/form-data" action="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}/{{ s.stage }}">
       <input type="file" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
-      <p style="margin:10px 0 0"><button class="btn small" type="submit">Upload</button> <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
+      <p style="margin:10px 0 0"><button class="btn small" type="submit">Upload</button>
+        <button type="button" class="btn alt small" data-camera="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}/{{ s.stage }}" data-max="{{ s.max - (s.photos | length) }}" data-title="{{ s.icon }} {{ s.name }} · {{ case.unit_id }}" data-hint="{{ s.text }}">📸 Use camera</button>
+        <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
     </form>{% else %}<p class="muted">Full: remove a photo to add another.</p>{% endif %}
   </section>
 {% endfor %}

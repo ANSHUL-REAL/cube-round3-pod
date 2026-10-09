@@ -393,3 +393,13 @@ _Add entries below._
   decides in it. Starting a story again from the simulator always starts it over. Tests: `tests/integration/test_console_simulator.py`
   (each new rule mutation-checked).
 
+### D-O06 · Console: camera capture and "run this step now" (2026-10-09)
+- Context: a demo is only fully live if every photo step has a real photo, taken in front of the audience.
+- Decision: the console opens the device camera in the browser (`getUserMedia`, localhost only) and posts the snaps to the
+  same upload route as a file upload, so the same type, size and image checks apply. `orchestrator.run_stage()` then runs
+  that stage now: a finished stage goes back to `pending` (new request id, new record), an errored one is reopened, any
+  earlier stage that has not run goes first, and `advance` sends later stages that used the old record back to `pending`.
+  Old results of such stages are shown struck through, marked out of date.
+- Consequences: camera photos are stored like uploads in `data/input/<unit>/<stage>/` (public if pushed). Re-running a
+  stage costs a model call. Replay mode shows no camera buttons. Tests: `tests/integration/test_console_simulator.py`.
+

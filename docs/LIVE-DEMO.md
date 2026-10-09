@@ -22,6 +22,12 @@ products. No Round 3 accuracy figure exists; do not quote one.
 4. **Show a person deciding:** record an override (for example Prep PASS ➜ FAIL on UNIT-0014). The card shows who changed
    it and why, the agent's own record stays unchanged, and the stages that used it run again (the $2.00 claim goes away).
 5. **↺ Start over** runs the story again from the first agent. Earlier records are kept, never deleted.
+6. **Everything live, from the camera.** In Live mode every photo step has **📸 Snap & run**: it opens the laptop or
+   phone camera in the browser (allow it once), you snap 1 to 3 photos, press *Save & run*, and that step's real agent
+   runs at once (a real Gemini call, usually 3 to 25 s, with a live timer on the card). Steps after it are marked out of
+   date and run again on the new evidence at their turn. The Photos page has the same camera button, including Returns'
+   "as sold" reference photo. The camera only works on http://localhost (or https); the in-app preview pane blocks it, so
+   present from Chrome or Edge.
 
 ## Before the day (30 minutes)
 

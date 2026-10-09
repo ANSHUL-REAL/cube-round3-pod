@@ -166,3 +166,59 @@ def test_a_persons_override_shows_on_the_stage_card(client):
     assert "Tester</b> changed this to" in page and "warning label missing" in page
     st = _state(client, wid)
     assert st["final_outcome"]["claimable_usd"] in (0, 0.0, None)  # Recovery ran again on the overridden verdict
+
+
+# ------------------------------------------------------------ camera + run one stage
+def test_run_one_stage_reruns_an_errored_stage_and_sends_later_ones_back(client):
+    """After a new photo, 'Snap & run' runs that stage again; stages after it must not keep a stale verdict."""
+    wid = _wid(client.post("/ui/sim/start", data={"unit": "UNIT-0014", "mode": "replay"}, headers=H, follow_redirects=False))
+    client.post(f"/ui/w/{wid}/resume", headers=H)
+    before = {s["stage"]: s for s in _state(client, wid)["stages"]}
+    assert before["recovery"]["state"] == "completed"
+    r = client.post(f"/ui/w/{wid}/run/receiving", headers=H, follow_redirects=False)
+    assert r.status_code == 303
+    after = {s["stage"]: s for s in _state(client, wid)["stages"]}
+    assert after["receiving"]["state"] == "completed"
+    assert after["prep"]["state"] == "pending" and after["recovery"]["state"] == "pending"  # used the old Receiving record
+    wf = api.STORE.load_workflow(wid)
+    assert any(t["event"] == "stage_invalidated" and t["stage"] == "prep" for t in wf["transitions"])
+
+
+def test_run_one_stage_refuses_skipped_and_unknown_stages(client):
+    wid = _wid(client.post("/ui/sim/start", data={"unit": "UNIT-0014", "mode": "replay"}, headers=H, follow_redirects=False))
+    r = client.post(f"/ui/w/{wid}/run/pack", headers=H, follow_redirects=False)  # FBA unit: pack is skipped
+    assert r.status_code == 303 and "bad=1" in r.headers["location"]
+    assert client.post(f"/ui/w/{wid}/run/nonsense", headers=H).status_code == 404
+    assert client.post(f"/ui/w/{wid}/run/receiving", headers={"origin": "http://evil.example"}).status_code == 403
+
+
+def test_run_one_stage_runs_earlier_pending_stages_first():
+    store, calls = MemoryStore(), []
+
+    class Ok:
+        def __init__(self, stage):
+            self.stage = stage
+
+        def run(self, request, timeout_s):
+            calls.append(request["stage"])
+            raise RuntimeError("scripted failure")  # recorded as an errored stage, which is enough to see the order
+
+    from orchestration.orchestrator import run_stage
+    wf = start(CASE, _flow(), store)
+    clients = {s: Ok(s) for s in ("receiving", "prep", "returns", "recovery")}
+    run_stage(wf["workflow_id"], "prep", _flow(), store, clients)
+    assert calls == ["receiving", "prep"]
+
+
+def test_live_pages_offer_the_camera_and_replay_pages_do_not(client):
+    live = _wid(client.post("/ui/sim/start", data={"unit": "UNIT-0008", "mode": "live"}, headers=H, follow_redirects=False))
+    page = client.get(f"/ui/w/{live}").text
+    assert 'data-camera="/ui/capture/org_demo_alpha/UNIT-0008/receiving"' in page
+    assert 'data-camera="/ui/capture/org_demo_alpha/UNIT-0008/pack"' in page
+    assert 'data-run="#run-pack"' in page and 'action="/ui/w/' + live + '/run/pack"' in page
+    assert "/ui/static/camera.js" in page
+    replay = _wid(client.post("/ui/sim/start", data={"unit": "UNIT-0014", "mode": "replay"}, headers=H, follow_redirects=False))
+    assert "data-camera=" not in client.get(f"/ui/w/{replay}").text
+    assert client.get("/ui/static/camera.js").status_code == 200
+    photos = client.get("/ui/capture/org_demo_alpha/UNIT-0014").text
+    assert 'data-camera="/ui/capture/org_demo_alpha/UNIT-0014/receiving"' in photos
