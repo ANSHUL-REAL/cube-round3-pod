@@ -8,15 +8,34 @@
     <p class="muted">{{ wf.org_id }} · route {{ wf.context.get('route', 'unknown') }}{% if wf.context.get('returned') %} · returned{% endif %}{% if story %} · {{ story }}{% endif %}</p>
   </div>
   <span class="chip {{ wf.status | lower }}" title="{{ wf.status_reason }}">{{ wf.status | replace('_', ' ') }}</span>
-  <a class="btn alt small" href="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}">📷 Photos</a>
-  <form method="post" action="/ui/w/{{ wf.workflow_id }}/resume" style="margin:0"><button class="btn small" type="submit">▶ Run again</button></form>
 </div>
-<p class="muted" style="margin-top:0">{{ wf.status_reason }}.{% if wf.halted %} Halted at <b>{{ wf.halted.stage }}</b>: {{ wf.halted.reason }}.{% endif %}</p>
+
+<div class="mode-banner mode-{{ mode }}">
+  <b>{{ '🔴 Live agents' if mode == 'live' else '📼 Replay of recorded evidence' }}</b> · {{ modes[mode] }}
+</div>
+
+<section class="card controls" id="controls">
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.done }}">
+    <div class="bar" style="width: {{ (100 * progress.done / progress.total) | round | int if progress.total else 0 }}%"></div>
+    <span>{{ progress.done }} of {{ progress.total }} agents have answered{% if next_stage %} · up next: <b>{{ stages_meta[next_stage][1] }}</b>{% endif %}</span>
+  </div>
+  <div class="actions">
+    {% if next_stage %}
+    <form method="post" action="/ui/w/{{ wf.workflow_id }}/step" class="js-step"><button class="btn" type="submit">👣 Next step: {{ stages_meta[next_stage][0] }} {{ stages_meta[next_stage][1] }}</button></form>
+    <form method="post" action="/ui/w/{{ wf.workflow_id }}/step" class="js-step"><input type="hidden" name="play" value="1"><button class="btn alt" type="submit" id="play-btn">⏯ Auto-play the rest</button></form>
+    {% endif %}
+    <form method="post" action="/ui/w/{{ wf.workflow_id }}/resume" class="js-step" data-all="1"><button class="btn alt" type="submit">⏩ {{ 'Run all at once' if next_stage else 'Run again (retry errors, refresh stale steps)' }}</button></form>
+    <form method="post" action="/ui/w/{{ wf.workflow_id }}/restart"><button class="btn alt" type="submit">↺ Start over</button></form>
+    <a class="btn alt" href="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}">📷 Photos</a>
+    {% if play %}<button class="btn danger small" type="button" id="stop-play">■ Stop auto-play</button>{% endif %}
+  </div>
+  <p class="muted small" style="margin:10px 0 0">{{ wf.status_reason }}.{% if wf.halted %} Halted at <b>{{ wf.halted.stage }}</b>: {{ wf.halted.reason }}.{% endif %}</p>
+</section>
 
 {% if stale %}<div class="banner"><b>Out of date:</b> {{ stale | join(', ') }} used a verdict a person has since overridden. Press <b>Run again</b> to refresh {{ 'it' if stale | length == 1 else 'them' }}.</div>{% endif %}
-<div class="pipeline">
+<div class="pipeline" id="steps">
   {% for s in steps %}
-  <article class="step s-{{ s.state }}">
+  <article class="step s-{{ s.state }}{{ ' is-next' if s.stage == next_stage }}{{ ' is-last' if wf.current_stage == s.stage and s.state != 'pending' }}" data-stage="{{ s.stage }}">
     <div class="row"><span class="icon">{{ s.icon }}</span><span class="name">{{ s.name }}</span></div>
     <div class="row">
       <span class="chip {{ s.state }}">{{ s.state }}</span>
@@ -24,6 +43,9 @@
       {% if s.outcome %}<span class="chip {{ s.outcome | lower }}">{{ s.outcome | replace('_', ' ') }}</span>{% endif %}
       {% if s.needs_human %}<span class="chip pending_review">needs a person</span>{% endif %}
     </div>
+    {% if s.overridden %}<div class="override-note">👤 <b>{{ s.overridden.actor }}</b> changed this to <span class="chip {{ s.overridden.new_verdict | lower }}">{{ s.overridden.new_verdict | lower }}</span><br><span class="muted small">“{{ s.overridden.reason }}” · the agent's own record is unchanged</span></div>{% endif %}
+    {% if s.stage == next_stage %}<div class="upnext">Up next</div>{% endif %}
+    <div class="runner" aria-hidden="true"><span></span> asking the agent…</div>
     {% if s.state == 'skipped' %}
       <p class="why">Not needed for this unit: {{ s.skipped_reason }}.</p>
     {% else %}
@@ -77,10 +99,36 @@
         <span class="chip {{ o.previous_verdict | lower }}">{{ o.previous_verdict | lower }}</span> ➜ <span class="chip {{ o.new_verdict | lower }}">{{ o.new_verdict | lower }}</span><br>
         <span class="muted">{{ o.actor }} · {{ o.at }} · “{{ o.reason }}”</span></li>{% endfor %}</ul>
     {% else %}<p class="muted">None.</p>{% endif %}
-    <details style="margin-top:14px"><summary>Audit trail ({{ wf.transitions | length }} events)</summary>
-      <div class="tablewrap"><table><thead><tr><th>When</th><th>Event</th><th>Stage</th><th>Detail</th></tr></thead><tbody>
-      {% for t in wf.transitions %}<tr><td class="mono">{{ t.at }}</td><td>{{ t.event }}</td><td>{{ t.stage or '' }}</td><td>{{ t.detail or '' }}</td></tr>{% endfor %}
-      </tbody></table></div></details>
+    <details style="margin-top:14px" open><summary>Audit trail ({{ wf.transitions | length }} events, newest first)</summary>
+      <ol class="timeline">{% for t in timeline %}
+        <li class="ev-{{ t.event }}"><span class="mono when">{{ t.at[11:19] if t.at else '' }}</span>
+          <b>{{ t.event | replace('_', ' ') }}</b>{% if t.stage %} · {{ stages_meta[t.stage][0] if t.stage in stages_meta }} {{ t.stage }}{% endif %}
+          {% if t.detail %}<div class="muted small">{{ t.detail }}</div>{% endif %}</li>{% endfor %}
+      </ol>{% if wf.transitions | length > 40 %}<p class="muted small">Showing the latest 40. The full trail is in <a href="/ui/w/{{ wf.workflow_id }}/state">the workflow file</a>.</p>{% endif %}
+    </details>
   </section>
 </div>
+<script>
+(function () {
+  var steps = document.querySelectorAll("form.js-step");
+  function busy(all) {
+    document.querySelectorAll("#controls button").forEach(function (b) { b.disabled = true; });
+    var cards = document.querySelectorAll(all ? ".step.s-pending, .step.s-error" : ".step.is-next");
+    cards.forEach(function (c) { c.classList.add("running"); });
+  }
+  steps.forEach(function (f) { f.addEventListener("submit", function () { busy(f.dataset.all === "1"); }); });
+  var playing = {{ 'true' if play else 'false' }};
+  var stop = document.getElementById("stop-play");
+  if (stop) stop.addEventListener("click", function () { playing = false; history.replaceState(null, "", location.pathname); stop.remove(); });
+  if (playing) {
+    setTimeout(function () {
+      if (!playing) return;
+      var f = document.querySelector("form.js-step input[name=play]");
+      if (f) { busy(false); f.form.submit(); }
+    }, 2200);
+  }
+  var last = document.querySelector(".step.is-last");
+  if (last && location.hash === "#steps") last.scrollIntoView({ block: "center", behavior: "smooth" });
+})();
+</script>
 {% endblock %}

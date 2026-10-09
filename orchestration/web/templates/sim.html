@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Live simulator · pod 12 console{% endblock %}
+{% block body %}
+</main>
+<section class="hero">
+  <div class="wrap">
+    <div class="wordmark"><span>live simulator</span>watch every<br>agent decide.</div>
+    <p class="lead">Pick a story, then run it one agent at a time, or press play and narrate. Each step stores a signed evidence record the next agent reads. Nothing on this page is scripted: every answer comes from the agent that ran.</p>
+  </div>
+</section>
+<main class="wrap">
+
+<div class="page-head"><div class="grow"><h2>How a unit moves</h2><p class="muted">The route is decided from the unit's facts before anything runs (<code>orchestration/flow.json</code>).</p></div></div>
+<div class="flowmap card">
+  <div class="fm-node">{{ stages_meta.receiving[0] }}<b>Receiving</b><small>every unit</small></div>
+  <div class="fm-arrow">➜</div>
+  <div class="fm-fork">
+    <div class="fm-node">{{ stages_meta.prep[0] }}<b>Prep</b><small>FBA units</small></div>
+    <div class="fm-or">or</div>
+    <div class="fm-node">{{ stages_meta.pack[0] }}<b>Pack</b><small>merchant-fulfilled</small></div>
+  </div>
+  <div class="fm-arrow">➜</div>
+  <div class="fm-node dim">{{ stages_meta.returns[0] }}<b>Returns</b><small>only if returned</small></div>
+  <div class="fm-arrow">➜</div>
+  <div class="fm-node">{{ stages_meta.recovery[0] }}<b>Recovery</b><small>reads all evidence</small></div>
+</div>
+
+<form id="sim" method="post" action="/ui/sim/start">
+  <div class="page-head"><div class="grow"><h2>1 · Choose how the agents answer</h2></div></div>
+  <div class="grid cols-2 modes">
+    {% for key, text in modes.items() %}
+    <label class="card mode">
+      <input type="radio" name="mode" value="{{ key }}" {{ 'checked' if key == default }}>
+      <span class="mode-title">{{ '🔴 Live agents' if key == 'live' else '📼 Replay recorded evidence' }}</span>
+      <span class="muted">{{ text }}</span>
+      {% if key == 'live' %}<span class="muted small">Steps with no photo answer “no photo” and say so: nothing is filled in for them.</span>
+      {% else %}<span class="muted small">Use it to show the whole system end to end without photos. The page labels every replayed step.</span>{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="page-head"><div class="grow"><h2>2 · Pick a story</h2><p class="muted">Starting a story that has run before starts it over: the earlier records are kept, never deleted.</p></div></div>
+  <div class="grid cols-3">
+    {% for r in rows %}
+    <article class="card scenario">
+      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <h3 class="mono" style="margin-right:auto">{{ r.unit }}</h3>
+        <span class="chip">{{ r.route }}</span>{% if r.returned %}<span class="chip">returned</span>{% endif %}
+      </div>
+      <p>{{ r.story }}</p>
+      <div class="mini-flow">
+        {% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'pending' }}" title="{{ r.photos[s] }} photo(s) for {{ s }}">{{ stages_meta[s][0] }} {{ stages_meta[s][1] }} · {{ r.photos[s] }}📷</span>{% endfor %}
+        <span class="chip">{{ stages_meta.recovery[0] }} Recovery</span>
+      </div>
+      {% if r.status %}<p class="muted small" style="margin-top:8px">Last run: <span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% if r.outcome %} <span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}</p>{% endif %}
+      <div class="actions">
+        <button class="btn small" type="submit" name="unit" value="{{ r.unit }}" formaction="/ui/sim/start" data-org="{{ r.org }}">👣 Step through</button>
+        <button class="btn alt small" type="submit" name="unit" value="{{ r.unit }}" data-org="{{ r.org }}" data-play="1">⏯ Auto-play</button>
+        <a class="btn alt small" href="/ui/capture/{{ r.org }}/{{ r.unit }}">📷 Photos</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="org" id="sim-org">
+  <input type="hidden" name="play" id="sim-play">
+</form>
+<script>
+  document.querySelectorAll("#sim button[data-org]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.getElementById("sim-org").value = b.dataset.org;
+      document.getElementById("sim-play").value = b.dataset.play || "";
+    });
+  });
+</script>
+{% endblock %}

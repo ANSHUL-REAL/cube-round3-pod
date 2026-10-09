@@ -11,13 +11,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700;800;900&display=swap">
-<link rel="stylesheet" href="/ui/static/ui.css">
+<link rel="stylesheet" href="/ui/static/ui.css?v={{ asset_v }}">
 </head>
 <body>
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="/"><span class="logo">📦</span><span>Pod 12 console</span></a>
     <nav>
+      <a href="/ui/sim" class="{{ 'on' if nav == 'sim' }}">▶ Live simulator</a>
       <a href="/" class="{{ 'on' if nav == 'home' }}">Units</a>
       <a href="/health" class="{{ 'on' if nav == 'health' }}">Health</a>
       <a href="/docs">API</a>

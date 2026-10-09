@@ -28,7 +28,8 @@ from shared.utils.captures import CapturePathError, resolve_capture
 from shared.utils.ids import is_safe_id
 
 from ..clients import AgentRejected
-from ..orchestrator import WorkflowConflict, apply_override, load_flow, resume, run_workflow, stale_stages, workflow_id_for
+from ..orchestrator import (WorkflowConflict, apply_override, load_flow, restart, resume, run_workflow, stale_stages, start,
+                            step, workflow_id_for)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -79,12 +80,31 @@ class _InProc:
 STUBBED = ("receiving", "prep", "pack", "returns")  # the photo stages; Recovery reads evidence and needs no photo or key
 
 
-def _clients() -> dict | None:
-    """With POD_UI_STUBS=1 the four photo stages replay the organisers' recorded evidence (no photos or model key needed);
-    Recovery is still our real agent, deciding on that recorded evidence. Every page says so."""
-    if not stub_mode():
+MODES = {
+    "live": "Live: all five of our agents, on the photos in this unit's folders (needs a model key).",
+    "replay": "Replay: the organisers' recorded evidence answers for Receiving, Prep, Pack and Returns; our real Recovery decides.",
+}
+
+
+def default_mode() -> str:
+    return "replay" if stub_mode() else "live"
+
+
+def mode_of(wf: dict | None) -> str:
+    m = ((wf or {}).get("context") or {}).get("console_mode")
+    return m if m in MODES else default_mode()
+
+
+def _clients(mode: str | None = None) -> dict | None:
+    """In replay mode the four photo stages replay the organisers' recorded evidence (no photos or model key needed);
+    Recovery is still our real agent, deciding on that recorded evidence. Every page says which mode a workflow ran in."""
+    if (mode or default_mode()) != "replay":
         return None
     return {s: _InProc(importlib.import_module(f"tests.stubs.{s}_stub").handle) for s in STUBBED}
+
+
+def _wf_clients(wf_id: str) -> dict | None:
+    return _clients(mode_of(_api().STORE.load_workflow(wf_id)))
 
 
 @lru_cache(maxsize=1)
@@ -161,6 +181,7 @@ def _render(request: Request, name: str, **ctx):
     ctx.setdefault("msg", request.query_params.get("msg"))
     ctx.setdefault("bad", request.query_params.get("bad") == "1")
     ctx["stages_meta"] = STAGES
+    ctx["asset_v"] = int((HERE / "static" / "ui.css").stat().st_mtime)  # a new stylesheet is never served from a stale cache
     return templates.TemplateResponse(request, name, ctx)
 
 
@@ -207,12 +228,23 @@ def run(org: str = Form(...), unit: str = Form(...)):
     try:
         existing = api.STORE.load_workflow(wf_id)
         if existing:
-            resume(wf_id, load_flow(api.FLOW), api.STORE, _clients())
+            resume(wf_id, load_flow(api.FLOW), api.STORE, _clients(mode_of(existing)))
         else:
-            run_workflow({**case, "route": case["route"]}, load_flow(api.FLOW), api.STORE, _clients())
+            run_workflow({**case, "route": case["route"], "console_mode": default_mode()}, load_flow(api.FLOW), api.STORE,
+                         _clients())
     except WorkflowConflict as exc:
         return _back("/", str(exc), bad=True)
     return RedirectResponse(f"/ui/w/{wf_id}", status_code=303)
+
+
+def _overridden(wf: dict, rec: dict | None) -> dict | None:
+    """The latest person's decision on this record, if it changed the verdict."""
+    if not rec:
+        return None
+    mine = [o for o in wf["overrides"] if o["supersedes"]["record_id"] == rec["record_id"]]
+    if not mine or mine[-1]["new_verdict"] == rec["decision"]["verdict"]:
+        return None
+    return mine[-1]
 
 
 @router.get("/ui/w/{workflow_id}", response_class=HTMLResponse)
@@ -230,11 +262,18 @@ def workflow(request: Request, workflow_id: str):
                       "model": (rec or {}).get("model") or {},
                       "photos": [i["ref"] for i in (rec or {}).get("inputs", []) if i.get("kind") == "image" and _photo_exists(i["ref"])],
                       "failed_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "FAIL"],
-                      "unsure_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "UNCERTAIN"]})
+                      "unsure_checks": [c["check_key"] for c in (rec or {}).get("checks", []) if c["verdict"] == "UNCERTAIN"],
+                      "overridden": _overridden(wf, rec)})
     case = {"org_id": wf["org_id"], "unit_id": wf["subject_id"], "route": wf["context"].get("route", "unknown"),
             "returned": wf["context"].get("returned", False)}
+    runnable = [st for st in steps if st["state"] != "skipped"]
+    done = [st for st in runnable if st["state"] in ("completed", "error")]
+    nxt = next((st["stage"] for st in runnable if st["state"] == "pending"), None)
     return _render(request, "workflow.html", wf=wf, steps=steps, final=wf.get("final_outcome"), case=case, stale=stale_stages(wf),
-                   story=DEMO.get(wf["subject_id"]))
+                   story=DEMO.get(wf["subject_id"]), mode=mode_of(wf), modes=MODES, next_stage=nxt,
+                   progress={"done": len(done), "total": len(runnable)},
+                   play=request.query_params.get("play") == "1" and nxt is not None and not wf.get("halted"),
+                   timeline=list(reversed(wf["transitions"][-40:])))
 
 
 @router.get("/ui/w/{workflow_id}/r/{record_id}", response_class=HTMLResponse)
@@ -264,7 +303,7 @@ def override(workflow_id: str, record_id: str = Form(...), new_verdict: str = Fo
     stale = stale_stages(wf)  # later stages that decided on the verdict that was just overridden
     if not stale:
         return _back(url, "Override recorded. The original record is unchanged.")
-    resume(workflow_id, load_flow(api.FLOW), api.STORE, _clients())
+    resume(workflow_id, load_flow(api.FLOW), api.STORE, _wf_clients(workflow_id))
     return _back(url, f"Override recorded. The original record is unchanged. Ran {', '.join(stale)} again on the new verdict.")
 
 
@@ -273,8 +312,76 @@ def resume_view(workflow_id: str):
     api = _api()
     if api.STORE.load_workflow(_wf_id(workflow_id)) is None:
         raise HTTPException(404, "no such workflow")
-    resume(workflow_id, load_flow(api.FLOW), api.STORE, _clients())
+    resume(workflow_id, load_flow(api.FLOW), api.STORE, _wf_clients(workflow_id))
     return RedirectResponse(f"/ui/w/{workflow_id}", status_code=303)
+
+
+@router.get("/ui/sim", response_class=HTMLResponse)
+def simulator(request: Request):
+    workflows = _workflows()
+    rows = [_unit_row(c, workflows) for c in _cases() if c["unit_id"] in DEMO]
+    rows.sort(key=lambda r: list(DEMO).index(r["unit"]))
+    return _render(request, "sim.html", rows=rows, modes=MODES, default=default_mode(), nav="sim",
+                   flow=load_flow(_api().FLOW))
+
+
+@router.post("/ui/sim/start")
+def sim_start(unit: str = Form(...), org: str = Form(""), mode: str = Form("live"), play: str = Form("")):
+    """Create the workflow (no stage runs yet), then go to it, ready to step through one agent at a time."""
+    if not org:  # the page fills it in with a script; a unit id that belongs to exactly one organisation is enough
+        owners = [c["org_id"] for c in _cases() if c["unit_id"] == unit]
+        if len(owners) != 1:
+            raise HTTPException(422, "say which organisation this unit belongs to")
+        org = owners[0]
+    case = _case(org, unit)
+    if mode not in MODES:
+        raise HTTPException(422, "unknown mode")
+    api = _api()
+    wf_id = workflow_id_for(case)
+    try:
+        existing = api.STORE.load_workflow(wf_id)
+        if existing is None:
+            start({**case, "route": case["route"]}, load_flow(api.FLOW), api.STORE, extra_context={"console_mode": mode})
+        elif mode_of(existing) != mode or any(sr["runs"] for sr in existing["stage_results"]):
+            # Start over in the chosen mode: earlier records are kept (evidence is never deleted), every stage runs again.
+            wf = api.STORE.load_workflow(wf_id)
+            wf["context"]["console_mode"] = mode
+            api.STORE.save_workflow(wf)
+            restart(wf_id, api.STORE, why=f"started over from the simulator ({mode} mode)")
+    except WorkflowConflict as exc:
+        return _back("/ui/sim", str(exc), bad=True)
+    return RedirectResponse(f"/ui/w/{wf_id}{'?play=1' if play else ''}", status_code=303)
+
+
+@router.post("/ui/w/{workflow_id}/step")
+def step_view(workflow_id: str, play: str = Form("")):
+    """Run exactly one stage, the next one that has not run, then show the workflow again."""
+    api = _api()
+    if api.STORE.load_workflow(_wf_id(workflow_id)) is None:
+        raise HTTPException(404, "no such workflow")
+    step(workflow_id, load_flow(api.FLOW), api.STORE, _wf_clients(workflow_id))
+    return RedirectResponse(f"/ui/w/{workflow_id}{'?play=1' if play else ''}#steps", status_code=303)
+
+
+@router.post("/ui/w/{workflow_id}/restart")
+def restart_view(workflow_id: str):
+    api = _api()
+    if api.STORE.load_workflow(_wf_id(workflow_id)) is None:
+        raise HTTPException(404, "no such workflow")
+    restart(workflow_id, api.STORE, why="started over from the console")
+    return _back(f"/ui/w/{workflow_id}", "Started over. Earlier records are kept in the evidence list; every stage will run again.")
+
+
+@router.get("/ui/w/{workflow_id}/state")
+def state_view(workflow_id: str):
+    """The workflow's current state as JSON (for scripts and the live view)."""
+    wf = _api().STORE.load_workflow(_wf_id(workflow_id))
+    if wf is None:
+        raise HTTPException(404, "no such workflow")
+    return {"workflow_id": wf["workflow_id"], "status": wf["status"], "status_reason": wf["status_reason"], "mode": mode_of(wf),
+            "stages": [{k: sr.get(k) for k in ("stage", "state", "verdict", "outcome", "needs_human", "record_id", "duration_ms")}
+                       for sr in wf["stage_results"]],
+            "final_outcome": wf.get("final_outcome")}
 
 
 # ---------------------------------------------------------------- photos

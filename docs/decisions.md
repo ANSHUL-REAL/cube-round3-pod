@@ -380,3 +380,16 @@ _Add entries below._
 - Decision: `scripts/serve.py --data DIR` puts this session's photos, workflows, evidence and the Pack photo ledger in DIR. In `--stubs` mode only the four photo stages replay the organisers' recorded evidence; Recovery stays our agent, so a claim it recommends there (UNIT-0014, $2.00, on a recorded Prep inspection that predates the fee) is our logic on their data, and every page says which is which. `scripts/print_labels.py` prints the FBA label and handling marks of a work order (Code 128, checked with a barcode reader in the tests) so Prep can be shown on a real labelled item.
 - Why: the rubric asks for a demo of the real system and honesty about what is not real.
 - Consequences: the demo depends on the presenter's photos; `docs/LIVE-DEMO.md` says what to photograph and what each stage should answer, and what not to claim.
+
+### D-O05 · Console: step one agent at a time, a mode per workflow, start over without deleting (2026-10-09)
+- Context: a live demo needs to show each agent answering in turn, and to run a story again without hand-editing files.
+- Decision: `orchestrator.step()` runs only the next stage that has not run (`advance(max_stages=1, retry_errors=False)`);
+  an errored stage is left for `resume` to retry, so stepping moves forward instead of repeating a failure.
+  `orchestrator.start()` creates a workflow without running anything. `orchestrator.restart()` sends every stage back to
+  `pending` and keeps `runs`, so each stage's next request id (and record id) is new; earlier records stay in the store and
+  in `evidence_references`, and a `restarted` event is logged. The console stores the chosen mode (`live` or `replay`) in
+  the workflow's context, so one server can show both and every page says which one ran.
+- Consequences: replay mode is the organisers' recorded evidence for four stages, labelled on every page; only Recovery
+  decides in it. Starting a story again from the simulator always starts it over. Tests: `tests/integration/test_console_simulator.py`
+  (each new rule mutation-checked).
+

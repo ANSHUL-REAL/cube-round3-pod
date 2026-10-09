@@ -282,16 +282,24 @@ def stale_stages(wf: dict) -> list[str]:
     return [s for s in stale if any(sr["stage"] == s and sr["state"] == "completed" for sr in wf["stage_results"])]
 
 
-def advance(wf: dict, flow: dict, store, clients: dict | None = None) -> dict:
-    """Run every stage that has not completed (errored stages are retried), in order, until done or halted."""
+def advance(wf: dict, flow: dict, store, clients: dict | None = None, *, max_stages: int | None = None,
+            retry_errors: bool = True) -> dict:
+    """Run every stage that has not completed (errored stages are retried), in order, until done or halted.
+
+    `max_stages` stops after that many stages have run (step-by-step mode; the workflow stays IN_PROGRESS).
+    `retry_errors=False` leaves errored stages alone, so stepping moves forward instead of repeating a failure."""
     defaults = {"timeout_s": 30, "retries": 1, "on_uncertain": "continue", "on_error": "continue", **flow.get("defaults", {})}
     steps = {s["stage"]: s for s in flow["steps"]}
     wf["halted"] = None
     _set_status(wf, "IN_PROGRESS", "advancing")
     store.save_workflow(wf)
+    ran = 0
     for idx, sr in enumerate(wf["stage_results"]):
-        if sr["state"] in ("completed", "skipped"):
+        if sr["state"] in ("completed", "skipped") or (sr["state"] == "error" and not retry_errors):
             continue
+        if max_stages is not None and ran >= max_stages:
+            break
+        ran += 1
         _invalidate(wf, {s["stage"] for s in wf["stage_results"][idx + 1:]}, f"{sr['stage']} is being run again")
         step = steps[sr["stage"]]
         opts = {**defaults, **{k: v for k, v in step.items() if k not in ("stage", "when")}}
@@ -317,6 +325,52 @@ def run_workflow(case: dict, flow: dict | None = None, store=None, clients: dict
         # "WF-<org>-<unit>" is not unique: org "a-b" + unit "c" and org "a" + unit "b-c" give the same id.
         raise WorkflowConflict(f"{wf['workflow_id']} already belongs to {wf['org_id']} / {wf['subject_id']}")
     return advance(wf or new_workflow(case, flow), flow, store, clients)
+
+
+def start(case: dict, flow: dict | None = None, store=None, extra_context: dict | None = None) -> dict:
+    """Create the workflow for a case without running any stage (for step-by-step runs). Idempotent."""
+    flow, store = flow or load_flow(), store or MemoryStore()
+    wf = store.load_workflow(workflow_id_for(case))
+    subject = case.get("subject_id") or case["unit_id"]
+    if wf is not None:
+        if (wf["org_id"], wf["subject_id"]) != (case["org_id"], subject):
+            raise WorkflowConflict(f"{wf['workflow_id']} already belongs to {wf['org_id']} / {wf['subject_id']}")
+        return wf
+    wf = new_workflow(case, flow)
+    wf["context"].update(extra_context or {})
+    store.save_workflow(wf)
+    return wf
+
+
+def step(workflow_id: str, flow: dict | None = None, store=None, clients: dict | None = None) -> dict:
+    """Run exactly one stage: the next one that has not run yet. Errored stages are left for `resume` to retry."""
+    flow = flow or load_flow()
+    wf = store.load_workflow(workflow_id)
+    if wf is None:
+        raise KeyError(workflow_id)
+    stale = stale_stages(wf)
+    if stale:
+        _invalidate(wf, set(stale), "a person overrode a record it used")
+    return advance(wf, flow, store, clients, max_stages=1, retry_errors=False)
+
+
+def restart(workflow_id: str, store, *, why: str) -> dict:
+    """Send every stage back to `pending` so the whole flow runs again under new request ids. Nothing is deleted:
+    the earlier records stay in the store and in `evidence_references`, and the restart is in the audit trail."""
+    wf = store.load_workflow(workflow_id)
+    if wf is None:
+        raise KeyError(workflow_id)
+    _invalidate(wf, {sr["stage"] for sr in wf["stage_results"]}, why)
+    for sr in wf["stage_results"]:
+        if sr["state"] == "skipped":
+            continue
+        # `runs` is kept, so every stage's next request id (and so its record id) is new.
+        sr.update({"state": "pending", "record_id": None, "evidence_status": None, "verdict": None, "outcome": None,
+                   "needs_human": None, "next_step_recommendation": None, "error": None, "attempts": 0,
+                   "started_at": None, "finished_at": None, "duration_ms": None})
+    wf["halted"], wf["current_stage"], wf["previous_stage"] = None, None, None
+    _log(wf, "restarted", detail=why)
+    return _finalize(wf, store)
 
 
 def resume(workflow_id: str, flow: dict | None = None, store=None, clients: dict | None = None) -> dict:

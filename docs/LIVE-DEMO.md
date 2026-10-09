@@ -7,6 +7,22 @@ The sample's products (LED desk lamp, steel bottle, candle trio, bath towel, puz
 Use real objects that look like them, and say so: the demo shows the pipeline and its honesty, not accuracy on those
 products. No Round 3 accuracy figure exists; do not quote one.
 
+## The live simulator (open this first)
+
+`python scripts/serve.py --data D:/pod12-demo` then open **http://localhost:8100/ui/sim**.
+
+1. **Choose a mode.** *Live agents* runs all five of our agents on the photos in each unit's folders (needs the key).
+   *Replay recorded evidence* lets the organisers' recorded evidence answer for Receiving, Prep, Pack and Returns while
+   **our real Recovery** decides. Use Replay to show the whole system end to end without photos; every page says which
+   mode a workflow ran in, so nothing is passed off as live.
+2. **Pick a story** and press **👣 Step through** (you press *Next step* for each agent and talk while it runs) or
+   **⏯ Auto-play** (it runs the next agent every couple of seconds until the flow ends; *Stop auto-play* halts it).
+3. Each card fills in as its agent answers: verdict, outcome, failed or unsure checks, model and time, and an
+   **Evidence** link to the full signed record. The timeline at the bottom lists every event, newest first.
+4. **Show a person deciding:** record an override (for example Prep PASS ➜ FAIL on UNIT-0014). The card shows who changed
+   it and why, the agent's own record stays unchanged, and the stages that used it run again (the $2.00 claim goes away).
+5. **↺ Start over** runs the story again from the first agent. Earlier records are kept, never deleted.
+
 ## Before the day (30 minutes)
 
 1. **Key.** The repo's git-ignored `.env` must hold `GEMINI_API_KEY` (and nothing is printed or committed).
