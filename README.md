@@ -6,19 +6,19 @@
 
 **New here? Read [`START-HERE.md`](START-HERE.md) first.** This README is the concise overview; the detailed rules live in the guides.
 
-## Watch the demo (1 min 51 s)
+## Snitch, live and on video
 
-[![Pod 12 live simulator: five agents, one evidence trail](docs/media/pod12-simulator.jpg)](docs/media/pod12-simulator.mp4)
+Pod 12's integrated system is **Snitch**: five agents check every unit from phone photos, and every verdict is a sealed
+receipt you can trace back to its photos.
 
-**[▶ Play the video](docs/media/pod12-simulator.mp4)**: a screen recording of our console on localhost
-(`python scripts/serve.py`, then <http://localhost:8100/ui/sim>). It steps through UNIT-0014 one agent at a time, ends
-in Recovery recommending a $2.00 claim, opens the evidence record behind it, then a person overrides Prep to FAIL and
-Recovery runs again and withdraws the claim. The last part runs our real Receiving agent live, before any photo is taken,
-and it records "no capture" instead of guessing.
+- **Live:** <https://pod12-console.onrender.com> (Render + Supabase Postgres). Sign in with an access code from the team;
+  [`/health`](https://pod12-console.onrender.com/health) is public. How judges can try it: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- **Videos:** the demo (real Gemini calls, about 3 min) and a 21 s launch clip are attached to the
+  [`media-2026-10-10` release](https://github.com/ANSHUL-REAL/cube-pod12-round3/releases/tag/media-2026-10-10), not
+  committed, to keep the repo light (rule R9).
 
-Honest note: in the UNIT-0014 story the organisers' recorded evidence answers for Receiving, Prep and Returns and our
-real Recovery agent decides; the console labels this as a replay on every page. To run it yourself, see
-[docs/LIVE-DEMO.md](docs/LIVE-DEMO.md).
+Honest note: the demo scenarios use AI-generated photos, labelled as such on screen; the verdicts are real runs of our
+agents. To run it yourself, see [docs/LIVE-DEMO.md](docs/LIVE-DEMO.md).
 
 ## Pod 12: what is built, and what is not
 

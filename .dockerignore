@@ -12,5 +12,4 @@ out
 node_modules
 docs/*.pptx
 docs/*.mp4
-docs/media
 *.log
