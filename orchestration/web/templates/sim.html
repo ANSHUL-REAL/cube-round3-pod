@@ -83,7 +83,7 @@
       <p>Starting a scenario that has run before starts it over. Earlier records are kept, never deleted.</p></div></div>
     {% if ready %}
     <div class="group-head"><span class="chip pass">Ready to run</span><span class="chip info">AI-generated demo photo</span>
-      <span class="muted small">A Pack photo is already in place, so these run at once. The photos are AI-generated for this walkthrough.</span></div>
+      <span class="muted small">Delivery and Pack photos are already in place, so these run start to finish at once. The photos are AI-generated for this walkthrough.</span></div>
     <div class="grid cols-3">
       {% for r in ready %}{{ scenario(r, loop.index, true) }}{% endfor %}
     </div>
