@@ -9,6 +9,20 @@
 <div class="banner warn">Stage the photos yourselves with real objects. The sample products are fictional, so say so in the demo: it shows the pipeline, not accuracy on those products.
   <b>No faces, addresses, real order labels or other people's images.</b> Photos are kept in <code>data/input/</code>; the first model call per photo is slow.</div>
 
+{% if ref %}
+<section class="card" style="margin-top:22px">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span class="icon">🧾</span>
+    <h2 style="margin-right:auto">Returns needs the product as sold</h2>
+    <span class="chip {{ 'pass' if ref.images else 'fail' }}">{{ ref.images | length }} reference photo(s)</span></div>
+  <p class="muted">Returns compares the returned parcel with a reference photo of <b>{{ ref.title }}</b> (<span class="mono">{{ ref.sku }}</span>) new, parts laid out. Without one it answers <span class="mono">no_product_reference</span> and calls no model. Photograph the real item once; the photo's SHA-256 is written into its product card.</p>
+  {% if ref.images %}<p class="muted">On the card: {% for i in ref.images %}<span class="mono">{{ i }}</span>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <form class="drop" method="post" enctype="multipart/form-data" action="/ui/reference/{{ case.org_id }}/{{ case.unit_id }}">
+    <input type="file" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
+    <p style="margin:10px 0 0"><button class="btn small" type="submit">Add reference photo</button> <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
+  </form>
+</section>
+{% endif %}
+
 <div class="grid cols-2" style="margin-top:22px">
 {% for s in stages %}
   <section class="card">

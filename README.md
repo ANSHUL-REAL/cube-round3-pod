@@ -21,8 +21,9 @@ Five agents plus the orchestrator, one `agents/<stage>/` folder each. Every stag
 Where each stage came from, and what changed, is in its `PROVENANCE.md`. Every design choice is in [`docs/decisions.md`](docs/decisions.md).
 
 **Read this before you rely on any number.**
-- **No real-model run has been done through this repository.** All tests use scripted models, so they check capture handling, rules, record mapping, fail-open, tenancy and hand-offs, **not what a real model sees**. No Round 3 accuracy is claimed. Round 2 results belong to the Round 2 repositories and do not transfer.
-- **The organisers' sample has no photos**, so `make run` on the sample ends every workflow `FAILED` / `INCOMPLETE` with `no_capture`. That is the intended behaviour: an agent with nothing to look at must not invent a verdict. To demo, take the photos in [`docs/DEMO-CAPTURE-PLAN.md`](docs/DEMO-CAPTURE-PLAN.md) (`python scripts/capture_plan.py`).
+- **Real model calls, not an evaluation.** Every stage that looks at photos (Receiving, Prep, Pack, Returns) has been run on real Gemini calls with real photos, through its checker, the orchestrator and the console: [`docs/REAL-RUNS.md`](docs/REAL-RUNS.md). All automated tests use scripted models, so they check capture handling, rules, record mapping, fail-open, tenancy and hand-offs, **not how often a real model is right**. No Round 3 accuracy is claimed. Round 2 results belong to the Round 2 repositories and do not transfer.
+- **The organisers' sample has no photos**, so `make run` on the sample ends every workflow `FAILED` / `INCOMPLETE` with `no_capture`. That is the intended behaviour: an agent with nothing to look at must not invent a verdict. **The live demo is photos you take on the day:** [`docs/LIVE-DEMO.md`](docs/LIVE-DEMO.md) (what to photograph, what each stage should answer, what not to claim), with printable FBA labels from `python scripts/print_labels.py`.
+- **Returns judges only an onboarded product:** one real photo of the item as sold, hashed into its product card (`python -m agents.returns.onboard`, or the Photos page). The organisers' SKUs ship without one, so out of the box Returns answers `no_product_reference` and calls no model (D-RT10).
 - **Rule sources are unverified** for Prep (compliance rules) and Returns (condition scale): they are labelled so in the records. Nobody looked up Amazon's published rules.
 - **Late overrides:** a person's override takes effect at once, and every later stage that used the overridden record is flagged stale and runs again on `resume` (the console does it for you). The old records are kept, never rewritten (D-RC12, D-O03).
 - **No sign-in** on the API or the console: run them on `127.0.0.1` only (D-O02, D-O03).
@@ -80,7 +81,8 @@ make run              # all sample workflows end to end -> out/workflows/*.json 
 make case UNIT=UNIT-0014 ORG=org_demo_alpha     # one workflow, in full
 make serve            # orchestrator API and the readable console on :8100 (the console is at /; the API at /workflows, /health)
 python scripts/serve.py          # the same, on any OS, with our five agents
-python scripts/serve.py --stubs  # the same, answering with the organisers' CSV-replay stubs (every page says so), to look at the screens without photos or a model key
+python scripts/serve.py --data D:/pod12-demo  # a separate folder for this session's photos and results (start a demo on an empty one)
+python scripts/serve.py --stubs  # the photo stages replay the organisers' recorded evidence (every page says so); Recovery is still our agent
 ```
 
 All five stages are our agents (`agents/<stage>/`); the organisers' stubs are kept in `tests/stubs/` for the plumbing tests and the console's `--stubs` mode. The console (`orchestration/web`) shows each stage as a card and each evidence record as a page, takes photos per stage, and records an override; it decides nothing itself.

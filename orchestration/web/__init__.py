@@ -76,11 +76,15 @@ class _InProc:
             raise AgentRejected(str(exc)) from exc
 
 
+STUBBED = ("receiving", "prep", "pack", "returns")  # the photo stages; Recovery reads evidence and needs no photo or key
+
+
 def _clients() -> dict | None:
-    """Organiser stubs, only when POD_UI_STUBS=1 (to look at the screens without photos or a model key). Always labelled."""
+    """With POD_UI_STUBS=1 the four photo stages replay the organisers' recorded evidence (no photos or model key needed);
+    Recovery is still our real agent, deciding on that recorded evidence. Every page says so."""
     if not stub_mode():
         return None
-    return {s: _InProc(importlib.import_module(f"tests.stubs.{s}_stub").handle) for s in STAGES}
+    return {s: _InProc(importlib.import_module(f"tests.stubs.{s}_stub").handle) for s in STUBBED}
 
 
 @lru_cache(maxsize=1)
@@ -274,12 +278,50 @@ def resume_view(workflow_id: str):
 
 
 # ---------------------------------------------------------------- photos
+def _reference(org: str, unit: str) -> dict | None:
+    """Returns judges only a product that has a reference photo on its card (agents/returns/onboard.py). For a returned
+    unit: which product was ordered, and how many reference photos its card holds."""
+    try:
+        sku = sample_data.row("returns", unit, org)["ordered_sku"]
+    except LookupError:
+        return None
+    from agents.returns.core.refs import load_card
+
+    card = load_card(org, sku)
+    return {"sku": sku, "title": card.title if card else sku, "card": card is not None,
+            "images": [i.id for i in card.reference_images] if card else []}
+
+
 @router.get("/ui/capture/{org}/{unit}", response_class=HTMLResponse)
 def capture(request: Request, org: str, unit: str):
     case = _case(org, unit)
     stages = [{"stage": s, "icon": STAGES[s][0], "name": STAGES[s][1], "photos": _photos(unit, s),
                "max": MAX_PER_STAGE.get(s, DEFAULT_MAX), "text": _what_to_shoot(s, unit, org)} for s in _stages_for(case)]
-    return _render(request, "capture.html", case=case, stages=stages, story=DEMO.get(unit))
+    ref = _reference(org, unit) if case["returned"] else None
+    return _render(request, "capture.html", case=case, stages=stages, story=DEMO.get(unit), ref=ref)
+
+
+@router.post("/ui/reference/{org}/{unit}")
+async def reference(org: str, unit: str, files: list[UploadFile] = File(...)):
+    """Onboard the ordered product for Returns with photos of it as sold (new, parts laid out)."""
+    from agents.returns.onboard import OnboardError, onboard
+
+    case = _case(org, unit)
+    url = f"/ui/capture/{org}/{unit}"
+    ref = _reference(org, unit) if case["returned"] else None
+    if ref is None or not ref["card"]:
+        raise HTTPException(404, f"{unit} has no returned product with a card to onboard")
+    added = 0
+    for f in files:
+        if not f.filename:
+            continue
+        data = await f.read(MAX_UPLOAD + 1)
+        try:
+            added += onboard(org, ref["sku"], data, view="contents_layout", actor="console")["added"]
+        except OnboardError as exc:
+            return _back(url, f"{f.filename}: {exc}", bad=True)
+    return _back(url, f"{ref['sku']}: {added} reference photo(s) added. Returns can now judge it." if added
+                 else "No new reference photo (already on the card, or none chosen).", bad=not added)
 
 
 @router.post("/ui/capture/{org}/{unit}/{stage}")

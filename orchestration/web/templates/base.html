@@ -28,8 +28,8 @@
 </header>
 <main class="wrap">
   {% if stub_mode %}
-  <div class="banner stub"><b>Organiser stubs are answering.</b> These screens are showing the organisers' CSV-replay stubs, not our agents.
-    They exist so the screens can be seen without photos or a model key. Start the server without <code>POD_UI_STUBS=1</code> to run our agents.</div>
+  <div class="banner stub"><b>Organiser stubs are answering</b> for Receiving, Prep, Pack and Returns: they replay the organisers' recorded evidence (CSV), not our agents, so no photo or model key is used.
+    <b>Recovery is our real agent</b>, deciding on that recorded evidence. Start the server without <code>--stubs</code> to run all five of our agents on your photos.</div>
   {% endif %}
   {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
   {% block body %}{% endblock %}
@@ -51,6 +51,15 @@
       document.querySelectorAll(box.dataset.filter).forEach(function (row) {
         row.style.display = row.textContent.toLowerCase().indexOf(q) === -1 ? "none" : "";
       });
+    });
+  });
+  // Running a unit calls the model once per stage (about 10 s each with real agents): say so, and stop double submits.
+  document.querySelectorAll('form[action="/ui/run"], form[action$="/resume"], form[action$="/override"]').forEach(function (f) {
+    f.addEventListener("submit", function () {
+      var b = f.querySelector('button[type="submit"]');
+      if (!b) return;
+      setTimeout(function () { b.disabled = true; }, 0);
+      b.textContent = "Running the agents… (about 10 s per stage)";
     });
   });
 </script>

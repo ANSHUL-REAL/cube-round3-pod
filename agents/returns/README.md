@@ -79,6 +79,16 @@ More than 3 photos: the first 3 are used and the rest are listed in `payload.pho
 
 A product is judged only if `agents/returns/reference/products/<org_id>/<SKU>.yaml` is a valid card **with reference images**, mapped in `reference/categories/sku-category-map.yaml`, and its category has a rubric and a policy. Every document carries `content_sha256`; edit one and re-hash it, or it is ignored. **The organisers' ten sample SKUs have placeholder cards with invented features and values and no reference images, so units of those SKUs are not judged until someone onboards them.** Only `SKU-PHONE-IQOO9` and `SKU-LAPTOP-DELL` (organisation alpha) are onboarded, and neither is in the sample CSV, so use `context.return` for them. A card with only one critical product-body feature cannot reach identity `yes` without a matching barcode.
 
+**Onboard a product** with one real photo of it as sold (new, parts laid out); the photo's SHA-256 goes into the card and the card is re-sealed (D-RT10):
+
+```
+python -m agents.returns.onboard --org org_demo_alpha --sku SKU-TOWEL-BLU towel_new.jpg
+```
+
+or use the **Returns needs the product as sold** card on a returned unit's Photos page in the console. Only the photo becomes real: the rest of a placeholder card is still invented and says so. Take **at least two photos of the return** itself; with fewer, the quality gate leaves the unit UNCERTAIN and asks for a retake (seen on the first real run, [`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md)).
+
+**Two code trees.** `returns_manager/` (merged in PR #1) is the owner's full Round 2 product, kept as reference. Nothing imports it; the agent that runs is `app.py` with `core/` (D-RT11).
+
 ## Run it
 
 ```sh

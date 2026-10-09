@@ -23,6 +23,7 @@ FBA_RETURNED = "UNIT-0014"  # alpha, fba, returned: receiving, prep, returns, re
 MFN_CLEAN = "UNIT-0008"  # alpha, merchant-fulfilled: receiving, pack
 BRAVO_UNIT = "UNIT-0003"  # belongs to bravo, not alpha
 WF = f"WF-{ALPHA}-{FBA_RETURNED}"
+REAL_AGENTS = {"recovery"}  # as in the console's --stubs mode: the photo stages replay, Recovery is ours
 
 
 def png(color=(200, 30, 90)) -> bytes:
@@ -277,3 +278,59 @@ def test_a_delete_and_an_upload_from_another_website_are_refused_too(ui):
     r = ui.post(f"/ui/capture/{ALPHA}/{MFN_CLEAN}/pack", files=[("files", ("b.png", png(), "image/png"))], headers=evil)
     assert r.status_code == 403
     assert len(list((ui.input_root / MFN_CLEAN / "pack").iterdir())) == 1
+
+
+# ---------------------------------------------------------------- onboarding a product for Returns
+@pytest.fixture
+def refdir(tmp_path, monkeypatch):
+    import shutil
+
+    import agents.returns.core.refs as refs
+    import agents.returns.onboard as ob
+
+    dst = tmp_path / "reference"
+    shutil.copytree(refs.REFERENCE_DIR, dst)
+    monkeypatch.setattr(refs, "REFERENCE_DIR", dst)
+    monkeypatch.setattr(ob, "REFERENCE_DIR", dst)
+    return dst
+
+
+RETURNED_MFN = "UNIT-0016"  # alpha, mfn, returned: the towel
+
+
+def test_a_returned_unit_shows_that_its_product_has_no_reference_yet(ui, refdir):
+    page = ui.get(f"/ui/capture/{ALPHA}/{RETURNED_MFN}").text
+    assert "Returns needs the product as sold" in page and "SKU-TOWEL-BLU" in page and "0 reference photo(s)" in page
+    assert "Returns needs the product as sold" not in ui.get(f"/ui/capture/{ALPHA}/{MFN_CLEAN}").text  # not returned
+
+
+def test_a_reference_photo_from_the_console_onboards_the_ordered_product(ui, refdir):
+    from agents.returns.core.refs import load_references
+
+    r = ui.post(f"/ui/reference/{ALPHA}/{RETURNED_MFN}", files=[("files", ("towel.jpg", png(), "image/png"))])
+    assert r.status_code == 303 and "bad=1" not in r.headers["location"]
+    load_references(ALPHA, "SKU-TOWEL-BLU")  # judgeable now
+    assert "1 reference photo(s)" in ui.get(f"/ui/capture/{ALPHA}/{RETURNED_MFN}").text
+
+
+def test_a_reference_must_be_a_real_image_and_a_returned_unit_of_this_org(ui, refdir):
+    from agents.returns.core.errors import MissingReference
+    from agents.returns.core.refs import load_references
+
+    r = ui.post(f"/ui/reference/{ALPHA}/{RETURNED_MFN}", files=[("files", ("x.jpg", b"nope", "image/jpeg"))])
+    assert "bad=1" in r.headers["location"]
+    assert ui.post(f"/ui/reference/{ALPHA}/{MFN_CLEAN}", files=[("files", ("a.png", png(), "image/png"))]).status_code == 404
+    assert ui.post(f"/ui/reference/{BRAVO}/{RETURNED_MFN}", files=[("files", ("a.png", png(), "image/png"))]).status_code == 404
+    with pytest.raises(MissingReference):
+        load_references(ALPHA, "SKU-TOWEL-BLU")
+
+
+def test_stub_mode_replays_the_photo_stages_but_recovery_is_our_real_agent(ui):
+    run(ui)
+    wf = api.STORE.load_workflow(WF)
+    recs = {s["stage"]: api.STORE.get_evidence(s["record_id"]) for s in wf["stage_results"] if s.get("record_id")}
+    for stage in ("receiving", "prep", "returns"):
+        assert recs[stage]["model"]["name"] == "csv-replay-stub"
+    assert recs["recovery"]["model"]["name"] == "rules" and recs["recovery"]["agent_id"].startswith("recovery-manager")
+    # The organisers' recorded Prep capture predates the inbound-defect fee, so our Recovery can claim it.
+    assert wf["final_outcome"]["outcome"] == "CLAIM_RECOMMENDED" and wf["final_outcome"]["claimable_usd"] == 2.0
