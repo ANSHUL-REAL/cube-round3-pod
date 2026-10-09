@@ -19,7 +19,7 @@
 {%- endmacro -%}
 {% block title %}Dashboard · {{ brand.name }}{% endblock %}
 {% block body %}
-{%- set scope = 'All customers' if who.orgs is none else (who.orgs | map('org') | join(', ')) -%}
+{%- set scope = 'All sellers' if who.orgs is none else (who.orgs | map('org') | join(', ')) -%}
 <div class="page-header">
   <div class="ph-text">
     <p class="eyebrow"><span class="tick" aria-hidden="true"></span>{{ scope }}</p>
@@ -95,12 +95,15 @@
   <div class="section-head">
     <div class="grow"><h2 id="h-units">All {{ total }} units</h2><p>Add photos for each step, run the agents, then open the unit to read its evidence.</p></div>
     <div class="table-tools"><span class="count-note" id="units-count" aria-live="polite"></span>
-      <label class="searchbox"><span class="sr-only">Filter units</span><input type="text" class="filter" data-filter="#all tbody tr" data-count="#units-count" placeholder="Filter: unit, customer, route, status…"></label></div>
+      <label class="searchbox"><span class="sr-only">Filter units</span><input type="text" class="filter" data-filter="#all tbody tr" data-count="#units-count" placeholder="Filter: unit, seller, route, status…"></label></div>
   </div>
+  {% if not rows %}
+  <div class="card"><div class="empty"><span class="big-ico" aria-hidden="true">📦</span><b>No units yet</b>This seller's units appear here once its orders are imported. Then each step's photos can be added and the agents run.</div></div>
+  {% else %}
   <div class="card table-card">
     <div class="tablewrap" id="all">
       <table class="rtable">
-        <thead><tr><th>Unit</th><th>Customer</th><th>Route</th><th>Photos per step</th><th>Status</th><th class="actions-cell"><span class="sr-only">Actions</span></th></tr></thead>
+        <thead><tr><th>Unit</th><th>Seller</th><th>Route</th><th>Photos per step</th><th>Status</th><th class="actions-cell"><span class="sr-only">Actions</span></th></tr></thead>
         <tbody>
         {% for r in rows %}
           <tr>
@@ -122,5 +125,6 @@
       </table>
     </div>
   </div>
+  {% endif %}
 </section>
 {% endblock %}

@@ -126,3 +126,16 @@ def test_codes_faults_and_audit_live_in_the_database(pg, monkeypatch):
     actions = {r[0] for r in db.fetchall(f"select action from {db.SCHEMA}.audit")}
     assert {"admin_signed_in", "code_issued", "agent_faulted", "agent_restored"} <= actions
     assert boss.get("/health").json()["database"]["status"] == "ok"
+
+
+def test_sellers_added_on_the_admin_page_live_in_the_database(pg):
+    from orchestration.web import brand
+
+    brand._CACHE[1] = None
+    brand.save_seller("org_gamma_goods", "Gamma Goods", "admin")
+    assert db.fetchone(f"select name from {db.SCHEMA}.sellers where org_id=%s", ("org_gamma_goods",))[0] == "Gamma Goods"
+    brand._CACHE[1] = None  # as another worker would read it
+    assert brand.org_name("org_gamma_goods") == "Gamma Goods"
+    brand.save_seller("org_demo_bravo", "Bravo Wholesale", "admin")
+    assert brand.org_name("org_demo_bravo") == "Bravo Wholesale"
+    brand._CACHE[1] = None

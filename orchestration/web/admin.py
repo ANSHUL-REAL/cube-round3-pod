@@ -17,6 +17,7 @@ from shared.utils import db
 
 from .. import faults
 from . import STAGES, _all_cases, _api, _back, _render, _same_origin, _wf_id, restart
+from . import brand
 from .access import audit, current, issue_code, list_codes, revoke_code
 
 router = APIRouter(dependencies=[Depends(_same_origin)])
@@ -24,7 +25,24 @@ REVIEW = ("BLOCKED", "NEEDS_REVIEW", "FAILED", "INCOMPLETE")
 
 
 def _orgs() -> list[str]:
-    return sorted({c["org_id"] for c in _all_cases()})
+    """Every seller: those with sample units, and those an admin added (who start with none)."""
+    return sorted({c["org_id"] for c in _all_cases()} | set(brand.org_names()))
+
+
+def _sellers(rows: list[dict], codes: list[dict]) -> list[dict]:
+    units: dict[str, int] = {}
+    for c in _all_cases():
+        units[c["org_id"]] = units.get(c["org_id"], 0) + 1
+    flows: dict[str, int] = {}
+    for r in rows:
+        flows[r["org"]] = flows.get(r["org"], 0) + 1
+    people: dict[str, int] = {}
+    for c in codes:
+        if c.get("org_id") and not c.get("revoked_at"):
+            people[c["org_id"]] = people.get(c["org_id"], 0) + 1
+    out = [{"id": o, "name": brand.org_name(o), "units": units.get(o, 0), "workflows": flows.get(o, 0),
+            "people": people.get(o, 0)} for o in _orgs()]
+    return sorted(out, key=lambda x: x["name"].lower())
 
 
 def _rows(scope: set[str] | None) -> list[dict]:
@@ -73,9 +91,10 @@ def _system() -> dict:
 
 
 def _page(request: Request, **extra):
+    codes, rows = list_codes(), _rows(None)
     return _render(request, "admin.html", nav="admin", system=_system(), faults=faults.active(), modes=faults.MODES,
-                   stages=list(STAGES), codes=list_codes(), orgs=_orgs(), rows=_rows(None), review=REVIEW,
-                   audit=_audit(), **extra)
+                   stages=list(STAGES), codes=codes, orgs=_orgs(), sellers=_sellers(rows, codes), rows=rows,
+                   review=REVIEW, audit=_audit(), **extra)
 
 
 def _audit() -> list[dict]:
@@ -105,6 +124,37 @@ def new_code(request: Request, label: str = Form(...), org: str = Form("*"), rol
     audit("code_issued", label, org=org_id, role=role, station=station or "any")
     return _page(request, new_code={"code": code, "label": label, "org": org_id or "every org", "role": role,
                                     "stage": station})
+
+
+@router.post("/admin/sellers")
+def add_seller(name: str = Form(...)):
+    """A new seller starts with no units: its units arrive with its orders. Codes can be issued for it at once."""
+    try:
+        name = brand.clean_name(name)
+    except ValueError as exc:
+        return _back("/admin#sellers", str(exc), bad=True)
+    if any(n.lower() == name.lower() for n in brand.org_names().values()):
+        return _back("/admin#sellers", f"There is already a seller called {name}.", bad=True)
+    org_id = brand.new_org_id(name, set(_orgs()))
+    brand.save_seller(org_id, name, current().actor)
+    audit("seller_added", name, org=org_id)
+    return _back("/admin#sellers", f"Seller added: {name}. Issue access codes for its people under Access codes.")
+
+
+@router.post("/admin/sellers/{org_id}/rename")
+def rename_seller(org_id: str, name: str = Form(...)):
+    if org_id not in _orgs():
+        raise HTTPException(404, "no such seller")
+    try:
+        name = brand.clean_name(name)
+    except ValueError as exc:
+        return _back("/admin#sellers", str(exc), bad=True)
+    if any(n.lower() == name.lower() for o, n in brand.org_names().items() if o != org_id):
+        return _back("/admin#sellers", f"There is already a seller called {name}.", bad=True)
+    old = brand.org_name(org_id)
+    brand.save_seller(org_id, name, current().actor)
+    audit("seller_renamed", name, org=org_id, before=old)
+    return _back("/admin#sellers", f"{old} is now called {name}. Its data, codes and audit history are unchanged.")
 
 
 @router.post("/admin/codes/{cid}/revoke")

@@ -34,7 +34,7 @@
       {% if signed %}
       <div class="user-chip" title="Signed in as {{ who.name }}">
         <span class="avatar" aria-hidden="true">{{ (who.name or '?')[:1] }}</span>
-        <span class="who"><b>{{ who.name }}</b><span>{% if who.orgs is none %}All customers{% else %}{{ who.orgs | map('org') | join(', ') }}{% endif %}{% if who.stage %} · {{ stages_meta[who.stage][1] }} station{% endif %}</span></span>
+        <span class="who"><b>{{ who.name }}</b><span>{% if who.orgs is none %}All sellers{% else %}{{ who.orgs | map('org') | join(', ') }}{% endif %}{% if who.stage %} · {{ stages_meta[who.stage][1] }} station{% endif %}</span></span>
       </div>
       {% endif %}
       {% if guarded and signed %}<form method="post" action="/logout"><button class="toggle" type="submit">Sign out</button></form>{% endif %}

@@ -93,6 +93,13 @@ create table if not exists {SCHEMA}.faults (
     set_by text not null,
     set_at timestamptz not null default now()
 );
+create table if not exists {SCHEMA}.sellers (
+    org_id     text primary key,
+    name       text not null,
+    created_by text not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
 """
 
 

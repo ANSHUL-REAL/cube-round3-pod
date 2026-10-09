@@ -238,9 +238,13 @@ router = APIRouter(dependencies=[Depends(_same_origin)])
 
 
 def _back(url: str, msg: str, bad: bool = False) -> RedirectResponse:
+    """Redirect with a flash message. The message goes before any '#section': a browser never sends what follows '#'."""
     from urllib.parse import quote
 
-    return RedirectResponse(f"{url}?msg={quote(msg)}{'&bad=1' if bad else ''}", status_code=303)
+    path, _, frag = url.partition("#")
+    sep = "&" if "?" in path else "?"
+    return RedirectResponse(f"{path}{sep}msg={quote(msg)}{'&bad=1' if bad else ''}{'#' + frag if frag else ''}",
+                            status_code=303)
 
 
 # ---------------------------------------------------------------- pages

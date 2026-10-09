@@ -5,7 +5,7 @@
 <section class="card hero-phone">
   <div class="signin-mark"><span class="logo">{{ logo() }}</span><b>{{ brand.name }}</b></div>
   <h1>Sign in</h1>
-  <p class="muted">Enter your access code: the one on the presenter's screen, or the one you were given.</p>
+  <p class="muted">Enter the 8-digit access code you were given. It opens your seller, or your station.</p>
   {% if locked %}<p class="flash bad">Too many wrong codes from this device. Ask your administrator to reset sign-in.</p>{% else %}
   <form method="post" action="/join" class="stack">
     <input type="hidden" name="next" value="{{ next }}">

@@ -83,7 +83,6 @@
         {% else %}
         <a class="btn l-btn-xl" href="/join">Sign in →</a>
         {% endif %}
-        <a class="btn alt l-btn-xl" href="/login">Admin</a>
       </div>
       <p class="l-cta-note">Sign in with the 8-digit access code you were given.
         {% if signed_in %}You are signed in{% if who and who.name %} as <b>{{ who.name }}</b>{% endif %}.{% endif %}</p>
@@ -344,7 +343,7 @@
 
       <article class="card l-safe-card l-panel">
         <h3>Fault-injection run</h3>
-        <p>Every stage broken five ways (down, timeout, invalid output, crash, another customer's evidence) across all {{ units }} units.</p>
+        <p>Every stage broken five ways (down, timeout, invalid output, crash, another seller's evidence) across all {{ units }} units.</p>
         <div class="l-bignums">
           <div class="l-bn"><b>2,500</b><span>broken workflows run</span></div>
           <div class="l-bn"><b>1,575</b><span>reached the broken stage</span></div>
@@ -369,8 +368,8 @@
           <rect x="116" y="49" width="68" height="34" rx="9" fill="#17131a" stroke="#fdf6e6" stroke-width="2.5"/>
           <text x="150" y="73" text-anchor="middle" class="l-svg-t l-svg-inv">404</text>
         </svg>
-        <p>A code for one customer gets <b>404 Not found</b> for the other's units, workflows, records and photos, exactly as if they did not exist.
-          Every agent refuses another customer's unit too.</p>
+        <p>A code for one seller gets <b>404 Not found</b> for the other's units, workflows, records and photos, exactly as if they did not exist.
+          Every agent refuses another seller's unit too.</p>
       </article>
     </div>
     <div class="l-strip">
@@ -413,7 +412,7 @@
       </div>
       <ol class="l-who">
         <li class="card"><h3>Your own code</h3>
-          <p>Everyone <a href="/join">signs in</a> with their own 8-digit access code. A code opens one customer, or all of them.</p></li>
+          <p>Everyone <a href="/join">signs in</a> with their own 8-digit access code. A code opens one seller, or all of them.</p></li>
         <li class="card"><h3>Your own station, from a phone</h3>
           <p>Pick your agent, take the photos with the phone camera, press run. A step waits until the steps before it are done. Recovery needs no camera, just a press.</p></li>
         <li class="card"><h3>Every action has a name</h3>
@@ -430,14 +429,14 @@
     <div class="l-head">
       <p class="l-kicker"><b>06</b>Live numbers</p>
       <h2 id="h-numbers">Counted right now, on this deployment.</h2>
-      <p class="l-sub">Totals only. Nothing about any unit, customer or person is shown here.</p>
+      <p class="l-sub">Totals only. Nothing about any unit, seller or person is shown here.</p>
     </div>
     <div class="l-tiles">
       <div class="card l-tile"><b>{{ '{:,}'.format(stats.workflows) }}</b><span>workflows run</span></div>
       <div class="card l-tile"><b>{{ '{:,}'.format(stats.evidence) }}</b><span>evidence records</span></div>
       {% if stats.photos is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.photos) }}</b><span>photos stored</span></div>{% endif %}
       {% if stats.audit is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.audit) }}</b><span>audit entries</span></div>{% endif %}
-      <div class="card l-tile"><b>{{ units }}</b><span>units across {{ orgs }} customers</span></div>
+      <div class="card l-tile"><b>{{ units }}</b><span>units across {{ orgs }} sellers</span></div>
       <div class="card l-tile l-tile-store">
         <span class="l-rk">Storage</span>
         <b class="l-store">{{ stats.storage }}</b>
@@ -453,7 +452,7 @@
   <div class="wrap">
     <div class="l-head">
       <p class="l-kicker"><b>07</b>Try it</p>
-      <h2 id="h-in">Two ways in.</h2>
+      <h2 id="h-in">One sign-in for everyone.</h2>
     </div>
     <div class="l-doors{{ ' l-doors-3' if signed_in }}">
       {% if signed_in %}
@@ -465,17 +464,18 @@
       </a>
       {% endif %}
       <a class="card l-door" href="/join">
-        <span class="l-door-k">Operators</span>
+        <span class="l-door-k">Everyone</span>
         <b>Sign in</b>
-        <span>Enter the 8-digit access code you were given. You see your customer's units and stations.</span>
-        <span class="btn{{ ' alt' if signed_in }}">Sign in with a code →</span>
+        <span>Enter the 8-digit access code you were given. It knows who you are and opens the right place.</span>
+        <span class="btn{{ ' alt' if signed_in }}">Sign in →</span>
       </a>
-      <a class="card l-door" href="/login">
-        <span class="l-door-k">Administrators</span>
-        <b>Admin</b>
-        <span>Every customer, fault switches, access codes and the audit log. Password only.</span>
-        <span class="btn alt">Admin sign-in →</span>
-      </a>
+      <div class="card l-door">
+        <span class="l-door-k">Who sees what</span>
+        <b>Your code decides</b>
+        <span><b>Seller teams</b> see their own seller's units, reviews and receipts, and nothing of anyone else's.</span>
+        <span><b>Station staff</b> open straight on their one step, from a phone.</span>
+        <span><b>Administrators</b> see every seller, issue and revoke codes, and read the audit log.</span>
+      </div>
     </div>
     <ul class="l-links">
       <li><a href="/health">Live status</a><span>Public JSON: agent and database health</span></li>
@@ -498,7 +498,7 @@
     <p class="l-foot-line"><b>{{ brand.name }}</b> · {{ brand.tagline }}</p>
     <nav class="l-foot-nav" aria-label="Footer">
       {% if signed_in %}<a href="/">Open the dashboard</a>{% endif %}
-      <a href="/join">Sign in</a><a href="/login">Admin</a><a href="/health">Live status</a><a href="/docs">API docs (sign-in)</a>
+      <a href="/join">Sign in</a><a href="/health">Live status</a><a href="/docs">API docs (sign-in)</a>
     </nav>
     {% if brand.credit %}<p class="l-credit">{{ brand.credit }}</p>{% endif %}
   </div>

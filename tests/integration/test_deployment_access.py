@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from orchestration import api, faults
 from orchestration.store import FileStore
-from orchestration.web import access, station
+from orchestration.web import access, brand, station
 
 ALPHA, BRAVO = "org_demo_alpha", "org_demo_bravo"
 A_UNIT, B_UNIT = "UNIT-0014", None  # B_UNIT: the first bravo unit, found below
@@ -35,8 +35,10 @@ def deployed(tmp_path, monkeypatch):
     access._AUDIT.clear()
     access._REVOKED_CACHE.clear()
     faults._MEM.clear()
+    brand._MEM.clear()
     yield tmp_path
     faults._MEM.clear()
+    brand._MEM.clear()
 
 
 def remote() -> TestClient:
@@ -61,8 +63,9 @@ def issue(c: TestClient, org: str, label: str = "judges") -> str:
 def test_a_stranger_gets_nothing_but_health(deployed):
     c = remote()
     assert c.get("/health").status_code == 200, "organisers' /health stays public"
-    home = c.get("/")  # the public website: how it works and the two ways in, no data
-    assert home.status_code == 200 and 'href="/join"' in home.text and 'href="/login"' in home.text
+    home = c.get("/")  # the public website: how it works and one way in, no data
+    assert home.status_code == 200 and 'href="/join"' in home.text and 'href="/login"' not in home.text
+    assert 'href="/login"' in c.get("/join").text, "admins reach the password from the one sign-in page"
     assert A_UNIT not in home.text and "org_demo_alpha" not in home.text
     assert c.get("/ui/sim").headers["location"].startswith("/join")
     assert c.get("/admin").headers["location"].startswith("/login"), "the admin page asks for the admin password"
@@ -253,3 +256,63 @@ def test_a_pasted_model_key_is_tidied(monkeypatch):
 def test_the_admin_page_says_when_the_model_key_is_missing(deployed):
     boss = admin()
     assert "no GEMINI_API_KEY" in boss.get("/admin").text
+
+
+def test_an_admin_adds_a_seller_and_its_people_see_only_that_seller(deployed):
+    boss = admin()
+    r = boss.post("/admin/sellers", data={"name": "  Gamma   Goods "})
+    assert r.status_code == 303 and "bad=1" not in r.headers["location"]
+    assert brand.org_name("org_gamma_goods") == "Gamma Goods"
+    page = boss.get("/admin").text
+    assert "Gamma Goods" in page and "no units yet" in page
+    code = issue(boss, "org_gamma_goods", "Gita")
+    gamma = remote()
+    assert gamma.post("/join", data={"code": code, "next": "/"}).status_code == 303
+    assert gamma.get("/whoami").json()["orgs"] == ["org_gamma_goods"]
+    home = gamma.get("/").text
+    assert "No units yet" in home and A_UNIT not in home and "Gamma Goods" in home
+    assert gamma.get("/workflows").json()["count"] == 0
+    assert gamma.post("/workflows", json={"org_id": ALPHA, "unit_id": A_UNIT}).status_code == 404
+    assert gamma.post("/admin/sellers", data={"name": "Mine now"}).status_code == 403, "only an admin adds sellers"
+    assert any(a["action"] == "seller_added" and a["target"] == "Gamma Goods" for a in access.audit_log())
+
+
+def test_a_seller_name_must_be_new_and_sensible(deployed):
+    boss = admin()
+    for name in ("alpha retail", "x", ""):
+        r = boss.post("/admin/sellers", data={"name": name})
+        assert "bad=1" in r.headers["location"], name
+    assert boss.post("/admin/sellers", data={"name": "Gamma Goods"}).status_code == 303
+    assert "bad=1" in boss.post("/admin/sellers", data={"name": "GAMMA goods"}).headers["location"]
+    assert set(brand.org_names()) == {ALPHA, BRAVO, "org_gamma_goods"}
+
+
+def test_renaming_a_seller_keeps_its_data_and_its_codes(deployed):
+    boss = admin()
+    code = issue(boss, BRAVO, "Bo")
+    r = boss.post(f"/admin/sellers/{BRAVO}/rename", data={"name": "Bravo Wholesale"})
+    assert r.status_code == 303 and "bad=1" not in r.headers["location"]
+    assert brand.org_name(BRAVO) == "Bravo Wholesale"
+    bo = remote()
+    bo.post("/join", data={"code": code, "next": "/"})
+    assert bo.get("/whoami").json()["orgs"] == [BRAVO], "the id, and so the data and codes, did not change"
+    assert "Bravo Wholesale" in bo.get("/").text
+    assert boss.post("/admin/sellers/org_nobody/rename", data={"name": "Ghost"}).status_code == 404
+    assert "bad=1" in boss.post(f"/admin/sellers/{BRAVO}/rename", data={"name": "Alpha Retail"}).headers["location"]
+
+
+def test_a_new_seller_id_is_stable_and_never_reused():
+    assert brand.new_org_id("Gamma Goods!", set()) == "org_gamma_goods"
+    assert brand.new_org_id("Gamma Goods", {"org_gamma_goods"}) == "org_gamma_goods_2"
+    assert brand.new_org_id("???", set()) == "org_seller"
+
+
+def test_an_admin_action_says_what_it_did_on_the_page_it_returns_to(deployed):
+    boss = admin()
+    r = boss.post("/admin/sellers", data={"name": "Gamma Goods"})
+    loc = r.headers["location"]
+    assert loc.startswith("/admin?msg=") and loc.endswith("#sellers"), "the message must come before the '#'"
+    assert "Seller added: Gamma Goods" in boss.get(loc.split("#")[0]).text
+    from orchestration.web import _back
+
+    assert _back("/ui/w/X?tab=1#top", "ok", bad=True).headers["location"] == "/ui/w/X?tab=1&msg=ok&bad=1#top"
