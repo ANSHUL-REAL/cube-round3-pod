@@ -196,7 +196,7 @@ def quality_flags(po: PurchaseOrderLine, ob: Observation, th: Thresholds, refs: 
     if _constrained(po.spec_variant, {"n/a", "standard"}):
         if not ob.observed_variant:
             unclear.append("variant")
-        elif tokens(ob.observed_variant) != tokens(po.spec_variant):
+        elif not tokens(po.spec_variant) <= tokens(ob.observed_variant):  # '11oz, set of 2' is the ordered '11oz'
             raised.append("wrong_variant")
             notes.append(f"variant {ob.observed_variant!r}, spec {po.spec_variant!r}")
     if po.spec_components:
@@ -205,7 +205,13 @@ def quality_flags(po: PurchaseOrderLine, ob: Observation, th: Thresholds, refs: 
         else:
             seen = [tokens(c) for c in ob.observed_components]
             missing = [c for c in po.spec_components if not any(tokens(c) <= s for s in seen)]
-            if missing:
+            # What the model listed that matches no ordered part may be a missing part named another way (a candle
+            # listed as 'glass jar, soy wax, wick'). Then the part is not shown missing, only not named: a person checks.
+            unnamed = [c for c in ob.observed_components if not any(tokens(c) & tokens(p) for p in po.spec_components)]
+            if missing and unnamed:
+                unclear.append(f"components ({', '.join(missing)} not named; the model listed {', '.join(unnamed)})")
+                missing = []
+            elif missing:
                 raised.append("missing_components")
                 notes.append(f"missing {', '.join(missing)}")
     if ob.obvious_defect == "yes":

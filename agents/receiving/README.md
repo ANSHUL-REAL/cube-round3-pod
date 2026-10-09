@@ -37,7 +37,7 @@ A FAIL with something unresolved alongside it keeps the FAIL and sets `needs_hum
 | `carton_damage`, `unit_damage` | `none` | `crushing`, `water` or `tears` | model says it cannot tell |
 | `quality_flags` | colour, variant and required components match the spec and no obvious defect | any of `wrong_colour`, `wrong_variant`, `missing_components`, `obvious_defect` (named in `observed`) | could not confirm something the PO constrains |
 
-Colour and variant only count when the PO constrains them (`n/a` and `standard` do not). Words are compared order-insensitively and in the singular ("pack of 3" equals "3-pack", "candles" equals "candle"; a trailing quantity such as "x2" is ignored for components; `tokens()` in `models.py`). Checks never carry an invented `confidence`: they are deterministic, so it is null, and the model's own self-reported figures are kept in `payload.observation`.
+Colour and variant only count when the PO constrains them (`n/a` and `standard` do not). Words are compared order-insensitively and in the singular ("pack of 3" equals "3-pack", "candles" equals "candle"; a trailing quantity such as "x2" is ignored for components; a number is joined to its unit, so "2 m" equals "2m"; `tokens()` in `models.py`). A variant passes when it contains the ordered one ("11oz, set of 2" for "11oz"); a different one ("6-pack" for "3-pack") is `wrong_variant`. A required part the model did not name is `missing_components` only when everything the model listed is accounted for; if it also listed things that match no ordered part (a candle described as "glass jar, soy wax, wick"), the part may be there under another name, so the check is UNCERTAIN and a person looks. All three came from real runs on 2026-10-09. Checks never carry an invented `confidence`: they are deterministic, so it is null, and the model's own self-reported figures are kept in `payload.observation`.
 
 ## What the record contains
 
@@ -87,7 +87,7 @@ Settings (environment or `.env`): `GEMINI_API_KEY`, `GEMINI_MODEL` (default `gem
 ## Test it
 
 ```sh
-pytest tests/integration/test_receiving_agent.py     # 52 tests, no key needed
+pytest tests/integration/test_receiving_agent.py     # 54 tests, no key needed
 pytest tests/integration/test_agent_contracts.py
 ```
 

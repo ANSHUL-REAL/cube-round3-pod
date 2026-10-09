@@ -195,6 +195,27 @@ def test_a_plural_names_the_same_component_but_a_missing_word_is_still_missing(t
     assert out["evidence"]["payload"]["missing_components"] == ["gift box"]
 
 
+def test_a_more_specific_variant_and_a_spaced_unit_are_not_wrong(tmp_path, monkeypatch):
+    """Seen in a real run: '2 m' for the ordered '2m', and '11oz, set of 2' for the ordered '11oz'."""
+    po = po_for("UNIT-0002", ALPHA)  # 3-pack
+    assert tokens("2 m") == tokens("2m") and tokens("11 oz") == tokens("11oz") and tokens("500 ml") == tokens("500ml")
+    obs = clean(po, observed_variant="3-pack, gift boxed")
+    assert by_key(inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, obs)[0])["quality_flags"]["verdict"] == "PASS"
+    out, _ = inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, clean(po, observed_variant="6-pack"))
+    assert out["evidence"]["payload"]["quality_flags"] == ["wrong_variant"], "a different variant is still wrong"
+
+
+def test_parts_named_differently_are_uncertain_not_missing(tmp_path, monkeypatch):
+    """Seen in a real run: a candle listed as its parts ('glass jar', 'soy wax', 'wick'). The ordered 'candle x3' is
+    not named, but the model listed things it cannot be matched against: a person checks; nothing is passed."""
+    po = po_for("UNIT-0002", ALPHA)  # "candle x3;gift box"
+    obs = clean(po, observed_components=["glass jar", "soy wax", "wick", "gift box"])
+    q = by_key(inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, obs)[0])["quality_flags"]
+    assert q["verdict"] == "UNCERTAIN" and "candle x3" in q["detail"] and "glass jar" in q["detail"]
+    out, _ = inspect(tmp_path, monkeypatch, "UNIT-0002", ALPHA, clean(po, observed_components=["gift box"]))
+    assert out["evidence"]["payload"]["missing_components"] == ["candle x3"], "nothing else listed: it is missing"
+
+
 def test_singular_keeps_words_that_only_look_plural():
     assert tokens("candles") == tokens("candle") and tokens("boxes") == tokens("box")
     assert tokens("batteries") == {"battery"} and tokens("glass") == {"glass"} and tokens("gas") == {"gas"}

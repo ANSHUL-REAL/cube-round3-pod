@@ -51,7 +51,7 @@ Nothing was copied byte for byte: the code was rewritten against the Round 3 con
 | `agents/receiving/captures.py` | Reads and prepares the photos named in `inputs`, hash-checked |
 | `agents/receiving/check.py` | Command-line checker |
 | `agents/receiving/config.py` | Settings |
-| `tests/integration/test_receiving_agent.py` | 52 behaviour tests with a scripted model |
+| `tests/integration/test_receiving_agent.py` | 54 behaviour tests with a scripted model |
 | `tests/stubs/receiving_stub.py` | The organiser's Receiving stub, kept verbatim as a test fixture for the plumbing tests |
 
 ## What was left behind

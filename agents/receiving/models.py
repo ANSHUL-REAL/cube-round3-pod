@@ -117,6 +117,8 @@ def _singular(w: str) -> str:
 
 
 def tokens(text: str | None) -> frozenset[str]:
-    """Order-insensitive singular words, with a trailing quantity ('x2') and the filler word 'of' dropped."""
+    """Order-insensitive singular words, with a trailing quantity ('x2') and the filler word 'of' dropped, and a
+    number joined to its unit ('2 m' is '2m', '11 oz' is '11oz')."""
     t = re.sub(r"\bx\s*\d+\b", " ", (text or "").lower())
+    t = re.sub(r"\b(\d+(?:\.\d+)?)\s+(mm|cm|m|ml|l|oz|g|kg|ft|in|lb|lbs|pc|pcs)\b", r"\1\2", t)
     return frozenset(_singular(w) for w in re.findall(r"[a-z0-9]+", t) if w != "of")
