@@ -1,0 +1,378 @@
+{
+  "faults": {
+    "pack:crash": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 29,
+      "failed_or_incomplete": 29,
+      "workflows_hit": 29
+    },
+    "pack:down": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 29,
+      "failed_or_incomplete": 29,
+      "workflows_hit": 29
+    },
+    "pack:invalid_output": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 29,
+      "failed_or_incomplete": 29,
+      "workflows_hit": 29
+    },
+    "pack:timeout": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 29,
+      "failed_or_incomplete": 29,
+      "workflows_hit": 29
+    },
+    "pack:wrong_tenant": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 29,
+      "failed_or_incomplete": 29,
+      "workflows_hit": 29
+    },
+    "prep:crash": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 62,
+      "failed_or_incomplete": 62,
+      "workflows_hit": 62
+    },
+    "prep:down": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 62,
+      "failed_or_incomplete": 62,
+      "workflows_hit": 62
+    },
+    "prep:invalid_output": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 62,
+      "failed_or_incomplete": 62,
+      "workflows_hit": 62
+    },
+    "prep:timeout": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 62,
+      "failed_or_incomplete": 62,
+      "workflows_hit": 62
+    },
+    "prep:wrong_tenant": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 62,
+      "failed_or_incomplete": 62,
+      "workflows_hit": 62
+    },
+    "receiving:crash": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "receiving:down": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "receiving:invalid_output": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "receiving:timeout": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "receiving:wrong_tenant": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "recovery:crash": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "recovery:down": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "recovery:invalid_output": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "recovery:timeout": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "recovery:wrong_tenant": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 100,
+      "failed_or_incomplete": 100,
+      "workflows_hit": 100
+    },
+    "returns:crash": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 24,
+      "failed_or_incomplete": 24,
+      "workflows_hit": 24
+    },
+    "returns:down": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 24,
+      "failed_or_incomplete": 24,
+      "workflows_hit": 24
+    },
+    "returns:invalid_output": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 24,
+      "failed_or_incomplete": 24,
+      "workflows_hit": 24
+    },
+    "returns:timeout": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 24,
+      "failed_or_incomplete": 24,
+      "workflows_hit": 24
+    },
+    "returns:wrong_tenant": {
+      "crashes": 0,
+      "ended_clean": 0,
+      "error_recorded": 24,
+      "failed_or_incomplete": 24,
+      "workflows_hit": 24
+    }
+  },
+  "live_no_photos": {
+    "crashes": 0,
+    "photo_stage_answers": {
+      "no_capture": 215
+    },
+    "status": {
+      "FAILED": 100
+    },
+    "verdicts_without_a_photo": 0,
+    "workflows": 100
+  },
+  "replay": {
+    "crashes": 0,
+    "final_outcome": {
+      "CLAIM_RECOMMENDED": 4,
+      "CLEAN": 33,
+      "EXCEPTION": 54,
+      "NEEDS_REVIEW": 9
+    },
+    "latency_ms": {
+      "pack": {
+        "max": 79,
+        "median": 1,
+        "n": 29
+      },
+      "prep": {
+        "max": 4,
+        "median": 2.0,
+        "n": 62
+      },
+      "receiving": {
+        "max": 11,
+        "median": 2.0,
+        "n": 100
+      },
+      "recovery": {
+        "max": 6,
+        "median": 3.0,
+        "n": 100
+      },
+      "returns": {
+        "max": 3,
+        "median": 2.0,
+        "n": 24
+      }
+    },
+    "needs_a_person": 20,
+    "needs_a_person_share": 0.2,
+    "outcome_by_route": {
+      "fba": {
+        "CLAIM_RECOMMENDED": 3,
+        "CLEAN": 11,
+        "EXCEPTION": 27,
+        "NEEDS_REVIEW": 6
+      },
+      "fba + returned": {
+        "CLAIM_RECOMMENDED": 1,
+        "CLEAN": 3,
+        "EXCEPTION": 10,
+        "NEEDS_REVIEW": 1
+      },
+      "mfn": {
+        "CLEAN": 11,
+        "EXCEPTION": 9
+      },
+      "mfn + returned": {
+        "CLEAN": 4,
+        "EXCEPTION": 5
+      },
+      "unknown": {
+        "CLEAN": 4,
+        "EXCEPTION": 3,
+        "NEEDS_REVIEW": 2
+      }
+    },
+    "recovery": {
+      "charge_positions": {
+        "CONTRADICTS": 4,
+        "SILENT": 56,
+        "SUPPORTS": 1
+      },
+      "check_verdicts": {
+        "FAIL": 4,
+        "PASS": 1,
+        "UNCERTAIN": 56
+      },
+      "claimed_usd": 6.0,
+      "claims": [
+        {
+          "amount_usd": 2.0,
+          "basis_kind": "evidence",
+          "charge_type": "inbound_defect_fee",
+          "line_id": "FEE-0014-1",
+          "org": "org_demo_alpha",
+          "record_id": "RCY-WF-org_demo_alpha-UNIT-0014-recovery",
+          "rests_on": [
+            "PRP-0014",
+            "RCV-0014"
+          ],
+          "unit": "UNIT-0014"
+        },
+        {
+          "amount_usd": 1.0,
+          "basis_kind": "evidence",
+          "charge_type": "inbound_defect_fee",
+          "line_id": "FEE-0026-1",
+          "org": "org_demo_alpha",
+          "record_id": "RCY-WF-org_demo_alpha-UNIT-0026-recovery",
+          "rests_on": [
+            "PRP-0026",
+            "RCV-0026"
+          ],
+          "unit": "UNIT-0026"
+        },
+        {
+          "amount_usd": 2.0,
+          "basis_kind": "evidence",
+          "charge_type": "inbound_defect_fee",
+          "line_id": "FEE-0061-1",
+          "org": "org_demo_alpha",
+          "record_id": "RCY-WF-org_demo_alpha-UNIT-0061-recovery",
+          "rests_on": [
+            "PRP-0061",
+            "RCV-0061"
+          ],
+          "unit": "UNIT-0061"
+        },
+        {
+          "amount_usd": 1.0,
+          "basis_kind": "evidence",
+          "charge_type": "inbound_defect_fee",
+          "line_id": "FEE-0071-1",
+          "org": "org_demo_alpha",
+          "record_id": "RCY-WF-org_demo_alpha-UNIT-0071-recovery",
+          "rests_on": [
+            "PRP-0071",
+            "RCV-0071"
+          ],
+          "unit": "UNIT-0071"
+        }
+      ]
+    },
+    "status": {
+      "BLOCKED": 20,
+      "COMPLETED": 80
+    },
+    "units": 100,
+    "vs_reference": {
+      "compared": 100,
+      "differs": [
+        {
+          "ours": {
+            "outcome": "EXCEPTION",
+            "status": "BLOCKED"
+          },
+          "reference": {
+            "claimable_usd": 1.0,
+            "outcome": "CLAIM_RECOMMENDED",
+            "status": "COMPLETED"
+          },
+          "workflow": "WF-org_demo_bravo-UNIT-0018"
+        },
+        {
+          "ours": {
+            "outcome": "EXCEPTION",
+            "status": "BLOCKED"
+          },
+          "reference": {
+            "claimable_usd": 0.5,
+            "outcome": "CLAIM_RECOMMENDED",
+            "status": "COMPLETED"
+          },
+          "workflow": "WF-org_demo_alpha-UNIT-0074"
+        },
+        {
+          "ours": {
+            "outcome": "EXCEPTION",
+            "status": "BLOCKED"
+          },
+          "reference": {
+            "claimable_usd": 0.5,
+            "outcome": "CLAIM_RECOMMENDED",
+            "status": "COMPLETED"
+          },
+          "workflow": "WF-org_demo_alpha-UNIT-0095"
+        }
+      ],
+      "same_status_and_outcome": 97
+    },
+    "wall_seconds": 1.98,
+    "workflows": 100
+  },
+  "tenancy": {
+    "pack": "refused (LookupError)",
+    "prep": "refused (LookupError)",
+    "receiving": "refused (LookupError)",
+    "recovery": "refused (LookupError)",
+    "returns": "refused (LookupError)"
+  }
+}

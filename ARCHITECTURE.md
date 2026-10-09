@@ -116,15 +116,103 @@ Every failure is **recorded and never becomes success**: a degraded evidence rec
 
 ---
 
-## Your Pod's architecture  ← **replace this section**
+## Your Pod's architecture: Pod 12
 
-_Delete this note and describe **your** system. At minimum:_
+### 1. Diagram
 
-1. **Diagram** of your actual components and flow, including anything you added.
-2. **What each agent really is**: model, rules, services, dependencies; which are still stubs.
-3. **Your orchestrator**: approach, how workflow state is stored, retries, how evidence is persisted, how overrides work (link the decisions in `docs/decisions.md`).
-4. **Your routing and final-outcome logic**, and how they treat uncertainty and weak evidence.
-5. **Tenancy**: where it is enforced, and how you tested it.
-6. **Failure model**: what you break in the demo and what happens.
-7. **Deployment**: where it runs, how to reach it, how to start it.
-8. **Known limits.**
+```text
+  people ──► Console (orchestration/web, /ui)          scripts: evaluate.py · score_checks.py · print_labels.py
+             live simulator · camera capture · overrides │
+                          │ same functions, no second brain
+  API (orchestration/api.py) ─────────────────────────────┤
+                          ▼
+                 Orchestrator (orchestration/orchestrator.py)
+                 flow.json routing · timeout 30 s · 1 retry · validates every Agent Output
+                 status + final outcome derived from evidence (rollup.py)
+                          │ Agent Input ▼   ▲ Agent Output        ┌──────────────────────────┐
+     ┌────────────────────┼────────────────────────┐              │ Store (store.py)          │
+     ▼                    ▼                         ▼              │ FileStore: out/workflows/ │
+ Receiving ──► Prep (FBA) | Pack (merchant) ──► Returns (if      ◄─┤ out/evidence/ (JSON,      │
+ Gemini+rules  Gemini+rules  Gemini+rules        returned)         │ content-hashed, immutable)│
+                                                 Gemini+rules      └──────────────────────────┘
+                          ▼
+                     Recovery: rules only, reads every earlier record (latest override applied)
+  photos: data/input/<unit>/<stage>/ (hash-checked; another unit's photo is refused)
+```
+
+### 2. What each agent really is
+
+| Stage | Owner | Model (default) | What decides | Built from |
+|---|---|---|---|---|
+| Receiving | @cherryy-x23 | `gemini-3.5-flash-lite`, 1 call per delivery, never shown the PO | rules in `agents/receiving/rules.py` | Sai charan's Round 2 agent, ported |
+| Prep | @Devisri-074 | `gemini-3.5-flash-lite`, 1 call per unit, never told the expected FNSKU | rules in `agents/prep/rules.py` (demo rules, sources unverified) | Manvith111's reference, re-implemented in Python |
+| Pack | @ANSHUL-REAL | `gemini-3.5-flash-lite`, 1 call per box, never shown the order | Round 2 rules, copied unchanged | Anshul's Round 2 agent |
+| Returns | @krishnababuprodduturu | `gemini-3.8-flash`, 1 call per return (0 without a product reference photo) | rules grade against a condition rubric snapshot | Krishna's Round 2 agent, adapted |
+| Recovery | @DaKaufeeBoii | none (0 calls) | rules per fee line, claims only on CONTRADICTS | Sai Tarun's rules, rebuilt on the organisers' fee report |
+
+**No stage is a stub.** Every model stage returns a `pending` record (not a guess) when there is no photo, no key, or
+the model fails. The four photo stages have each made real Gemini calls on real photos (`docs/REAL-RUNS.md`). The
+organisers' stubs are kept in `tests/stubs/` for the plumbing tests and for the console's labelled **Replay** mode only.
+
+### 3. Orchestrator
+
+- **State:** one JSON document per workflow (`out/workflows/<id>.json`); each Evidence Record is its own immutable
+  file (`out/evidence/<record_id>.json`) with a content hash. A record id that already exists with a different hash
+  is refused (`EvidenceConflict`); a replay of the same request is accepted.
+- **Calls:** in-process (`mode: inproc`) by default; any agent can be an HTTP service instead. The 30 s timeout is
+  enforced for in-process agents too (a worker thread). One retry on a timeout or a retryable error.
+- **Validation:** every Agent Output is checked against the JSON schemas; verdicts are a closed set
+  (PASS / FAIL / UNCERTAIN); an agent that returns nothing, crashes, or can't be built is a recorded stage error.
+  The run counter and request id are saved before the agent is called, so a crash mid-stage can be resumed (D-O01).
+- **Overrides:** a person's override is a new entry; it never edits evidence. The latest override wins. Stages that
+  used the overridden record (and later stages) are marked stale and run again on `resume`; the console resumes for
+  you (D-O03). Example: overriding Prep to FAIL on UNIT-0014 re-runs Recovery and the $2.00 claim is withdrawn.
+
+### 4. Routing and final outcome
+
+Routing is `orchestration/flow.json`: Receiving, then Prep for FBA units or Pack for merchant-fulfilled units, Returns
+when the unit came back, then Recovery. `on_uncertain` and `on_error` are `continue`, so Recovery always sees the
+whole chain and a person sees one result.
+
+Status and outcome come from `rollup.py` (precedence as documented there): a claim needs Recovery's effective verdict
+to be FAIL; any other FAIL is an EXCEPTION; a stage that asks for a person makes the workflow BLOCKED / NEEDS_REVIEW;
+a stage that did not finish makes it FAILED / INCOMPLETE. **UNCERTAIN is never turned into PASS.** Recovery is
+precision-first: no claim on SILENT evidence, none when Receiving recorded damage that may explain the fee (D-RC06),
+none from evidence captured after the charge, and weight-tier fees stay SILENT without a measurement and a sourced fee
+schedule (F-07).
+
+### 5. Tenancy
+
+Enforced in three places: every agent refuses another organisation's unit (`LookupError`, HTTP 404); the orchestrator
+refuses evidence whose subject or organisation is not the workflow's (D-O02); photo inputs must sit in the unit's own
+folder, by hash. Workflow ids are validated before they touch the file system. Tested per agent
+(`tests/integration/test_*_agent.py`), in `tests/integration/test_*_hardening.py`, and by `scripts/evaluate.py`
+(a `wrong_tenant` injection on every stage, 100 units each). **There is no sign-in:** run the console on 127.0.0.1.
+
+### 6. Failure model
+
+`scripts/evaluate.py` breaks each stage five ways (down, timeout, invalid output, crash, evidence about another
+organisation) across all 100 sample units: 2,500 workflows, 1,575 of which reach the broken stage, **0 crashes, 0 reported as clean**; every one records the
+error on the right stage and ends FAILED or INCOMPLETE (`docs/evaluation.md`). In the demo: start a live workflow
+with no photo, or with the model key removed, and the stage shows a recorded `no_capture` / `model_not_configured`
+error; the workflow is FAILED, never clean.
+
+### 7. Deployment
+
+Not deployed. One command, local, on the submitted commit:
+
+```bash
+python scripts/serve.py --data D:/pod12-demo
+```
+
+then open `http://localhost:8100/ui/sim`. `--stubs` starts the labelled Replay mode. A Gemini key goes in the
+git-ignored `.env` (`GEMINI_API_KEY`); without it every model stage records `model_not_configured`.
+
+### 8. Known limits
+
+- Per-check accuracy on labelled photos exists for Pack only (Round 2 held-out set, warehouse bins, not packing-bench
+  boxes); none yet for Receiving, Prep or Returns, and no two-person agreement figure (`docs/evaluation.md`).
+- Prep's rules and Returns' condition scale were not looked up from Amazon's published sources; both say so.
+- The sample data is invented and unlabelled, so claim precision against the truth is unknown.
+- No authentication on the console or the API; no database (files only).
+- A timed-out in-process agent keeps running in its thread until it returns.

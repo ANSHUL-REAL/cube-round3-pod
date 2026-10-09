@@ -5,6 +5,6 @@
   "mode": "inproc",
   "url": "http://localhost:8101",
   "module": "agents.receiving.app",
-  "implementation": "Round 2 Receiving Manager (Sai charan, @cherryy-x23), ported to Round 3. One batched Gemini call per delivery reads the photos (it is not shown the purchase order and decides nothing); fixed rules compare what it read with the PO line. No model key, no photos or a model error gives a pending record, not a guess. The real model has not been run through this pod; tests use a scripted model. See agents/receiving/README.md and PROVENANCE.md.",
+  "implementation": "Round 2 Receiving Manager (Sai charan, @cherryy-x23), ported to Round 3. One batched Gemini call per delivery reads the photos (it is not shown the purchase order and decides nothing); fixed rules compare what it read with the PO line. No model key, no photos or a model error gives a pending record, not a guess. Real Gemini calls on real photos are logged in docs/REAL-RUNS.md; the tests use a scripted model. No accuracy has been measured on labelled photos yet. See agents/receiving/README.md and PROVENANCE.md.",
   "notes": "Needs GEMINI_API_KEY for live checks. Photos go in data/input/<unit_id>/receiving/. Tests use a scripted model and need no key."
 }

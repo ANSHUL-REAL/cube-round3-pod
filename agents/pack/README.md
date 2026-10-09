@@ -80,7 +80,7 @@ The tests replace the model with scripted perceivers, so they check everything *
 ## Limits (read these)
 
 - **Real-model accuracy is from Round 2, not re-measured here.** One frozen run of `gemini-3.5-flash-lite` on 50 real warehouse bin photos (Amazon Bin Image Dataset): 2 of 26 wrong boxes let through, 12 of 24 good boxes stopped, 18 of 50 sent to a person. A limit we set in advance was crossed, so on photos like these it should **record evidence and let a person decide, not block sealing**. Details: Round 2 `EVAL.md` (link in PROVENANCE.md).
-- **Not yet run live through this pod repository.** The adapter has been tested with scripted models only. A live call through `agents/pack` with a real key and a real box photo is still to do.
+- **Run live through this pod repository on real warehouse photos only** (`docs/REAL-RUNS.md`, and the console on 2026-10-09: STOP_AND_FIX in 4.2 s). Not yet on a packing-bench box; the tests use scripted models.
 - Those photos are bin photos, not packing-bench photos, and the labels come from Amazon's records, not human labellers.
 - The organisers' sample has **no photos**, so the sample flow shows Pack as pending until someone takes box photos.
 - The photo-reuse ledger is a local JSON file (`PACK_LEDGER_PATH`, default `out/pack-ledger.json`). It survives restarts but is not shared between machines; two servers would each see only their own history.

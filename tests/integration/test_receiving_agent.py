@@ -532,7 +532,9 @@ def test_manifest_says_what_this_agent_is():
     manifest = json.loads((Path(__file__).resolve().parents[2] / "agents" / "receiving" / "agent.json").read_text())
     assert manifest["owner"] == "@cherryy-x23" and manifest["implementation"] != "organiser-stub"
     assert manifest["agent_id"] == "receiving-manager@0.1.0" == rcv.adapter.AGENT_ID
-    assert "not been run" in manifest["implementation"], "the manifest must not imply a live run that has not happened"
+    # Real runs happened (logged); accuracy has not been measured, and the manifest must say both, not more.
+    assert "docs/REAL-RUNS.md" in manifest["implementation"]
+    assert "No accuracy has been measured" in manifest["implementation"]
 
 
 def test_whole_workflow_records_our_receiving_record_and_hands_it_on(tmp_path, monkeypatch):

@@ -20,6 +20,8 @@ on 2026-10-09: `gemini-3.5-flash-lite` (Receiving, Prep, Pack) and `gemini-3.8-f
 | Returns | UNIT-0016 (towel), on a throwaway copy of the reference folder onboarded with a bin photo | ABID bin D03 | **pending_review**: all five checks UNCERTAIN ("insufficient product body evidence"; "0 of 1 photos passed the quality gate, fewer than 2 usable") | 1 | 11.6 s |
 | Whole workflow | UNIT-0016 through the orchestrator CLI | D05, D07, D03 | Receiving UNCERTAIN, Pack refused the photo as **already used for another order** (the photo-reuse ledger, from the Pack run above), Returns `no_product_reference`, Recovery `no_claim` (no fee lines) | 2 | 10.3 s |
 | Whole workflow | UNIT-0016 through the console (photos uploaded on the Photos page, **Run** pressed in the browser) | D05, D07, D03, D01 | the same shape: FAILED because Returns could not judge an un-onboarded product | 2 | not timed |
+| Pack | UNIT-0008, live simulator in the console (Live mode, **Next step** pressed) | ABID bin photo | **STOP_AND_FIX**: "Not in the order: Nylon Dog Leash (#1); Nylon Dog Leash (#2)." | 1 | 4.2 s |
+| Receiving | UNIT-0008, console **Snap & run** window (file picker, the preview pane blocks cameras) | ABID bin photo | **UNCERTAIN**: photo too unclear for a delivery check, sent to a person | 1 | 4.0 s |
 
 ## What the real runs found that the tests could not
 
