@@ -28,6 +28,7 @@ class JudgeError(Exception):
     def __init__(self, code: str, message: str, *, retryable: bool = True) -> None:
         super().__init__(message)
         self.code, self.retryable = code, retryable
+        self.calls = 1  # model calls actually made before giving up
 
 
 @dataclass(frozen=True)
@@ -99,15 +100,31 @@ class GeminiJudge:
         contents = [t.Part.from_text(text=x) if kind == "text" else t.Part.from_bytes(data=x, mime_type=sniff_mime(x))
                     for kind, x in bundle.parts]
         started = time.perf_counter()
-        try:
-            resp = self.client.models.generate_content(model=self.settings.returns_model, contents=contents,
-                                                       config=self._config(bundle))
-        except errors.APIError as exc:
-            auth = exc.code in (401, 403)
-            raise JudgeError("model_auth" if auth else "model_unavailable",
-                             f"model call failed (HTTP {exc.code})", retryable=not auth) from exc
-        except Exception as exc:  # timeouts and connection failures surface as httpx errors
-            raise JudgeError("model_unavailable", f"model call failed: {type(exc).__name__}") from exc
+        s = self.settings
+        # Attempt 1 on the configured model. A busy (429/5xx) or timed-out call is tried once more, on the fallback
+        # model when one is set (a live demo should not die on one "model overloaded" reply). The record names the
+        # model that actually answered (resp.model_version) and counts every call made.
+        models = [s.returns_model] + ([s.returns_fallback_model] if s.returns_fallback_model else [s.returns_model])
+        calls, resp, last = 0, None, None
+        for attempt, model in enumerate(models[: 1 + max(0, s.returns_model_retries)]):
+            if attempt:
+                time.sleep(s.returns_retry_backoff_s)
+            calls += 1
+            try:
+                resp = self.client.models.generate_content(model=model, contents=contents, config=self._config(bundle))
+                break
+            except errors.APIError as exc:
+                auth = exc.code in (401, 403)
+                last = JudgeError("model_auth" if auth else "model_unavailable",
+                                  f"model call failed (HTTP {exc.code}) on {model}", retryable=not auth)
+                last.calls = calls
+                if auth or exc.code not in (408, 429, 500, 502, 503, 504):
+                    raise last from exc
+            except Exception as exc:  # timeouts and connection failures surface as httpx errors
+                last = JudgeError("model_unavailable", f"model call failed on {model}: {type(exc).__name__}")
+                last.calls = calls
+        if resp is None:
+            raise last
         latency_ms = int((time.perf_counter() - started) * 1000)
         if not resp.text:
             raise JudgeError("model_unavailable", "the model returned no text (empty or blocked response)")
@@ -115,9 +132,8 @@ class GeminiJudge:
         usage = {"input_tokens": (um.prompt_token_count or 0) if um else 0,
                  "output_tokens": (um.candidates_token_count or 0) if um else 0,
                  "thinking_tokens": (um.thoughts_token_count or 0) if um else 0}
-        s = self.settings
         cost = None
         if s.cost_per_1m_input_usd is not None and s.cost_per_1m_output_usd is not None:
             cost = round((usage["input_tokens"] * s.cost_per_1m_input_usd
                           + (usage["output_tokens"] + usage["thinking_tokens"]) * s.cost_per_1m_output_usd) / 1e6, 6)
-        return JudgeResult(parse_judgment(resp.text), resp.model_version or s.returns_model, usage, latency_ms, cost)
+        return JudgeResult(parse_judgment(resp.text), resp.model_version or model, usage, latency_ms, cost, calls=calls)

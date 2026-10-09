@@ -16,9 +16,9 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     prep_gemini_model: str = "gemini-3.5-flash-lite"
-    # The orchestrator gives a stage 30 s. 2 attempts x 12 s + the 2 s back-off = 26 s worst case, so a slow model
+    # The orchestrator gives a stage 75 s (D-O07). 2 attempts x 28 s + the 2 s back-off = 58 s worst case, so a slow model
     # becomes a retryable *pending* record instead of an orchestrator timeout that loses the capture.
-    prep_timeout_s: float = 12.0
+    prep_timeout_s: float = 28.0
     prep_max_retries: int = 1
     prep_max_photos: int = 6
     prep_send_max_side_px: int = 1600

@@ -117,8 +117,9 @@ def handle(request: dict) -> dict:
         judge = get_judge(st)
         answer = judge.judge(bundle)
     except JudgeError as exc:
+        calls = getattr(exc, "calls", 0) if exc.code != "model_not_configured" else 0
         return adapter.pending(request, item, code=exc.code, message=str(exc), retryable=exc.retryable, photos=kept,
-                               payload=common)
+                               payload=common, model_calls=calls, model_name=st.returns_model if calls else None)
 
     up = upstream.read(request, item)
     result = run_pipeline(

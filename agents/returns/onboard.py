@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from shared.utils.console import utf8_console
 
@@ -45,6 +45,21 @@ def card_path(org_id: str, sku: str) -> Path:
     return REFERENCE_DIR / "products" / org_id / f"{sku}.yaml"
 
 
+REF_MAX_SIDE = 1600
+
+
+def _normalise(data: bytes) -> bytes:
+    """Upright, at most REF_MAX_SIDE px, JPEG. A phone photo is 4-8 MB and every Returns check sends the reference
+    photos to the model with the return photos, so storing it as taken made each call slower and could approach the
+    request limit (found in a live rehearsal, 2026-10-09). The card records the SHA-256 of these stored bytes."""
+    with Image.open(io.BytesIO(data)) as img:
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img.thumbnail((REF_MAX_SIDE, REF_MAX_SIDE), Image.LANCZOS)
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=90)
+    return out.getvalue()
+
+
 def onboard(org_id: str, sku: str, data: bytes, view: str = "contents_layout", actor: str = "operator") -> dict:
     """Add `data` (a photo) as a reference image of `sku`. Returns {"card": path, "image": id, "added": bool}."""
     if view not in VIEWS:
@@ -59,6 +74,7 @@ def onboard(org_id: str, sku: str, data: bytes, view: str = "contents_layout", a
         raise OnboardError("not a readable image") from None
     if fmt not in EXT:
         raise OnboardError("only JPG, PNG or WEBP photos")
+    data, fmt = _normalise(data), "jpeg"
 
     path = card_path(org_id, sku)
     if not path.is_file():

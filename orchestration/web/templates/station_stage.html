@@ -1,0 +1,36 @@
+{% extends "phone_base.html" %}
+{% set m = stages_meta[stage] %}
+{% block title %}{{ m[1] }} station{% endblock %}
+{% block where %}<span class="chip">{{ m[0] }} {{ m[1] }}</span>{% endblock %}
+{% block body %}
+<h1 class="phone-h">{{ m[0] }} {{ m[1] }}</h1>
+<p class="muted">{{ m[2] }}.</p>
+
+<h2>Your turn</h2>
+{% if stage == 'receiving' %}<input class="filter" placeholder="Find any unit, e.g. 0014" data-find=".mine .unit-row">{% endif %}
+<div class="mine">
+{% for r in mine %}
+  <a class="card unit-row {{ '' if r.demo or stage != 'receiving' else 'more' }}" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
+    <b>{{ r.unit }}</b>{% if r.story %}<span class="muted small">{{ r.story }}</span>{% endif %}
+    <span class="go">📸</span>
+  </a>
+{% else %}
+  <p class="card muted">Nothing for you yet. This page refreshes itself: a unit appears when the step before yours is done.</p>
+{% endfor %}
+</div>
+
+{% if later %}<h2>Coming to you</h2>
+{% for r in later %}<div class="card unit-row dim"><b>{{ r.unit }}</b><span class="muted small">{{ r.why }}</span></div>{% endfor %}{% endif %}
+
+{% if done %}<h2>Done here</h2>
+{% for r in done %}
+  <a class="card unit-row" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}"><b>{{ r.unit }}</b>
+    {% if r.state == 'error' %}<span class="chip error">retake needed</span>{% endif %}
+    {% if r.verdict %}<span class="chip {{ r.verdict|lower }}">{{ r.verdict|lower }}</span>{% endif %}
+    {% if r.outcome %}<span class="chip {{ r.outcome|lower }}">{{ r.outcome|replace('_',' ') }}</span>{% endif %}</a>
+{% endfor %}{% endif %}
+<script>
+  // New work arrives when someone else clears a step: refresh while nobody is typing in the search box.
+  setInterval(function () { var f = document.querySelector(".filter"); if (!f || !f.value) location.reload(); }, 5000);
+</script>
+{% endblock %}

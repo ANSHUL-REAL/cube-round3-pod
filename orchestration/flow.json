@@ -34,7 +34,7 @@
     }
   ],
   "defaults": {
-    "timeout_s": 30,
+    "timeout_s": 75,
     "retries": 1,
     "on_uncertain": "continue",
     "on_error": "continue"

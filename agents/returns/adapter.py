@@ -316,7 +316,8 @@ def model_block(judge, provider: str | None) -> dict:
 
 
 def pending(request: dict, item: ReturnedItem | None, *, code: str, message: str, retryable: bool,
-            photos: list[dict] | None = None, payload: dict | None = None, refs: dict | None = None) -> dict:
+            photos: list[dict] | None = None, payload: dict | None = None, refs: dict | None = None,
+            model_calls: int = 0, model_name: str | None = None) -> dict:
     """Fail open: a record exists, says UNCERTAIN and why, and keeps the captures. Never a made-up verdict."""
     body = {"order_id": item.order_id if item else None, "ordered_sku": item.ordered_sku if item else None,
             **(payload or {})}
@@ -326,7 +327,7 @@ def pending(request: dict, item: ReturnedItem | None, *, code: str, message: str
         unit_scope="unit", refs={"order_id": item.order_id if item else None, "sku": item.ordered_sku if item else None,
                                  **(refs or {})},
         checks=[], outcome="pending_review", verdict="UNCERTAIN", needs_human=True, reason=f"{code}: {message}",
-        model={"name": "none", "version": "0", "calls": 0, "cost_usd": None},
+        model={"name": model_name or "none", "version": "0", "calls": model_calls, "cost_usd": None},
         inputs=[{"ref": p["ref"], "sha256": p["sha256_original"], "kind": "image"} for p in (photos or [])],
         payload=body, status="pending" if retryable else "error",
         error=error_obj(code, message, retryable=retryable, stage=STAGE, agent_id=AGENT_ID))

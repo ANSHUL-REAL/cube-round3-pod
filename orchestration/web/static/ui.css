@@ -239,3 +239,59 @@ html.cam-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { #cam .cam-stage.flash::after { animation: none; } }
 .old-note { font-size: 12px; font-weight: 700; border: 2px dashed var(--line); border-radius: 10px; padding: 6px 8px; background: var(--card-2); }
 .step .row.is-old .chip:not(:first-child) { opacity: .45; text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- phone stations (/ui/station, serve.py --lan) */
+body.phone .wrap { max-width: 560px; padding-left: 16px; padding-right: 16px; }
+body.phone main { padding-bottom: 48px; }
+.phone-h { font: 900 34px/1.05 var(--font); margin: 18px 0 6px; letter-spacing: -0.02em; }
+body.phone h2 { font: 800 20px/1.2 var(--font); margin: 22px 0 10px; }
+.stations { display: grid; gap: 12px; margin: 16px 0; }
+.station-pick { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; padding: 16px; }
+.station-pick .icon { font-size: 34px; width: 52px; height: 52px; display: grid; place-items: center; background: var(--yellow);
+  border: 2.5px solid var(--line); border-radius: 14px; flex: none; }
+.station-pick > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.station-pick b { font: 900 22px/1.1 var(--font); }
+.unit-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; padding: 14px 16px;
+  text-decoration: none; color: inherit; }
+.unit-row b { font: 900 20px/1.1 var(--font); }
+.unit-row .small { flex-basis: 100%; }
+.unit-row .go { margin-left: auto; font-size: 26px; }
+.mine .unit-row.more { display: none; }
+.dim { opacity: .62; box-shadow: none; }
+.btn.big { width: 100%; justify-content: center; padding: 18px; font-size: 20px; border-radius: 14px; margin: 8px 0; }
+.btn.big.cam { background: var(--pink); }
+.btn.big.go { background: var(--yellow); }
+.btn:disabled { opacity: .55; }
+.code { width: 100%; font: 900 40px/1 var(--font); letter-spacing: .35em; text-align: center; padding: 14px; border: 2.5px solid var(--line);
+  border-radius: 14px; background: var(--card); color: var(--text); margin: 6px 0 8px; }
+.stack { display: grid; gap: 10px; }
+.hero-phone { margin-top: 28px; }
+.hero-phone h1 { font: 900 32px/1.05 var(--font); margin: 0 0 6px; }
+.result { border-width: 3px; }
+.result.pass { background: color-mix(in srgb, var(--pass) 22%, var(--card)); }
+.result.fail { background: color-mix(in srgb, var(--fail) 18%, var(--card)); }
+.result.uncertain { background: color-mix(in srgb, var(--unsure) 22%, var(--card)); }
+.result.just { animation: pop .45s ease-out; }
+@keyframes pop { from { transform: scale(.96); } to { transform: none; } }
+.result-head { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.check-line { padding: 8px 0; border-top: 2px dashed color-mix(in srgb, var(--line) 30%, transparent); }
+.small-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.small-photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border: 2px solid var(--line); border-radius: 10px; }
+.busy { position: fixed; inset: 0; background: rgba(23, 19, 26, .55); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.busy[hidden] { display: none; }
+.busy .card { text-align: center; max-width: 320px; }
+.spin { width: 46px; height: 46px; margin: 4px auto 12px; border: 6px solid var(--yellow); border-top-color: var(--pink); border-radius: 50%;
+  animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin, .result.just { animation: none; } }
+/* the laptop's "phones can join" card */
+.phones { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.phones img { width: 168px; height: 168px; border: 2.5px solid var(--line); border-radius: 12px; background: #fffdf8; }
+.phones .bigcode { font: 900 44px/1 var(--font); letter-spacing: .25em; }
+@media (max-width: 560px) { .phones { grid-template-columns: 1fr; } }
+.phones-all .qr-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 12px 0 6px; }
+.phones-all figure { margin: 0; text-align: center; }
+.phones-all img { width: 100%; max-width: 150px; aspect-ratio: 1; border: 2.5px solid var(--line); border-radius: 12px; background: #fffdf8; }
+.phones-all figcaption { font: 800 15px/1.2 var(--font); margin-top: 6px; }
+.bigcode-inline { font: 900 22px/1 var(--font); letter-spacing: .18em; }
+@media (max-width: 760px) { .phones-all .qr-row { grid-template-columns: repeat(3, 1fr); } }

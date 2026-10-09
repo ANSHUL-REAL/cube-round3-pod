@@ -2,6 +2,20 @@
 {% set nav = "home" %}
 {% block title %}Pod 12 console · units{% endblock %}
 {% block body %}
+{% if phones %}
+<section class="card phones-all">
+  <h2 style="margin:0 0 4px">📱 Five agents, five phones</h2>
+  <p class="small">Each teammate scans <b>their own agent's</b> code, types <b class="bigcode-inline">{{ phones.code }}</b> once, and clears that step from their phone.
+    Open from anywhere: <b class="mono">{{ phones.url }}</b></p>
+  <div class="qr-row">
+    {% for s in phones.stations %}{% set m = stages_meta[s] %}
+    <figure><img src="/ui/phones.svg?stage={{ s }}" alt="QR code for the {{ m[1] }} station"><figcaption>{{ m[0] }} {{ m[1] }}</figcaption></figure>
+    {% endfor %}
+  </div>
+  <p class="muted small">A unit reaches each station when the step before it is done. Pages here update when a phone clears a step.</p>
+</section>
+{% endif %}
+
 </main>
 <section class="hero">
   <div class="wrap">

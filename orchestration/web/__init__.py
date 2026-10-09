@@ -181,6 +181,12 @@ def _render(request: Request, name: str, **ctx):
     ctx.setdefault("msg", request.query_params.get("msg"))
     ctx.setdefault("bad", request.query_params.get("bad") == "1")
     ctx["stages_meta"] = STAGES
+    from .station import STATIONS, _has_code, is_local, lan_code, lan_url  # late: station imports this module
+
+    # The join QR codes and the code are for the presenter's screen: the laptop itself, or (through a tunnel, where the
+    # laptop is not "local") a browser that already entered the code. Never shown to anyone without it.
+    show = lan_code() and (is_local(request) or _has_code(request))
+    ctx.setdefault("phones", {"url": lan_url(), "code": lan_code(), "stations": STATIONS} if show else None)
     ctx["asset_v"] = int((HERE / "static" / "ui.css").stat().st_mtime)  # a new stylesheet is never served from a stale cache
     return templates.TemplateResponse(request, name, ctx)
 
@@ -455,32 +461,56 @@ async def upload(org: str, unit: str, stage: str, files: list[UploadFile] = File
     url = f"/ui/capture/{org}/{unit}"
     if stage not in _stages_for(case):
         raise HTTPException(404, f"{stage} is not a stage of {unit}")
+    saved, err = await save_photos(unit, stage, files)
+    if err:
+        return _back(url, err, bad=True)
+    return _back(url, f"Saved {saved} photo(s) for {stage}." if saved else "No photo was chosen.", bad=not saved)
+
+
+async def save_photos(unit: str, stage: str, files: list[UploadFile], *, replace: bool = False) -> tuple[int, str | None]:
+    """Check and store uploaded photos for one stage: (saved, error). Used by the laptop pages and the phone stations.
+
+    Every file is checked (type, size, really an image) before any is written, so a bad file never leaves half a set.
+    `replace` removes the stage's earlier photos first (a retake). Their SHA-256 stays in every record that used them."""
+    import io
+
     folder = _input_root() / unit / stage
-    have, limit, saved = len(_photos(unit, stage)), MAX_PER_STAGE.get(stage, DEFAULT_MAX), 0
+    limit, ready = MAX_PER_STAGE.get(stage, DEFAULT_MAX), []
     for f in files:
         if not f.filename:
             continue
         ext = Path(f.filename).suffix.lower()
+        if ext == ".jpeg":
+            ext = ".jpg"
         if ext not in PHOTO_EXT:
-            return _back(url, f"{f.filename}: only JPG, PNG or WEBP photos.", bad=True)
-        if have + saved >= limit:
-            return _back(url, f"{stage} takes at most {limit} photos. Remove one first.", bad=True)
+            hint = " (an iPhone HEIC photo: set Camera > Formats > Most Compatible)" if ext in (".heic", ".heif") else ""
+            return 0, f"{f.filename}: only JPG, PNG or WEBP photos{hint}."
         data = await f.read(MAX_UPLOAD + 1)
         if len(data) > MAX_UPLOAD:
-            return _back(url, f"{f.filename}: larger than {MAX_UPLOAD // (1024 * 1024)} MB.", bad=True)
+            return 0, f"{f.filename}: larger than {MAX_UPLOAD // (1024 * 1024)} MB."
         try:
-            import io
-
             with Image.open(io.BytesIO(data)) as img:
                 img.verify()
         except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError):
-            return _back(url, f"{f.filename} is not a readable image.", bad=True)
-        folder.mkdir(parents=True, exist_ok=True)
-        stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(f.filename).stem).strip("._-")[:40] or "photo"
-        n = have + saved + 1
-        (folder / f"{n:02d}-{stem}{ext}").write_bytes(data)
-        saved += 1
-    return _back(url, f"Saved {saved} photo(s) for {stage}." if saved else "No photo was chosen.", bad=not saved)
+            return 0, f"{f.filename} is not a readable image."
+        ready.append((f.filename, ext, data))
+    have = 0 if replace else len(_photos(unit, stage))
+    if have + len(ready) > limit:
+        return 0, f"{stage} takes at most {limit} photos." + ("" if replace else " Remove one first.")
+    if not ready:
+        return 0, None
+    if replace:
+        for name in _photos(unit, stage):
+            (folder / name).unlink()
+    folder.mkdir(parents=True, exist_ok=True)
+    for i, (name, ext, data) in enumerate(ready, have + 1):
+        stem = re.sub(r"[^A-Za-z0-9._-]+", "_", Path(name).stem).strip("._-")[:40] or "photo"
+        target = folder / f"{i:02d}-{stem}{ext}"
+        while target.exists():  # a retake reuses numbers; never overwrite a file an earlier record may cite
+            stem += "_"
+            target = folder / f"{i:02d}-{stem}{ext}"
+        target.write_bytes(data)
+    return len(ready), None
 
 
 @router.post("/ui/capture/{org}/{unit}/{stage}/delete")

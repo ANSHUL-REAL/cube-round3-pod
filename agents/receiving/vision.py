@@ -28,9 +28,9 @@ from .config import Settings
 from .models import Observation, Perception
 
 PROMPT_VERSION = "rcv-v1"
-# The orchestrator gives a stage 30 s (flow.json). Two attempts x 12 s + 2 s back-off = 26 s worst case, so a slow
+# The orchestrator gives a stage 75 s (flow.json, D-O07). Two attempts x 28 s + 2 s back-off = 58 s worst case, so a slow
 # model becomes a retryable pending record, not an orchestrator timeout that loses the capture.
-MODEL_TIMEOUT_S = 12.0
+MODEL_TIMEOUT_S = 28.0
 MODEL_RETRIES = 1
 RETRYABLE = {429, 500, 502, 503, 504}
 log = logging.getLogger(__name__)

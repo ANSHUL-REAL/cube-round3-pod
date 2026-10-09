@@ -146,6 +146,18 @@
   }
   var last = document.querySelector(".step.is-last");
   if (last && location.hash === "#steps") last.scrollIntoView({ block: "center", behavior: "smooth" });
+  // A teammate may clear a step from their phone (/ui/station): when this workflow changes, show it. Not while this
+  // page is running a step, auto-playing, or someone is typing (an override reason, for example).
+  var seen = null, mine = false;
+  document.querySelectorAll("form").forEach(function (f) { f.addEventListener("submit", function () { mine = true; }); });
+  setInterval(function () {
+    if (mine || playing || document.hidden) return;
+    var a = document.activeElement;
+    if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")) return;
+    fetch("/ui/w/{{ wf.workflow_id }}/state", { cache: "no-store" }).then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (t) { if (t === null) return; if (seen === null) { seen = t; return; } if (t !== seen) location.replace(location.pathname + "#steps"); })
+      .catch(function () {});
+  }, 3000);
 })();
 </script>
 {% endblock %}

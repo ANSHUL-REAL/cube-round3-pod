@@ -37,11 +37,11 @@ ROOT = HERE.parents[1]
 STAGE = adapter.STAGE
 log = get_logger("pack")
 
-# The orchestrator gives a stage 30 s (flow.json defaults.timeout_s). The model call is bounded well inside that:
-# 2 attempts x 12 s + the 2 s back-off = 26 s worst case. (Round 2 used 25 s x 2, which could reach ~52 s and
-# be cut off by the orchestrator.) Measured p95 latency was 10.4 s. A call that fails here becomes a pending
+# The orchestrator gives a stage 75 s (flow.json defaults.timeout_s, decision D-O07). The model call is bounded inside
+# that: 2 attempts x 28 s + the 2 s back-off = 58 s worst case. Measured p95 latency was 10.4 s, but a live rehearsal
+# on 2026-10-09 saw a real call pass 12 s, so the old 12 s bound failed a demo step that would have answered. A call that fails here becomes a pending
 # record the orchestrator can retry, not a timeout that loses the capture.
-MODEL_TIMEOUT_S = 12.0
+MODEL_TIMEOUT_S = 28.0
 MODEL_RETRIES = 1
 
 

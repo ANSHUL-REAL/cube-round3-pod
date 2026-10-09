@@ -104,3 +104,20 @@ Each **Run** calls the model once per stage, about 10 seconds each; the button s
 - The products, orders, work orders and fees are the organisers' dummy data; the FNSKUs are `X00DUMMY...`.
 - Prep's rules and Returns' condition scale are labelled **unverified** in every record: nobody looked up Amazon's
   published rules for this build.
+
+## Five people, five agents, one public link (Cloudflare)
+
+```
+python scripts/serve.py --tunnel --data D:/pod12-demo
+```
+
+It prints a public `https://….trycloudflare.com/join` address and a 6-digit access code (a new one each start).
+Each teammate opens the link on their own phone, on any network, enters the code, and picks **their** agent:
+Receiving, Prep, Pack, Returns or Recovery. Each agent runs separately, only when its person presses the button.
+The four photo agents take their photo with the phone camera and run with a real Gemini call; Recovery has no
+camera and runs when its person presses **Run Recovery**. A step waits until the steps before it are done.
+
+- The laptop keeps running the server: closing it or losing its internet ends the link.
+- The address changes every start, so share it on the day.
+- Every page and the API need the code; requests through the tunnel never count as "the laptop".
+- Ten wrong codes lock that visitor out, and fifty from anywhere close joining until restart.

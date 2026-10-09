@@ -13,6 +13,8 @@ Ported from the Round 2 reference (rules.ts) and fitted to the Round 3 contract:
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 
 from shared.utils.records import check as make_check
@@ -61,6 +63,24 @@ class RuleCheck:
 
 def _normalise_code(text: str) -> str:
     return "".join(ch for ch in text if ch.isalnum()).upper()
+
+
+_CODE_SHAPE = re.compile(r"^(X0|B0)[A-Z0-9]{8,10}$")
+
+
+def _codes_in(text: str) -> list[str]:
+    """The code-shaped tokens in a label transcription (an FNSKU or ASIN: X0... / B0..., 10 to 12 characters).
+
+    A real label carries more than the code: the product title and the condition under it ("X00DUMMY014 / LED Desk
+    Lamp / New"). Comparing the whole transcription with the code called a correct label a mislabel (found in a live
+    rehearsal, 2026-10-09). Each whitespace-separated token is normalised on its own, so a longer code that merely
+    contains the expected one never matches it."""
+    out = []
+    for tok in re.split(r"\s+", text or ""):
+        code = _normalise_code(tok)
+        if _CODE_SHAPE.match(code) and code not in out:
+            out.append(code)
+    return out
 
 
 def _ref(idx: int | None, refs: list[str]) -> str | None:
@@ -152,10 +172,15 @@ def _text_match(c: CheckDef, pack: RequirementPack, resp: VisionResponse, usable
     if lr.confidence == "low":
         return _unc(c, "insufficient_evidence", f'Read "{lr.value}" with low confidence. Re-photograph the label.',
                     **base)
-    if _normalise_code(lr.value) == _normalise_code(pack.fnsku or ""):
+    want = _normalise_code(pack.fnsku or "")
+    codes = _codes_in(lr.value)
+    if want and (want in codes or _normalise_code(lr.value) == want):
         return RuleCheck(c.check_id, c.contract_key, "PASS", lr.confidence, expected, lr.value,
                          f'The label reads "{lr.value}", which matches the expected code.', lr.photo_index,
                          "barcode label", None, [ref])
+    if not codes:
+        return _unc(c, "insufficient_evidence", f'Read "{lr.value}", but no FNSKU-shaped code (X0... or B0...) in it. '
+                    "Photograph the barcode label itself, flat and in focus.", **base)
     if lr.confidence != "high":
         # A mismatch is a FAIL that a person will act on; a model that is only "medium" sure of its transcription
         # may simply have misread a character, so it goes to a person instead.

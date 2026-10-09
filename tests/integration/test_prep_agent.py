@@ -253,6 +253,11 @@ def test_label_text_is_compared_by_rules_and_the_model_never_sees_the_expected_c
     ("X00TEST999", "medium", "UNCERTAIN", "insufficient_evidence"),  # may be a misread character
     ("X00TEST001", "low", "UNCERTAIN", "insufficient_evidence"),
     (None, "high", "UNCERTAIN", "insufficient_evidence"),            # unreadable
+    # A real label has the title and condition under the code (a live rehearsal, 2026-10-09, failed this one):
+    ("X00TEST001\nLED Desk Lamp\nNew", "high", "PASS", None),
+    ("X00TEST999 Soy Candle Trio New", "high", "FAIL", None),     # the wrong label, with its title
+    ("X00TEST0019", "high", "FAIL", None),                         # a longer code never matches the shorter one
+    ("LED Desk Lamp New", "high", "UNCERTAIN", "insufficient_evidence"),  # read the title, not the code
 ])
 def test_label_text_verdicts(tmp_path, monkeypatch, read, conf, verdict, reason):
     out = run(tmp_path, monkeypatch, Script(label=read, label_conf=conf, label_legible=read is not None))

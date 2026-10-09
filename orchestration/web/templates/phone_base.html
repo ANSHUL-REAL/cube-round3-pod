@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}Pod 12 station{% endblock %}</title>
+<script>try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="stylesheet" href="/ui/static/ui.css?v={{ asset_v }}">
+</head>
+<body class="phone">
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/ui/station"><span class="logo">📦</span><span>Pod 12</span></a>
+    <span class="spacer"></span>
+    {% block where %}{% endblock %}
+  </div>
+</header>
+<main class="wrap">
+  {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
+  {% block body %}{% endblock %}
+</main>
+<script>
+  // A step calls the real agent (a few seconds, up to about a minute): say so, and stop a double tap.
+  document.querySelectorAll("form[data-busy]").forEach(function (f) {
+    f.addEventListener("submit", function () {
+      f.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+      var o = document.getElementById("busy"); if (o) { o.hidden = false; var t0 = Date.now(), s = o.querySelector("[data-secs]");
+        setInterval(function () { if (s) s.textContent = ((Date.now() - t0) / 1000).toFixed(0); }, 250); }
+    });
+  });
+  // A photo picked from the camera submits at once when the form says so: one tap to snap, one to confirm in the camera app.
+  // Each tap of the camera button replaces the input's files, so keep every photo taken: several angles go up together.
+  document.querySelectorAll("input[data-autosubmit]").forEach(function (i) {
+    var kept = (typeof DataTransfer === "function") ? new DataTransfer() : null;
+    i.addEventListener("change", function () {
+      if (kept) { for (var k = 0; k < i.files.length; k++) kept.items.add(i.files[k]); i.files = kept.files; }
+      var p = document.getElementById("picked");
+      if (p && i.multiple) p.textContent = i.files.length + " new photo(s) ready. Tap 📸 again for another angle, or ✅ Check now.";
+      if (!i.multiple && i.files.length) i.form.requestSubmit();  // the one-photo forms (product as sold) send at once
+    });
+  });
+  // Station search: the demo stories show first; typing finds any other unit.
+  document.querySelectorAll("[data-find]").forEach(function (box) {
+    box.addEventListener("input", function () {
+      var q = box.value.toLowerCase().trim();
+      document.querySelectorAll(box.dataset.find).forEach(function (row) {
+        var hit = row.textContent.toLowerCase().indexOf(q) !== -1;
+        row.style.display = q ? (hit ? "flex" : "none") : "";
+      });
+    });
+  });
+</script>
+<div id="busy" class="busy" hidden><div class="card"><div class="spin"></div><b>The agent is checking…</b>
+  <div class="muted small"><span data-secs>0</span> s · a real model call, usually 3–25 s</div></div></div>
+</body>
+</html>

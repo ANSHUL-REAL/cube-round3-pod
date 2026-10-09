@@ -1,0 +1,75 @@
+{% extends "phone_base.html" %}
+{% set m = stages_meta[stage] %}
+{% block title %}{{ unit }} · {{ m[1] }}{% endblock %}
+{% block where %}<a class="chip" href="/ui/station/{{ stage }}">{{ m[0] }} {{ m[1] }}</a>{% endblock %}
+{% block body %}
+<p class="crumbs"><a href="/ui/station/{{ stage }}">← {{ m[1] }} station</a></p>
+<h1 class="phone-h">{{ unit }}</h1>
+{% if story %}<p class="muted">{{ story }}</p>{% endif %}
+
+{% if rec %}{% set d = rec.decision %}
+<section class="card result {{ d.verdict|lower }}{{ ' just' if done }}">
+  <div class="result-head">
+    <span class="chip {{ d.verdict|lower }}">{{ d.verdict|lower }}</span>
+    {% if d.outcome %}<span class="chip {{ d.outcome|lower }}">{{ d.outcome|replace('_',' ') }}</span>{% endif %}
+    {% if d.needs_human %}<span class="chip pending_review">a person decides</span>{% endif %}
+  </div>
+  {% if rec.error %}<p><b>{{ rec.error.code|replace('_',' ') }}:</b> {{ rec.error.message }}</p>
+  {% else %}<p>{{ d.reason }}</p>{% endif %}
+  {% if stage == 'recovery' %}{% set pl = rec.payload or {} %}
+    {% for cl in pl.claims or [] %}<div class="check-line"><span class="chip claim_recommended">claim</span>
+      <b>${{ '%.2f'|format(cl.claim_usd or 0) }}</b> {{ (cl.charge_type or '')|replace('_',' ') }} <span class="mono small">{{ cl.line_id }}</span></div>{% endfor %}
+    {% for ch in pl.charges or [] %}<div class="check-line"><span class="chip {{ (ch.position or '')|lower }}">{{ (ch.position or '')|lower }}</span>
+      <span class="mono small">{{ ch.line_id }}</span> {{ (ch.charge_type or '')|replace('_',' ') }}<div class="small">{{ ch.what_would_settle_it or '' }}</div></div>{% endfor %}
+    {% if not (pl.charges or []) %}<p class="small muted">No fee lines for this unit, so there is nothing to claim.</p>{% endif %}
+  {% else %}
+  {% for c in rec.checks if c.verdict != 'PASS' %}
+    <div class="check-line"><span class="chip {{ c.verdict|lower }}">{{ c.verdict|lower }}</span> <b>{{ c.check_key|replace('_',' ') }}</b>
+      <div class="small">{{ c.detail }}</div></div>
+  {% endfor %}
+  {% endif %}
+  <p class="muted small">{{ rec.model.name }} · {{ rec.model.calls }} call(s){% if sr and sr.duration_ms is not none %} · {{ '%.1f'|format(sr.duration_ms / 1000) }} s{% endif %}
+    · record <span class="mono">{{ rec.record_id }}</span></p>
+  {% if nxt %}<p class="small">Next: <b>{{ nxt }}</b>.</p>{% elif wf %}<p class="small">This unit's flow is finished: <b>{{ (wf.final_outcome or {}).outcome|replace('_',' ') }}</b>. The laptop shows the whole trail.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if ok and stage == 'recovery' %}
+  <section class="card">
+    <h2>{{ 'Run again' if rec else 'Decide the charges' }}</h2>
+    <p class="small">Recovery reads every earlier record of this unit (with any person's override) and the fee report, then says for each
+      charge whether the evidence supports it, contradicts it, or is silent. It claims only what the evidence contradicts.</p>
+    <form method="post" action="/ui/station/recovery/{{ org }}/{{ unit }}" data-busy>
+      <button class="btn big go" type="submit">💸 Run Recovery now</button>
+    </form>
+  </section>
+{% elif ok %}
+  {% if stage == 'returns' and ref and ref.card and not ref.images %}
+  <section class="card">
+    <h2>First, the product as sold</h2>
+    <p class="small">Returns compares the returned item with a photo of the product new. Photograph a new one once (it is kept for this product).</p>
+    <form method="post" action="/ui/station/returns/{{ org }}/{{ unit }}/reference" enctype="multipart/form-data" data-busy>
+      <label class="btn big cam">📷 Photo of the product new
+        <input type="file" name="files" accept="image/*" capture="environment" data-autosubmit hidden></label>
+      <button class="btn" type="submit">Save product photo</button>
+    </form>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h2>{{ 'Retake' if rec else 'Take' }} the photos</h2>
+    <p class="small">{{ what }}</p>
+    <form method="post" action="/ui/station/{{ stage }}/{{ org }}/{{ unit }}" enctype="multipart/form-data" data-busy>
+      <label class="btn big cam">📸 Open camera
+        <input type="file" name="files" accept="image/*" capture="environment" multiple data-autosubmit hidden></label>
+      <p id="picked" class="muted small">{% if photos %}{{ photos|length }} photo(s) already here{% else %}No photo yet{% endif %}. Tap again to add another angle before checking.</p>
+      <button class="btn big go" type="submit">✅ Check now</button>
+    </form>
+    {% if photos %}<div class="photos small-photos">{% for p in photos %}<img src="/ui/photo/{{ unit }}/{{ stage }}/{{ p }}" alt="{{ p }}" loading="lazy">{% endfor %}</div>
+    <p class="muted small">New photos replace these. Every record keeps the SHA-256 of the photos it judged.</p>{% endif %}
+  </section>
+{% else %}
+  <section class="card dim"><b>Not your turn yet.</b> <span class="muted">{{ why }}.</span>
+    <p class="small">This page refreshes itself.</p></section>
+  <script>setInterval(function () { location.reload(); }, 4000);</script>
+{% endif %}
+{% endblock %}

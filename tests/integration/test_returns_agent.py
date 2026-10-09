@@ -366,7 +366,8 @@ def test_model_failure_is_a_pending_record_that_keeps_the_photos(tmp_path, monke
     assert ev["decision"]["verdict"] == "UNCERTAIN" and ev["decision"]["outcome"] == "pending_review" and ev["checks"] == []
     assert [i["ref"] for i in ev["inputs"]] == [i["ref"] for i in inputs], "the captures must not be lost"
     assert all(i["sha256"] for i in ev["inputs"]) and out["next_step_recommendation"]["action"] == "retry"
-    assert ev["model"]["calls"] == 0 and ev["model"]["name"] == "none"
+    # a failed call is still a call: the record counts it (it used to say 0) and names the model asked
+    assert ev["model"]["calls"] == 1 and ev["model"]["name"] == Settings(_env_file=None).returns_model
 
 
 def test_unparseable_model_output_is_pending_not_a_crash(tmp_path, monkeypatch):
@@ -536,7 +537,8 @@ def test_the_model_is_blind_to_the_operator_and_to_earlier_evidence_and_gets_no_
         assert secret not in sent, f"{secret!r} must not reach the model"
     assert sum(1 for kind, _ in bundle.parts if kind == "image") == 3, "one reference image and two return photos"
     assert bundle.manifest["tools_offered"] is False and "no tools are available" in sent
-    assert "OUTPUT SCHEMA" in sent and bundle.manifest["prompt"]["version"] == "1.1.0"
+    # json_schema (the default) sends the schema as constrained output, not in the task text
+    assert "OUTPUT SCHEMA" not in sent and bundle.manifest["prompt"]["version"] == "1.1.0"
 
 
 # ---------------------------------------------------------------- earlier evidence: what was sent vs what came back
@@ -738,7 +740,9 @@ def test_model_time_budget_fits_inside_the_orchestrators_stage_timeout():
     from orchestration.orchestrator import load_flow
 
     st = Settings(_env_file=None)
-    assert st.returns_model_timeout_s < load_flow()["defaults"]["timeout_s"], "a slow model must give a pending record, not a cut-off"
+    attempts = 1 + st.returns_model_retries
+    worst = attempts * st.returns_model_timeout_s + (attempts - 1) * st.returns_retry_backoff_s
+    assert worst < load_flow()["defaults"]["timeout_s"], "a slow model must give a pending record, not a cut-off"
     assert st.returns_max_photos == 3 and st.cost_per_1m_input_usd is None
 
 
@@ -857,7 +861,10 @@ def test_gemini_wrapper_sends_one_call_with_the_locked_prompt_and_parses_the_ans
     assert result.model == "gemini-test-001" and result.judgment == answer and result.calls == 1
     assert result.usage == {"input_tokens": 1000, "output_tokens": 200, "thinking_tokens": 300}
     assert result.cost_usd == pytest.approx((1000 * 1.0 + 500 * 2.0) / 1e6), "thinking tokens are billed as output"
-    prompted = _real_judge(FakeModels(text=answer.model_dump_json()))  # the default output mode
+    default = _real_judge(FakeModels(text=answer.model_dump_json()))  # the default output mode holds Gemini to the schema
+    default.judge(bundle)
+    assert default.client.models.calls[0]["config"].response_json_schema["type"] == "object"
+    prompted = _real_judge(FakeModels(text=answer.model_dump_json()), returns_output_mode="json_prompted")
     prompted.judge(bundle)
     assert prompted.client.models.calls[0]["config"].response_json_schema is None
 
@@ -872,9 +879,12 @@ def test_gemini_wrapper_turns_every_failure_into_a_judge_error(tmp_path, monkeyp
              (errors.APIError(403, {"error": {"message": "key"}}), "model_auth", False),
              (httpx.ReadTimeout("took too long"), "model_unavailable", True)]
     for exc, code, retryable in cases:
+        models = FakeModels(exc=exc)
         with pytest.raises(JudgeError) as caught:
-            _real_judge(FakeModels(exc=exc)).judge(bundle)
+            _real_judge(models, returns_retry_backoff_s=0).judge(bundle)
         assert (caught.value.code, caught.value.retryable) == (code, retryable), exc
+        # busy / timed out: tried once more (on the fallback model); a bad key is not retried
+        assert caught.value.calls == len(models.calls) == (2 if retryable else 1), exc
         assert "not-a-real-key" not in str(caught.value), "a key must never reach an error message"
     with pytest.raises(JudgeError) as empty:
         _real_judge(FakeModels(text="")).judge(bundle)
@@ -884,3 +894,30 @@ def test_gemini_wrapper_turns_every_failure_into_a_judge_error(tmp_path, monkeyp
 
         GeminiJudge(Settings(_env_file=None, gemini_api_key=None))
     assert no_key.value.code == "model_not_configured"
+
+
+class FlakyModels(FakeModels):
+    """The first call answers 503 (model overloaded), the next succeeds."""
+
+    def generate_content(self, model, contents, config):
+        if not self.calls:
+            self.calls.append({"model": model})
+            from google.genai import errors
+
+            raise errors.APIError(503, {"error": {"message": "overloaded"}})
+        return super().generate_content(model, contents, config)
+
+
+def test_an_overloaded_model_is_retried_once_on_the_fallback_model(tmp_path, monkeypatch):
+    """Found in a live rehearsal (2026-10-09): one 503 from gemini-3.8-flash ended the Returns step. Now it is
+    tried once more on the fallback model, and the record counts both calls."""
+    bundle, answer = _bundle(tmp_path, monkeypatch)
+    models = FlakyModels(text=answer.model_dump_json())
+    result = _real_judge(models, returns_retry_backoff_s=0, returns_model="main-model",
+                         returns_fallback_model="fallback-model").judge(bundle)
+    assert [c["model"] for c in models.calls] == ["main-model", "fallback-model"]
+    assert result.calls == 2 and result.judgment == answer
+    no_retry = FlakyModels(text=answer.model_dump_json())
+    with pytest.raises(JudgeError):
+        _real_judge(no_retry, returns_retry_backoff_s=0, returns_model_retries=0).judge(bundle)
+    assert len(no_retry.calls) == 1

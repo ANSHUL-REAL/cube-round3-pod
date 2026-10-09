@@ -26,6 +26,10 @@ from .web import HERE as _WEB, router as _ui_router
 app = FastAPI(title="CUBE Round 3 orchestrator")
 app.mount("/ui/static", StaticFiles(directory=str(_WEB / "static")), name="ui-static")
 app.include_router(_ui_router)  # the readable console: /, /ui/w/<workflow>, /ui/capture/<org>/<unit>
+from .web.station import lan_guard as _lan_guard, router as _station_router  # noqa: E402
+
+app.include_router(_station_router)  # phone stations: /ui/station, /join (serve.py --lan)
+app.middleware("http")(_lan_guard)  # with --lan, other devices need the access code; off otherwise
 FLOW = os.environ.get("ORCH_FLOW") or default_flow_path()
 STORE = FileStore()
 
