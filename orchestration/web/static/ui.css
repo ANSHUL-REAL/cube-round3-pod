@@ -604,3 +604,76 @@ body.app > main, body.phone > main { overflow-x: clip; }
 .unit-form:has(input[name=route][value=fba]:checked) .uf-mfn { display: none; }
 @media (max-width: 900px) { .uf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .uf-grid, .uf-routes { grid-template-columns: 1fr; } .uf-grid .wide, .uf-checks { grid-column: auto; } }
+
+/* ---------------------------------------------------------------- dashboard overview charts (home.html, "Overview" row)
+   Two cards built server-side from the kpi numbers: plain HTML/CSS 100%-stacked bars, no JS, no library.
+   Colours: chart-only tokens, the app's status hues stepped so touching segments stay apart. Checked with the dataviz palette
+   validator on the card surface, both modes: every adjacent pair is >= 8 OKLab dE under protan/deutan and >= 15 for normal vision.
+   Status meaning is fixed across both cards: green pass/clean, mustard uncertain/waiting, red fail/exception, orange claim,
+   blue running, slate (the muted ink) error/failed run, neutral = the rest. A colour never stands alone: every key swatch carries a
+   glyph and a label, counts are printed in the keys, each bar has an aria-label, and the verdicts have a table.
+   Marks: thin bars, a 2px surface gap between segments (no outlines), square at the baseline, 4px round at the far end. */
+:root {
+  --viz-good: #3fae74; --viz-warn: #e0a512; --viz-crit: #d2463f; --viz-claim: #f28a2e; --viz-run: #4d7fd6; --viz-err: #5b5060; --viz-rest: #cbc2b1;
+  --viz-glyph: #17131a; --viz-err-glyph: #fffdf8;
+}
+:root[data-theme="dark"] {
+  --viz-good: #45bd82; --viz-warn: #d9a21b; --viz-crit: #d0443f; --viz-claim: #ff9a4a; --viz-run: #6b95e6; --viz-err: #c9bfc8; --viz-rest: #5a4f60;
+  --viz-glyph: #17131a; --viz-err-glyph: #17131a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --viz-good: #45bd82; --viz-warn: #d9a21b; --viz-crit: #d0443f; --viz-claim: #ff9a4a; --viz-run: #6b95e6; --viz-err: #c9bfc8; --viz-rest: #5a4f60;
+    --viz-glyph: #17131a; --viz-err-glyph: #17131a;
+  }
+}
+.vz-good { --viz: var(--viz-good); } .vz-warn { --viz: var(--viz-warn); } .vz-crit { --viz: var(--viz-crit); } .vz-claim { --viz: var(--viz-claim); }
+.vz-run { --viz: var(--viz-run); } .vz-err { --viz: var(--viz-err); } .vz-rest { --viz: var(--viz-rest); }
+.viz-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 22px; margin-top: 22px; }
+.viz-card .card-head { margin-bottom: 12px; }
+.viz-stat { display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
+.viz-big { font: 900 46px/1 var(--font); letter-spacing: -.05em; flex: none; }
+.viz-stat > span:last-child { font-size: 14px; line-height: 1.35; color: var(--muted); font-weight: 600; min-width: 0; }
+.viz-stat b { display: block; font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+.viz-block + .viz-block { margin-top: 14px; padding-top: 12px; border-top: 2px dashed var(--rule); }
+.viz-h { font: 800 12px/1.2 var(--font); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 8px; }
+.viz-bar { display: flex; gap: 2px; height: 16px; min-width: 0; }
+.viz-bar > span { flex: 1 1 0; min-width: 4px; background: var(--viz, var(--viz-rest)); transition: opacity .12s; }
+.viz-bar > span:last-child { border-radius: 0 4px 4px 0; }
+.viz-bar:hover > span { opacity: .45; }
+.viz-bar > span:hover { opacity: 1; }
+.viz-key { list-style: none; margin: 9px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.viz-key li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.viz-key b { color: var(--text); font-weight: 800; }
+.viz-key-top { margin: 0 0 4px; }
+.viz-sw { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; flex: none; background: var(--viz, var(--viz-rest));
+  color: var(--viz-glyph); font: 900 11px/1 var(--font); font-style: normal; }
+.viz-sw.vz-err { color: var(--viz-err-glyph); }
+.viz-empty { padding: 20px 14px; }
+.viz-agents { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; column-gap: 14px; }
+.viz-agents li { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; padding: 10px 0; border-top: 2px dashed var(--rule); }
+.viz-agents li:first-child { border-top: 0; }
+@supports not (grid-template-columns: subgrid) { .viz-agents li { grid-template-columns: 7.5rem minmax(0, 1fr) 11.5rem; column-gap: 14px; } }
+.viz-an { font-weight: 800; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
+.viz-rate { font-size: 13px; color: var(--muted); font-weight: 600; text-align: right; white-space: nowrap; }
+.viz-rate b { color: var(--text); font-weight: 800; }
+.viz-none { font-size: 13px; color: var(--muted); font-weight: 700; font-style: italic; }
+.viz-more { margin-top: 12px; padding: 8px 12px; }
+.viz-more summary { font-size: 14px; }
+.viz-more .tablewrap { margin-top: 8px; }
+.viz-more table { font-size: 13px; }
+.viz-more th, .viz-more td { padding: 6px 8px; }
+.viz-more thead th { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.viz-more tbody th { background: none; border-bottom: 1.5px solid var(--rule); text-transform: none; letter-spacing: 0; font: 800 13px/1.3 var(--font); color: var(--text); }
+.viz-more td.num, .viz-more th.num { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .viz-bar > span { transition: none; } }
+@media (forced-colors: active) { .viz-bar > span, .viz-sw { forced-color-adjust: none; } }
+@media (max-width: 1000px) { .viz-row { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .viz-big { font-size: 38px; }
+  .viz-agents { display: block; }
+  .viz-agents li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; }
+  .viz-agents .viz-bar, .viz-agents .viz-none { grid-column: 1 / -1; grid-row: 2; }
+  .viz-more { padding: 8px 10px; }
+  .viz-more th, .viz-more td { padding: 6px 5px; font-size: 12px; }
+}

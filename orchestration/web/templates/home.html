@@ -17,6 +17,16 @@
 {%- else -%}<span class="mono">{{ t }}</span>
 {%- endif -%}
 {%- endmacro -%}
+{#- Overview charts. Built only from `kpi`, server-side, no JS: 100%-stacked bars in plain HTML/CSS (ui.css "dashboard overview charts"). -#}
+{%- macro pct(n, d) -%}
+{%- if not d -%}0%{%- elif n and n * 100 < d -%}&lt;1%{%- elif n < d and n * 100 / d >= 99.5 -%}&gt;99%{%- else -%}{{ (n * 100 / d) | round | int }}%{%- endif -%}
+{%- endmacro -%}
+{%- macro seg(cls, n, d, label) -%}
+{%- if n -%}<span class="{{ cls }}" style="flex-grow:{{ n }}" title="{{ label }}: {{ n }} of {{ d }} ({{ pct(n, d) }})"></span>{%- endif -%}
+{%- endmacro -%}
+{%- macro key(cls, glyph, label, n=none) -%}
+<li><i class="viz-sw {{ cls }}">{{ glyph }}</i>{{ label }}{% if n is not none %} <b>{{ n }}</b>{% endif %}</li>
+{%- endmacro -%}
 {% block title %}Dashboard · {{ brand.name }}{% endblock %}
 {% block body %}
 {%- set scope = 'All sellers' if who.orgs is none else (who.orgs | map('org') | join(', ')) -%}
@@ -43,14 +53,81 @@
   <div class="kpi is-fail"><span class="k">Failed</span><span class="v">{{ kpi.failed }}</span><span class="s">failed or incomplete</span></div>
 </section>
 
+{#- Outcome (CLEAN / EXCEPTION / CLAIM_RECOMMENDED) and status (review / failed / running) overlap: a BLOCKED workflow can also be an
+    EXCEPTION. So they are two bars over the same workflows, each a true part-to-whole, never one bar that would count a workflow twice. -#}
+{%- set wf = kpi.workflows or 0 -%}
+{%- set o_clean, o_exc, o_claim = kpi.clean or 0, kpi.exceptions or 0, kpi.claims or 0 -%}
+{%- set o_rest = [wf - o_clean - o_exc - o_claim, 0] | max -%}
+{%- set s_rev, s_fail, s_run = kpi.review or 0, kpi.failed or 0, kpi.running or 0 -%}
+{%- set s_rest = [wf - s_rev - s_fail - s_run, 0] | max -%}
+{%- set need = s_rev + s_fail -%}
+<section class="viz-row" aria-label="Overview">
+  <section class="card viz-card" aria-labelledby="h-outcomes">
+    <div class="card-head"><div class="grow"><h2 id="h-outcomes">Outcomes</h2><p>Every workflow, by its final outcome and by where it stands now.</p></div></div>
+    {% if wf %}
+    <p class="viz-stat"><span class="viz-big">{{ pct(need, wf) }}</span>
+      <span><b>need a person</b>{{ need }} of {{ wf }} workflow{{ 's' if wf != 1 }}: waiting for review or failed</span></p>
+    <div class="viz-block">
+      <h3 class="viz-h">Final outcome</h3>
+      <div class="viz-bar" role="img" aria-label="Final outcome of {{ wf }} workflows: {{ o_clean }} clean, {{ o_exc }} exception, {{ o_claim }} claim recommended, {{ o_rest }} not decided yet.">
+        {{- seg('vz-good', o_clean, wf, 'Clean') }}{{ seg('vz-crit', o_exc, wf, 'Exception') }}{{ seg('vz-claim', o_claim, wf, 'Claim recommended') }}{{ seg('vz-rest', o_rest, wf, 'Not decided yet') -}}
+      </div>
+      <ul class="viz-key" aria-hidden="true">{{ key('vz-good', '✓', 'Clean', o_clean) }}{{ key('vz-crit', '✕', 'Exception', o_exc) }}{{ key('vz-claim', '$', 'Claim', o_claim) }}{{ key('vz-rest', '', 'Not decided', o_rest) }}</ul>
+    </div>
+    <div class="viz-block">
+      <h3 class="viz-h">Where they stand</h3>
+      <div class="viz-bar" role="img" aria-label="Where {{ wf }} workflows stand: {{ s_rev }} waiting for review, {{ s_fail }} failed, {{ s_run }} running, {{ s_rest }} finished.">
+        {{- seg('vz-warn', s_rev, wf, 'Waiting for review') }}{{ seg('vz-err', s_fail, wf, 'Failed or incomplete') }}{{ seg('vz-run', s_run, wf, 'Running') }}{{ seg('vz-rest', s_rest, wf, 'Finished') -}}
+      </div>
+      <ul class="viz-key" aria-hidden="true">{{ key('vz-warn', '?', 'Waiting for review', s_rev) }}{{ key('vz-err', '!', 'Failed', s_fail) }}{{ key('vz-run', '▸', 'Running', s_run) }}{{ key('vz-rest', '', 'Finished', s_rest) }}</ul>
+    </div>
+    {% else %}
+    <div class="empty viz-empty"><b>No workflows yet</b>Run a unit and its outcome shows up here.</div>
+    {% endif %}
+  </section>
+
+  <section class="card viz-card" aria-labelledby="h-verdicts">
+    <div class="card-head"><div class="grow"><h2 id="h-verdicts">Verdicts by agent</h2><p>Each agent's mix of verdicts. Uncertain means it handed the call to a person.</p></div></div>
+    <ul class="viz-key viz-key-top" aria-hidden="true">{{ key('vz-good', '✓', 'Pass') }}{{ key('vz-warn', '?', 'Uncertain') }}{{ key('vz-crit', '✕', 'Fail') }}{{ key('vz-err', '!', 'Error') }}</ul>
+    <ul class="viz-agents">
+      {% for s, m in stages_meta.items() %}
+      {%- set c = (kpi.by_stage or {}).get(s) or {} %}{% set vp, vu, vf, ve = c.PASS or 0, c.UNCERTAIN or 0, c.FAIL or 0, c.error or 0 %}{% set n = vp + vu + vf + ve %}
+      <li>
+        <span class="viz-an"><span aria-hidden="true">{{ m[0] }}</span> {{ m[1] }}</span>
+        {% if n -%}
+        <div class="viz-bar" role="img" aria-label="{{ m[1] }}: {{ vp }} pass, {{ vu }} uncertain, {{ vf }} fail, {{ ve }} error.">
+          {{- seg('vz-good', vp, n, 'Pass') }}{{ seg('vz-warn', vu, n, 'Uncertain') }}{{ seg('vz-crit', vf, n, 'Fail') }}{{ seg('vz-err', ve, n, 'Error') -}}
+        </div>
+        <span class="viz-rate"><b>{{ n }}</b> verdict{{ 's' if n != 1 }} · <b>{{ pct(vu, n) }}</b> uncertain</span>
+        {%- else -%}
+        <span class="viz-none">No runs yet</span><span class="viz-rate"></span>
+        {%- endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if wf %}
+    <details class="viz-more"><summary>Show the numbers</summary>
+      <div class="tablewrap"><table>
+        <thead><tr><th scope="col">Agent</th><th scope="col" class="num">Pass</th><th scope="col" class="num">Uncertain</th><th scope="col" class="num">Fail</th><th scope="col" class="num">Error</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>
+        {% for s, m in stages_meta.items() %}
+        {%- set c = (kpi.by_stage or {}).get(s) or {} %}{% set vp, vu, vf, ve = c.PASS or 0, c.UNCERTAIN or 0, c.FAIL or 0, c.error or 0 %}{% set n = vp + vu + vf + ve %}
+          <tr><th scope="row">{{ m[1] }}</th><td class="num">{{ vp }}</td><td class="num">{{ vu }}</td><td class="num">{{ vf }}</td><td class="num">{{ ve }}</td><td class="num">{{ n }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </details>
+    {% endif %}
+  </section>
+</section>
+
 <div class="dash-grid section">
   <section class="card" aria-labelledby="h-agents">
-    <div class="card-head"><div class="grow"><h2 id="h-agents">Agents</h2><p>Health right now, and every verdict each agent has given.</p></div>
+    <div class="card-head"><div class="grow"><h2 id="h-agents">Agents</h2><p>Health right now. What each one decided is charted under Overview.</p></div>
       <a class="btn alt small" href="/health">Status →</a></div>
     <ul class="agent-list">
       {% for s, m in stages_meta.items() %}
-      {%- set a = agents.get(s) or {} %}{% set c = kpi.by_stage.get(s) or {'PASS': 0, 'FAIL': 0, 'UNCERTAIN': 0, 'error': 0} %}
-      {%- set n = c.PASS + c.FAIL + c.UNCERTAIN + c.error %}
+      {%- set a = agents.get(s) or {} %}
       <li class="agent-row">
         <span class="icon" aria-hidden="true">{{ m[0] }}</span>
         <span class="an"><b>{{ m[1] }}</b><span>{{ m[2] }}</span></span>
@@ -58,12 +135,6 @@
           {% elif a.status == 'ok' %}<span class="chip ok"><i class="dot"></i>Online</span>
           {% elif a.fault %}<span class="chip down" title="Switched off on the Admin page"><i class="dot"></i>Off · {{ a.fault }}</span>
           {% else %}<span class="chip down"><i class="dot"></i>Down</span>{% endif %}</span>
-        <div class="vb">
-          <div class="vbar" role="img" aria-label="{{ m[1] }}: {{ c.PASS }} pass, {{ c.FAIL }} fail, {{ c.UNCERTAIN }} uncertain, {{ c.error }} error">
-            {% if n %}{% if c.PASS %}<span class="v-pass" style="flex:{{ c.PASS }}"></span>{% endif %}{% if c.FAIL %}<span class="v-fail" style="flex:{{ c.FAIL }}"></span>{% endif %}{% if c.UNCERTAIN %}<span class="v-unsure" style="flex:{{ c.UNCERTAIN }}"></span>{% endif %}{% if c.error %}<span class="v-error" style="flex:{{ c.error }}"></span>{% endif %}{% else %}<span class="v-none"></span>{% endif %}
-          </div>
-          <div class="vlegend">{% if n %}<span><i class="v-pass-i"></i>Pass <b>{{ c.PASS }}</b></span><span><i class="v-fail-i"></i>Fail <b>{{ c.FAIL }}</b></span><span><i class="v-unsure-i"></i>Uncertain <b>{{ c.UNCERTAIN }}</b></span><span><i class="v-error-i"></i>Error <b>{{ c.error }}</b></span>{% else %}<span>No verdicts yet</span>{% endif %}</div>
-        </div>
       </li>
       {% endfor %}
     </ul>
