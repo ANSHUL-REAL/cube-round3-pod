@@ -1,11 +1,12 @@
 <!doctype html>
+{%- from "_ui.html" import logo -%}
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Pod 12 · Five agents, one evidence trail</title>
-<meta name="description" content="Pod 12, CUBE Buildathon 2026 Grand Finale: five agents check one warehouse unit from delivery to reimbursement claim, and every decision is backed by photos and a sealed evidence record.">
+<title>{{ brand.name }} · {{ brand.tagline }}</title>
+<meta name="description" content="{{ brand.name }}: five agents check one warehouse unit from delivery to reimbursement claim, and every decision is backed by photos and a sealed evidence record.">
 <script>
   try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
@@ -26,9 +27,6 @@
     <h3>{{ m[1] }}</h3>
     <p class="l-stage-d">{{ m[2] }}.</p>
     <p class="l-stage-tags"><span class="chip l-y">{{ route }}</span><span class="chip l-n">{{ engine }}</span></p>
-    {%- if owners[key] %}
-    <p class="l-owner"><span>Owner</span><a href="https://github.com/{{ owners[key].lstrip('@') }}" rel="noopener">{{ owners[key] }}</a></p>
-    {%- endif %}
   </article>
 {%- endmacro -%}
 {%- macro wave(from, to, shape=1) -%}
@@ -49,17 +47,14 @@
 
 <header class="topbar l-top">
   <div class="wrap">
-    <a class="brand" href="/about" aria-label="Pod 12, front page">
-      <span class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false"><g stroke="#17131a" stroke-width="1.6" stroke-linejoin="round">
-          <path d="M12 3 21 7.5 12 12 3 7.5Z" fill="#fdf6e6"/><path d="M3 7.5 12 12v9l-9-4.5Z" fill="#f7c948"/><path d="M12 12l9-4.5v9L12 21Z" fill="#ff7a1a"/></g></svg>
-      </span><span>Pod 12</span>
+    <a class="brand" href="/about" aria-label="{{ brand.name }}, front page">
+      <span class="logo" aria-hidden="true">{{ logo() }}</span><span class="brand-name">{{ brand.name }}</span>
     </a>
     <nav class="l-nav" aria-label="On this page">
       <a href="#pipeline">Pipeline</a><a href="#decision">Decisions</a><a href="#evidence">Evidence</a><a href="#safety">Failure</a><a href="#numbers">Numbers</a>
     </nav>
     <span class="spacer"></span>
-    {% if signed_in %}<a class="btn small l-hide-sm" href="/">Console →</a>{% endif %}
+    {% if signed_in %}<a class="btn small l-hide-sm" href="/">Dashboard →</a>{% endif %}
     <a class="btn small alt" href="/join">Sign in</a>
     <button class="toggle l-toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">
       <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15Z" fill="currentColor"/></svg>
@@ -74,24 +69,24 @@
   <div class="wrap l-hero-grid">
     <div class="l-hero-copy">
       {% if msg %}<div class="flash {{ 'bad' if bad }}" role="status">{{ msg }}</div>{% endif %}
-      <p class="l-eyebrow"><span class="chip l-k">CUBE Buildathon 2026</span><span>Grand Finale · Commerce Context</span></p>
+      <p class="l-eyebrow"><span class="chip l-k">Warehouse evidence</span><span>{{ brand.tagline }}</span></p>
       <h1 class="l-title">
-        <span class="l-word">pod&nbsp;12</span>
+        <span class="l-word" style="--len: {{ brand.name | length }}">{{ brand.name | lower }}</span>
         <span class="l-headline"><span>Five agents.</span> <span>One unit.</span> <span><mark>One evidence trail.</mark></span></span>
       </h1>
       <p class="l-lead">A warehouse unit, followed from the delivery dock to a reimbursement claim. Five agents check it in turn,
         and every decision is backed by photos and a sealed record you can open.</p>
       <div class="l-cta">
         {% if signed_in %}
-        <a class="btn l-btn-xl" href="/">Open the console →</a>
-        <a class="btn alt l-btn-xl" href="/join">Team / judge sign-in</a>
+        <a class="btn l-btn-xl" href="/">Open the dashboard →</a>
+        <a class="btn alt l-btn-xl" href="/join">Sign in</a>
         {% else %}
-        <a class="btn l-btn-xl" href="/join">Team / judge sign-in →</a>
+        <a class="btn l-btn-xl" href="/join">Sign in →</a>
         {% endif %}
         <a class="btn alt l-btn-xl" href="/login">Admin</a>
       </div>
-      <p class="l-cta-note">Teammates and judges: sign in with the 8-digit access code you were given.
-        {% if signed_in %}You are signed in{% if who and who.actor %} as <b>{{ who.actor }}</b>{% endif %}.{% endif %}</p>
+      <p class="l-cta-note">Sign in with the 8-digit access code you were given.
+        {% if signed_in %}You are signed in{% if who and who.name %} as <b>{{ who.name }}</b>{% endif %}.{% endif %}</p>
       <div class="l-status">
         <span class="chip {{ hcls }}"><i class="l-dot" aria-hidden="true"></i>System {{ health }}</span>
         <span class="chip {{ dcls }}"><i class="l-dot" aria-hidden="true"></i>Database {{ stats.database }}</span>
@@ -169,8 +164,8 @@
   <div class="wrap">
     <div class="l-head">
       <p class="l-kicker"><b>01</b>The pipeline</p>
-      <h2 id="h-pipeline">One unit. Five agents. Each with an owner.</h2>
-      <p class="l-sub">Every stage is a real agent built by one teammate. The unit's route decides which stages it visits.</p>
+      <h2 id="h-pipeline">One unit. Five agents. One orchestrator.</h2>
+      <p class="l-sub">Every stage is a separate agent with one job. The unit's route decides which stages it visits.</p>
     </div>
 
     <div class="l-orch">
@@ -199,8 +194,7 @@
       </svg>
       <div>
         <h3>Agents never call each other.</h3>
-        <p>One orchestrator calls each agent in turn and hands it every earlier record. Routing lives in one file
-          (<span class="l-code">orchestration/flow.json</span>): Receiving, then Prep for FBA units or Pack for merchant-fulfilled ones,
+        <p>One orchestrator calls each agent in turn and hands it every earlier record. Routing lives in one flow definition: Receiving, then Prep for FBA units or Pack for merchant-fulfilled ones,
           Returns only when the unit came back, and Recovery last, on everything. An agent's answer informs the workflow;
           only the orchestrator sets its state.</p>
       </div>
@@ -271,8 +265,8 @@
   <div class="wrap">
     <div class="l-head">
       <p class="l-kicker"><b>03</b>Evidence you can trace</p>
-      <h2 id="h-evidence">Follow any outcome back to the photo.</h2>
-      <p class="l-sub">Every agent returns an evidence record. Records are written once and point at what they used.</p>
+      <h2 id="h-evidence">Every verdict comes with a receipt.</h2>
+      <p class="l-sub">Every agent returns an evidence record: written once, sealed with a hash, pointing at what it used. Follow any outcome back to the photo.</p>
     </div>
     <div class="l-ev">
       <ul class="l-points">
@@ -284,7 +278,7 @@
         <li class="l-point">
           <span class="l-pi l-pi-y" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><g fill="none" stroke="#17131a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><rect x="4" y="7" width="24" height="19" rx="3" fill="#fffdf8"/><circle cx="12" cy="13.5" r="2.5"/><path d="M5 24l8-7 5 5 4-3 6 5"/></g></svg></span>
           <div><h3>Photos named by hash</h3>
-            <p>A record lists the exact photos it judged, by SHA-256. A photo from another unit is refused.</p></div>
+            <p>A record lists the exact photos it checked, by SHA-256. A photo from another unit is refused.</p></div>
         </li>
         <li class="l-point">
           <span class="l-pi l-pi-o" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><g fill="none" stroke="#17131a" stroke-width="3.2" stroke-linecap="round"><path d="M13.5 18.5l5-5"/><path d="M11 15l-3 3a4.2 4.2 0 0 0 6 6l3-3"/><path d="M21 17l3-3a4.2 4.2 0 0 0-6-6l-3 3"/></g></svg></span>
@@ -350,7 +344,7 @@
 
       <article class="card l-safe-card l-panel">
         <h3>Fault-injection run</h3>
-        <p>Every stage broken five ways (down, timeout, invalid output, crash, another organisation's evidence) across all {{ units }} sample units.</p>
+        <p>Every stage broken five ways (down, timeout, invalid output, crash, another customer's evidence) across all {{ units }} units.</p>
         <div class="l-bignums">
           <div class="l-bn"><b>2,500</b><span>broken workflows run</span></div>
           <div class="l-bn"><b>1,575</b><span>reached the broken stage</span></div>
@@ -358,7 +352,7 @@
           <div class="l-bn"><b>0</b><span>reported clean</span></div>
         </div>
         <p class="l-small">Every affected workflow recorded the error on the right stage and ended FAILED or INCOMPLETE.
-          Source: <span class="l-code">docs/evaluation.md</span>, re-run with <span class="l-code">scripts/evaluate.py</span>.</p>
+          Source: the project's evaluation report, which anyone can re-run.</p>
       </article>
 
       <article class="card l-safe-card">
@@ -375,8 +369,8 @@
           <rect x="116" y="49" width="68" height="34" rx="9" fill="#17131a" stroke="#fdf6e6" stroke-width="2.5"/>
           <text x="150" y="73" text-anchor="middle" class="l-svg-t l-svg-inv">404</text>
         </svg>
-        <p>A code for one organisation gets <b>404 Not found</b> for the other's units, workflows, records and photos, exactly as if they did not exist.
-          Every agent refuses another organisation's unit too.</p>
+        <p>A code for one customer gets <b>404 Not found</b> for the other's units, workflows, records and photos, exactly as if they did not exist.
+          Every agent refuses another customer's unit too.</p>
       </article>
     </div>
     <div class="l-strip">
@@ -419,7 +413,7 @@
       </div>
       <ol class="l-who">
         <li class="card"><h3>Your own code</h3>
-          <p>Each teammate and judge signs in at <a href="/join">/join</a> with their own 8-digit access code. A code opens one organisation, or all of them.</p></li>
+          <p>Everyone <a href="/join">signs in</a> with their own 8-digit access code. A code opens one customer, or all of them.</p></li>
         <li class="card"><h3>Your own station, from a phone</h3>
           <p>Pick your agent, take the photos with the phone camera, press run. A step waits until the steps before it are done. Recovery needs no camera, just a press.</p></li>
         <li class="card"><h3>Every action has a name</h3>
@@ -436,14 +430,14 @@
     <div class="l-head">
       <p class="l-kicker"><b>06</b>Live numbers</p>
       <h2 id="h-numbers">Counted right now, on this deployment.</h2>
-      <p class="l-sub">Totals only. Nothing about any unit, organisation or person is shown here.</p>
+      <p class="l-sub">Totals only. Nothing about any unit, customer or person is shown here.</p>
     </div>
     <div class="l-tiles">
       <div class="card l-tile"><b>{{ '{:,}'.format(stats.workflows) }}</b><span>workflows run</span></div>
       <div class="card l-tile"><b>{{ '{:,}'.format(stats.evidence) }}</b><span>evidence records</span></div>
       {% if stats.photos is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.photos) }}</b><span>photos stored</span></div>{% endif %}
       {% if stats.audit is not none %}<div class="card l-tile"><b>{{ '{:,}'.format(stats.audit) }}</b><span>audit entries</span></div>{% endif %}
-      <div class="card l-tile"><b>{{ units }}</b><span>sample units across {{ orgs }} demo organisations</span></div>
+      <div class="card l-tile"><b>{{ units }}</b><span>units across {{ orgs }} customers</span></div>
       <div class="card l-tile l-tile-store">
         <span class="l-rk">Storage</span>
         <b class="l-store">{{ stats.storage }}</b>
@@ -465,21 +459,21 @@
       {% if signed_in %}
       <a class="card l-door l-door-go" href="/">
         <span class="l-door-k">You are signed in</span>
-        <b>Open the console</b>
-        <span>Units, the live simulator, the review queue and every evidence record.</span>
-        <span class="btn">Open the console →</span>
+        <b>Open the dashboard</b>
+        <span>Every unit, the guided demo, the review queue and every evidence record.</span>
+        <span class="btn">Open the dashboard →</span>
       </a>
       {% endif %}
       <a class="card l-door" href="/join">
-        <span class="l-door-k">Teammates and judges</span>
-        <b>Team / judge sign-in</b>
-        <span>Enter the 8-digit access code you were given. You see your organisation's units and stations.</span>
+        <span class="l-door-k">Operators</span>
+        <b>Sign in</b>
+        <span>Enter the 8-digit access code you were given. You see your customer's units and stations.</span>
         <span class="btn{{ ' alt' if signed_in }}">Sign in with a code →</span>
       </a>
       <a class="card l-door" href="/login">
-        <span class="l-door-k">Pod admin</span>
+        <span class="l-door-k">Administrators</span>
         <b>Admin</b>
-        <span>Every organisation, fault switches, access codes and the audit log. Password only.</span>
+        <span>Every customer, fault switches, access codes and the audit log. Password only.</span>
         <span class="btn alt">Admin sign-in →</span>
       </a>
     </div>
@@ -500,12 +494,13 @@
 
 <footer class="l-foot">
   <div class="wrap">
-    <p class="l-foot-word" aria-hidden="true">pod 12</p>
-    <p class="l-foot-line"><b>Pod 12</b> · CUBE Buildathon 2026 Grand Finale · Thoughtworks Hyderabad</p>
+    <p class="l-foot-word" aria-hidden="true" style="--len: {{ brand.name | length }}">{{ brand.name | lower }}</p>
+    <p class="l-foot-line"><b>{{ brand.name }}</b> · {{ brand.tagline }}</p>
     <nav class="l-foot-nav" aria-label="Footer">
-      {% if signed_in %}<a href="/">Open the console</a>{% endif %}
-      <a href="/join">Team / judge sign-in</a><a href="/login">Admin</a><a href="/health">Live status</a><a href="/docs">API docs (sign-in)</a>
+      {% if signed_in %}<a href="/">Open the dashboard</a>{% endif %}
+      <a href="/join">Sign in</a><a href="/login">Admin</a><a href="/health">Live status</a><a href="/docs">API docs (sign-in)</a>
     </nav>
+    {% if brand.credit %}<p class="l-credit">{{ brand.credit }}</p>{% endif %}
   </div>
 </footer>
 

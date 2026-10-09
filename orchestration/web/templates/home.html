@@ -1,67 +1,126 @@
 {% extends "base.html" %}
+{% from "_ui.html" import phones_panel with context %}
 {% set nav = "home" %}
-{% block title %}Pod 12 console · units{% endblock %}
+{%- macro req(t) -%}
+{#- An API or page request in the audit log, said in words: "POST /ui/w/WF-org-UNIT-0014/resume" -> "Ran the remaining steps · UNIT-0014" -#}
+{%- set parts = (t or '').split(' ', 1) -%}{%- set path = (parts[1] if parts | length > 1 else parts[0]).split('?')[0] -%}{%- set p = path.split('/') -%}
+{%- if path.startswith('/ui/w/') and p | length > 4 -%}
+{{ {'resume': 'Ran the remaining steps', 'step': 'Ran the next step', 'override': 'Recorded an override', 'restart': 'Started over', 'run': 'Ran a step again'}.get(p[4], p[4] | replace('_', ' ') | capitalize) }} · <span class="mono">{{ '-'.join(p[3].split('-')[-2:]) }}</span>
+{%- elif path == '/ui/run' -%}Ran a unit
+{%- elif path == '/ui/sim/start' -%}Started a demo scenario
+{%- elif path.startswith('/ui/capture/') and p | length > 4 -%}{{ 'Removed a photo' if path.endswith('/delete') else 'Added photos' }} · <span class="mono">{{ p[4] }}</span>
+{%- elif path.startswith('/ui/reference/') -%}Added a product photo
+{%- elif path.startswith('/ui/station/') and p | length > 5 -%}{{ p[3] | capitalize }} station · <span class="mono">{{ p[5] }}</span>
+{%- elif path == '/workflows' or path.startswith('/workflows/') -%}API · <span class="mono">{{ t }}</span>
+{%- elif path.startswith('/admin') -%}Admin change
+{%- elif path == '/logout' -%}Signed out
+{%- else -%}<span class="mono">{{ t }}</span>
+{%- endif -%}
+{%- endmacro -%}
+{% block title %}Dashboard · {{ brand.name }}{% endblock %}
 {% block body %}
-{% if phones %}
-<section class="card phones-all">
-  <h2 style="margin:0 0 4px">📱 Five agents, five phones</h2>
-  <p class="small">Each teammate scans <b>their own agent's</b> code, types {% if phones.code %}<b class="bigcode-inline">{{ phones.code }}</b>{% else %}<b>their own access code</b> (issue one each on the <a href="/admin#codes">admin page</a>){% endif %} once, and clears that step from their phone.
-    Open from anywhere: <b class="mono">{{ phones.url }}</b></p>
-  <div class="qr-row">
-    {% for s in phones.stations %}{% set m = stages_meta[s] %}
-    <figure><img src="/ui/phones.svg?stage={{ s }}" alt="QR code for the {{ m[1] }} station"><figcaption>{{ m[0] }} {{ m[1] }}</figcaption></figure>
-    {% endfor %}
+{%- set scope = 'All customers' if who.orgs is none else (who.orgs | map('org') | join(', ')) -%}
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>{{ scope }}</p>
+    <h1>Dashboard</h1>
+    <p class="lede">Every unit, what each agent decided, and what is waiting for a person. Each decision is a sealed evidence record you can open.</p>
   </div>
-  <p class="muted small">A unit reaches each station when the step before it is done. Pages here update when a phone clears a step.</p>
-</section>
-{% endif %}
+  <div class="ph-actions">
+    <a class="btn alt" href="/ui/review">Review queue{% if kpi.review %} <span class="count">{{ kpi.review }}</span>{% endif %}</a>
+    <a class="btn" href="/ui/sim">▶ Run the demo</a>
+  </div>
+</div>
 
-</main>
-<section class="hero">
-  <div class="wrap">
-    <div class="wordmark"><span>pod 12</span>five agents,<br>one record.</div>
-    <p class="lead">Receiving, Prep, Pack, Returns and Recovery hand evidence to each other. Pick a unit, add photos for each step, run it, and read the evidence trail from the final outcome back to the exact photo.</p>
-  </div>
+<section class="kpis" aria-label="Key numbers">
+  <div class="kpi is-pink"><span class="k">Units</span><span class="v">{{ kpi.units }}</span><span class="s">in your catalogue</span></div>
+  <div class="kpi is-blue"><span class="k">Workflows run</span><span class="v">{{ kpi.workflows }}</span><span class="s">{% if kpi.running %}{{ kpi.running }} in progress{% else %}none in progress{% endif %}</span></div>
+  <div class="kpi is-pass"><span class="k">Clean</span><span class="v">{{ kpi.clean }}</span><span class="s">every check passed</span></div>
+  <div class="kpi is-fail"><span class="k">Exceptions</span><span class="v">{{ kpi.exceptions }}</span><span class="s">a check failed</span></div>
+  <div class="kpi is-orange"><span class="k">Claims</span><span class="v">{{ kpi.claims }}</span><span class="s">${{ '{:,.2f}'.format(kpi.claim_usd) }} claimable</span></div>
+  <a class="kpi is-unsure{{ ' hot' if kpi.review }}" href="/ui/review"><span class="k">For review</span><span class="v">{{ kpi.review }}</span><span class="s">waiting for a person</span><span class="go" aria-hidden="true">→</span></a>
+  <div class="kpi is-fail"><span class="k">Failed</span><span class="v">{{ kpi.failed }}</span><span class="s">failed or incomplete</span></div>
 </section>
-<main class="wrap">
-  <div class="page-head"><div class="grow"><h2>Demo units</h2><p class="muted">The five stories to show. Each needs photos for its steps; without them a step answers “no photo” and says so.</p></div></div>
-  <div class="grid cols-3">
-    {% for r in demo %}
-    <article class="card">
-      <div class="row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-        <h3 class="mono" style="margin-right:auto">{{ r.unit }}</h3>
-        <span class="chip">{{ r.route }}</span>{% if r.returned %}<span class="chip">returned</span>{% endif %}
-      </div>
-      <p>{{ r.story }}</p>
-      <p style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        {% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'pending' }}" title="photos for {{ s }}">{{ stages_meta[s][0] }} {{ r.photos[s] }}</span>{% endfor %}
-        {% if r.status %}<span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% endif %}
-        {% if r.outcome %}<span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}
-      </p>
-      <p style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 0">
-        <a class="btn alt small" href="/ui/capture/{{ r.org }}/{{ r.unit }}">📷 Photos</a>
-        <form method="post" action="/ui/run" style="margin:0"><input type="hidden" name="org" value="{{ r.org }}"><input type="hidden" name="unit" value="{{ r.unit }}">
-          <button class="btn small" type="submit">▶ {{ 'Run again' if r.workflow_id else 'Run' }}</button></form>
-        {% if r.workflow_id %}<a class="btn alt small" href="/ui/w/{{ r.workflow_id }}">Open</a>{% endif %}
-      </p>
-    </article>
-    {% endfor %}
-  </div>
 
-  <div class="page-head" style="margin-top:30px"><div class="grow"><h2>All {{ total }} sample units</h2></div>
-    <input type="text" class="filter" data-filter="#all tbody tr" placeholder="Filter: unit, org, route…"></div>
-  <div class="card tablewrap" id="all">
-    <table>
-      <thead><tr><th>Unit</th><th>Organisation</th><th>Route</th><th>Photos</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-      {% for r in rows %}
-        <tr><td class="mono">{{ r.unit }}</td><td class="mono">{{ r.org }}</td>
-          <td><span class="chip">{{ r.route }}</span>{% if r.returned %} <span class="chip">returned</span>{% endif %}</td>
-          <td>{% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'pending' }}">{{ stages_meta[s][0] }} {{ r.photos[s] }}</span> {% endfor %}</td>
-          <td>{% if r.status %}<span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% else %}<span class="muted">not run</span>{% endif %}</td>
-          <td><a href="/ui/capture/{{ r.org }}/{{ r.unit }}">photos</a>{% if r.workflow_id %} · <a href="/ui/w/{{ r.workflow_id }}">open</a>{% endif %}</td></tr>
+<div class="dash-grid section">
+  <section class="card" aria-labelledby="h-agents">
+    <div class="card-head"><div class="grow"><h2 id="h-agents">Agents</h2><p>Health right now, and every verdict each agent has given.</p></div>
+      <a class="btn alt small" href="/health">Status →</a></div>
+    <ul class="agent-list">
+      {% for s, m in stages_meta.items() %}
+      {%- set a = agents.get(s) or {} %}{% set c = kpi.by_stage.get(s) or {'PASS': 0, 'FAIL': 0, 'UNCERTAIN': 0, 'error': 0} %}
+      {%- set n = c.PASS + c.FAIL + c.UNCERTAIN + c.error %}
+      <li class="agent-row">
+        <span class="icon" aria-hidden="true">{{ m[0] }}</span>
+        <span class="an"><b>{{ m[1] }}</b><span>{{ m[2] }}</span></span>
+        <span class="health">{% if not a %}<span class="chip"><i class="dot"></i>Unknown</span>
+          {% elif a.status == 'ok' %}<span class="chip ok"><i class="dot"></i>Online</span>
+          {% elif a.fault %}<span class="chip down" title="Switched off on the Admin page"><i class="dot"></i>Off · {{ a.fault }}</span>
+          {% else %}<span class="chip down"><i class="dot"></i>Down</span>{% endif %}</span>
+        <div class="vb">
+          <div class="vbar" role="img" aria-label="{{ m[1] }}: {{ c.PASS }} pass, {{ c.FAIL }} fail, {{ c.UNCERTAIN }} uncertain, {{ c.error }} error">
+            {% if n %}{% if c.PASS %}<span class="v-pass" style="flex:{{ c.PASS }}"></span>{% endif %}{% if c.FAIL %}<span class="v-fail" style="flex:{{ c.FAIL }}"></span>{% endif %}{% if c.UNCERTAIN %}<span class="v-unsure" style="flex:{{ c.UNCERTAIN }}"></span>{% endif %}{% if c.error %}<span class="v-error" style="flex:{{ c.error }}"></span>{% endif %}{% else %}<span class="v-none"></span>{% endif %}
+          </div>
+          <div class="vlegend">{% if n %}<span><i class="v-pass-i"></i>Pass <b>{{ c.PASS }}</b></span><span><i class="v-fail-i"></i>Fail <b>{{ c.FAIL }}</b></span><span><i class="v-unsure-i"></i>Uncertain <b>{{ c.UNCERTAIN }}</b></span><span><i class="v-error-i"></i>Error <b>{{ c.error }}</b></span>{% else %}<span>No verdicts yet</span>{% endif %}</div>
+        </div>
+      </li>
       {% endfor %}
-      </tbody>
-    </table>
+    </ul>
+  </section>
+
+  <section class="card" aria-labelledby="h-activity">
+    <div class="card-head"><div class="grow"><h2 id="h-activity">Recent activity</h2><p>Sign-ins, runs and changes, newest first.</p></div>
+      {% if who.is_admin %}<a class="btn alt small" href="/admin#audit">Audit log →</a>{% endif %}</div>
+    {% if recent %}
+    <ul class="activity">
+      {% for a in recent %}
+      {%- set actor = a.actor[5:] if (a.actor or '').startswith('code:') else (a.actor or 'someone') %}
+      {%- set verbs = {'signed_in': 'Signed in', 'sign_in_failed': 'Wrong access code', 'admin_signed_in': 'Admin signed in',
+                      'admin_sign_in_failed': 'Wrong admin password', 'code_issued': 'Issued an access code', 'code_revoked': 'Revoked an access code',
+                      'agent_faulted': 'Switched an agent off', 'agent_restored': 'Switched an agent back on'} %}
+      <li><time datetime="{{ a.at }}" title="{{ a.at }} UTC">{{ (a.at | string)[11:16] }}</time>
+        <span class="what"><b>{% if a.action == 'request' %}{{ req(a.target) }}{% else %}{{ verbs.get(a.action, (a.action or '') | replace('_', ' ') | capitalize) }}{% endif %}</b>{% if a.action != 'request' and a.target and a.action not in ('signed_in', 'sign_in_failed', 'admin_signed_in', 'admin_sign_in_failed') %} · {{ a.target }}{% endif %}
+          <span class="meta">{{ actor }} · {{ (a.at | string)[:10] }}{% if a.org_id %} · {{ a.org_id | org }}{% endif %}{% if a.status and a.status >= 400 %} · <span class="chip fail">{{ a.status }}</span>{% endif %}</span></span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty"><span class="big-ico" aria-hidden="true">🗒️</span><b>Nothing yet</b>Runs, sign-ins and changes appear here as they happen.</div>
+    {% endif %}
+  </section>
+</div>
+
+{% if phones %}<div class="section">{{ phones_panel() }}</div>{% endif %}
+
+<section class="section" aria-labelledby="h-units">
+  <div class="section-head">
+    <div class="grow"><h2 id="h-units">All {{ total }} units</h2><p>Add photos for each step, run the agents, then open the unit to read its evidence.</p></div>
+    <div class="table-tools"><span class="count-note" id="units-count" aria-live="polite"></span>
+      <label class="searchbox"><span class="sr-only">Filter units</span><input type="text" class="filter" data-filter="#all tbody tr" data-count="#units-count" placeholder="Filter: unit, customer, route, status…"></label></div>
   </div>
+  <div class="card table-card">
+    <div class="tablewrap" id="all">
+      <table class="rtable">
+        <thead><tr><th>Unit</th><th>Customer</th><th>Route</th><th>Photos per step</th><th>Status</th><th class="actions-cell"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="c-unit">{% if r.workflow_id %}<a class="unit-id" href="/ui/w/{{ r.workflow_id }}">{{ r.unit }}</a>{% else %}<span class="unit-id">{{ r.unit }}</span>{% endif %}
+              <span class="sub">{{ r.org | org }}</span></td>
+            <td class="c-hide-sm">{{ r.org | org }}</td>
+            <td class="c-wide"><span class="chips"><span class="chip">{{ 'FBA' if r.route == 'fba' else ('Merchant' if r.route == 'mfn' else r.route) }}</span>{% if r.returned %}<span class="chip info">returned</span>{% endif %}</span></td>
+            <td class="c-wide"><span class="chips">{% for s in r.stages %}<span class="chip {{ 'pass' if r.photos[s] else 'plain' }}" title="{{ r.photos[s] }} photo(s) for {{ stages_meta[s][1] }}">{{ stages_meta[s][0] }} {{ r.photos[s] }}</span>{% endfor %}</span></td>
+            <td class="c-status"><span class="chips">{% if r.status %}<span class="chip {{ r.status | lower }}">{{ r.status | replace('_', ' ') }}</span>{% if r.outcome %}<span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}{% else %}<span class="muted small">Not run</span>{% endif %}</span></td>
+            <td class="actions-cell"><div class="btn-row">
+              <a class="btn alt small" href="/ui/capture/{{ r.org }}/{{ r.unit }}">📷 Photos</a>
+              <form method="post" action="/ui/run"><input type="hidden" name="org" value="{{ r.org }}"><input type="hidden" name="unit" value="{{ r.unit }}">
+                <button class="btn small" type="submit">▶ {{ 'Run again' if r.workflow_id else 'Run' }}</button></form>
+              {% if r.workflow_id %}<a class="btn alt small" href="/ui/w/{{ r.workflow_id }}">Open</a>{% endif %}
+            </div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
 {% endblock %}

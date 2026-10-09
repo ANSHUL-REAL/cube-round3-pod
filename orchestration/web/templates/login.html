@@ -1,14 +1,19 @@
 {% extends "phone_base.html" %}
-{% block title %}Admin sign-in · Pod 12{% endblock %}
+{% from "_ui.html" import logo %}
+{% block title %}Admin sign-in{% endblock %}
 {% block body %}
 <section class="card hero-phone">
+  <div class="signin-mark"><span class="logo">{{ logo() }}</span><b>{{ brand.name }}</b></div>
   <h1>Admin sign-in</h1>
-  <p class="muted">For the person running the deployment. Teammates and judges use an access code at <a href="/join">/join</a>.</p>
+  <p class="muted">For the person running this deployment. Everyone else signs in with an access code.</p>
   {% if locked %}<p class="flash bad">Too many wrong attempts from here. Signing in is closed until the server restarts.</p>{% else %}
   <form method="post" action="/login" class="stack">
     <input type="hidden" name="next" value="{{ next }}">
-    <input name="password" type="password" autocomplete="current-password" required autofocus placeholder="Admin password">
+    <label class="sr-only" for="password">Admin password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus placeholder="Admin password">
     <button class="btn big" type="submit">Sign in</button>
   </form>{% endif %}
+  <p class="signin-alt">Have an access code? <a href="/join">Sign in with a code</a></p>
 </section>
+<p class="muted small" style="text-align:center;margin-top:18px"><a href="/about">What is {{ brand.name }}?</a></p>
 {% endblock %}

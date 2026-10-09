@@ -3,11 +3,12 @@
 {% block title %}{{ m[1] }} station{% endblock %}
 {% block where %}<span class="chip">{{ m[0] }} {{ m[1] }}</span>{% endblock %}
 {% block body %}
-<h1 class="phone-h">{{ m[0] }} {{ m[1] }}</h1>
+<p class="eyebrow" style="margin-top:24px"><span class="tick" aria-hidden="true"></span>Station</p>
+<h1 class="phone-h" style="margin-top:0">{{ m[0] }} {{ m[1] }}</h1>
 <p class="muted">{{ m[2] }}.</p>
 
 <h2>Your turn</h2>
-{% if stage == 'receiving' %}<input class="filter" placeholder="Find any unit, e.g. 0014" data-find=".mine .unit-row">{% endif %}
+{% if stage == 'receiving' %}<label class="searchbox" style="display:block;margin:0 0 14px"><span class="sr-only">Find a unit</span><input class="filter" placeholder="Find any unit, e.g. 0014" data-find=".mine .unit-row"></label>{% endif %}
 <div class="mine">
 {% for r in mine %}
   <a class="card unit-row {{ '' if r.demo or stage != 'receiving' else 'more' }}" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
@@ -15,7 +16,7 @@
     <span class="go">📸</span>
   </a>
 {% else %}
-  <p class="card muted">Nothing for you yet. This page refreshes itself: a unit appears when the step before yours is done.</p>
+  <div class="empty"><b>Nothing for you yet</b>This page refreshes itself: a unit appears when the step before yours is done.</div>
 {% endfor %}
 </div>
 

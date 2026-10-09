@@ -1,19 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Pod 12 console · review queue{% endblock %}
+{% block title %}Review · {{ brand.name }}{% endblock %}
 {% block body %}
-<div class="page-head"><div class="grow"><h2>Review queue</h2>
-  <p class="muted">Workflows waiting for a person: blocked for review (an UNCERTAIN result), failed, or incomplete.
-    Open one, read the evidence, and record an override (the original record is kept) or fix the cause and resume.
-    {% if who.orgs is not none %}You see <b>{{ who.orgs | join(', ') }}</b> only.{% endif %}</p></div></div>
-<div class="card tablewrap">
-  <table>
-    <thead><tr><th>Unit</th><th>Org</th><th>Status</th><th>Why</th><th>Updated (UTC)</th><th></th></tr></thead>
-    <tbody>{% for r in rows %}
-      <tr><td class="mono">{{ r.unit }}</td><td class="mono small">{{ r.org }}</td>
-        <td><span class="chip {{ (r.status or '') | lower }}">{{ (r.status or '') | replace('_', ' ') }}</span></td>
-        <td class="small">{{ r.reason or '' }}</td><td class="small">{{ r.updated }}</td>
-        <td><a class="btn small" href="/ui/w/{{ r.id }}">Review</a></td></tr>
-    {% else %}<tr><td colspan="6" class="muted">Nothing is waiting for a person.</td></tr>{% endfor %}</tbody>
-  </table>
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>{% if who.orgs is none %}All customers{% else %}{{ who.orgs | map('org') | join(', ') }}{% endif %}</p>
+    <h1>Review</h1>
+    <p class="lede">Workflows waiting for a person: blocked for review (an UNCERTAIN result), failed, or incomplete.
+      Open one, read the evidence, then record an override (the original record is kept) or fix the cause and resume.</p>
+  </div>
+  <div class="ph-actions"><span class="chip {{ 'uncertain' if rows else 'pass' }}" style="font-size:14px;padding:6px 14px">{{ rows | length }} waiting</span></div>
 </div>
+{% if rows %}
+<div class="card table-card">
+  <div class="tablewrap">
+    <table class="rtable">
+      <thead><tr><th>Unit</th><th>Customer</th><th>Status</th><th>Why</th><th>Updated (UTC)</th><th class="actions-cell"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>{% for r in rows %}
+        <tr><td class="c-unit"><a class="unit-id" href="/ui/w/{{ r.id }}">{{ r.unit }}</a><span class="sub">{{ r.org | org }}</span></td>
+          <td class="c-hide-sm">{{ r.org | org }}</td>
+          <td class="c-status"><span class="chips"><span class="chip {{ (r.status or '') | lower }}">{{ (r.status or '') | replace('_', ' ') }}</span>{% if r.outcome %}<span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}</span></td>
+          <td class="c-wide small">{{ r.reason or '' }}</td>
+          <td class="c-wide small mono nowrap">{{ r.updated }}</td>
+          <td class="actions-cell"><a class="btn small" href="/ui/w/{{ r.id }}">Review →</a></td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty" style="padding:44px 16px"><span class="big-ico" aria-hidden="true">✅</span><b>Nothing is waiting for a person</b>When an agent is unsure, or a step fails, the unit appears here.</div>
+{% endif %}
 {% endblock %}

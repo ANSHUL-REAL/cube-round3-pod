@@ -4,7 +4,7 @@
 {% block where %}<a class="chip" href="/ui/station/{{ stage }}">{{ m[0] }} {{ m[1] }}</a>{% endblock %}
 {% block body %}
 <p class="crumbs"><a href="/ui/station/{{ stage }}">← {{ m[1] }} station</a></p>
-<h1 class="phone-h">{{ unit }}</h1>
+<h1 class="phone-h mono" style="font-size:30px;margin-top:10px">{{ unit }}</h1>
 {% if story %}<p class="muted">{{ story }}</p>{% endif %}
 
 {% if rec %}{% set d = rec.decision %}
@@ -30,7 +30,7 @@
   {% endif %}
   <p class="muted small">{{ rec.model.name }} · {{ rec.model.calls }} call(s){% if sr and sr.duration_ms is not none %} · {{ '%.1f'|format(sr.duration_ms / 1000) }} s{% endif %}
     · record <span class="mono">{{ rec.record_id }}</span></p>
-  {% if nxt %}<p class="small">Next: <b>{{ nxt }}</b>.</p>{% elif wf %}<p class="small">This unit's flow is finished: <b>{{ (wf.final_outcome or {}).outcome|replace('_',' ') }}</b>. The laptop shows the whole trail.</p>{% endif %}
+  {% if nxt %}<p class="small">Next: <b>{{ nxt }}</b>.</p>{% elif wf %}<p class="small">This unit's flow is finished: <b>{{ (wf.final_outcome or {}).outcome|replace('_',' ') }}</b>. The dashboard shows the whole trail.</p>{% endif %}
 </section>
 {% endif %}
 
@@ -65,7 +65,7 @@
       <button class="btn big go" type="submit">✅ Check now</button>
     </form>
     {% if photos %}<div class="photos small-photos">{% for p in photos %}<img src="/ui/photo/{{ unit }}/{{ stage }}/{{ p }}" alt="{{ p }}" loading="lazy">{% endfor %}</div>
-    <p class="muted small">New photos replace these. Every record keeps the SHA-256 of the photos it judged.</p>{% endif %}
+    <p class="muted small">New photos replace these. Every record keeps the SHA-256 of the photos it checked.</p>{% endif %}
   </section>
 {% else %}
   <section class="card dim"><b>Not your turn yet.</b> <span class="muted">{{ why }}.</span>

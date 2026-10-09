@@ -1,47 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Pod 12 console · admin{% endblock %}
+{% block title %}Admin · {{ brand.name }}{% endblock %}
 {% block body %}
-<div class="page-head"><div class="grow"><h2>Admin</h2>
-  <p class="muted">Signed in as <b>{{ who.actor }}</b>. Everything you change here is in the audit log at the bottom.</p></div></div>
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>Administration</p>
+    <h1>Admin</h1>
+    <p class="lede">Signed in as <b>{{ who.name }}</b>. Check the system, switch agents off to test failure handling, manage access codes, and read the audit log. Everything you change here is in the audit log.</p>
+  </div>
+  <div class="ph-actions"><span class="chip {{ 'pass' if system.status == 'ok' else 'fail' }}" style="font-size:14px;padding:6px 14px"><i class="dot"></i>System {{ system.status }}</span></div>
+</div>
 
 {% if new_code %}
-<section class="card" style="border-width:3px">
-  <h3 style="margin-top:0">New access code: {{ new_code.label }}</h3>
-  <p class="bigcode-inline mono" style="font-size:2.4rem;letter-spacing:.15em">{{ new_code.code }}</p>
-  <p class="small">For <b>{{ new_code.org }}</b>, role <b>{{ new_code.role }}</b>{% if new_code.stage %}, <b>{{ stages_meta[new_code.stage][1] }} station only</b>{% endif %}. Give it to them now: it is shown only once, and only its hash is kept.
+<section class="card newcode" aria-labelledby="h-newcode">
+  <div class="card-head"><div class="grow"><h2 id="h-newcode">New access code for {{ new_code.label }}</h2><p>Shown only once. Only its hash is kept.</p></div></div>
+  <p class="bigcode-inline mono">{{ new_code.code }}</p>
+  <p class="small" style="margin:0">For <b>{{ 'every customer' if new_code.org == 'every org' else new_code.org | org }}</b>, role <b>{{ new_code.role }}</b>{% if new_code.stage %}, <b>{{ stages_meta[new_code.stage][1] }} station only</b>{% endif %}. Give it to them now.
     They sign in at <span class="mono">/join</span>, or call the API with <span class="mono">Authorization: Bearer {{ new_code.code }}</span>.</p>
 </section>
 {% endif %}
 
-<section class="card" id="system">
-  <h3 style="margin-top:0">System <span class="chip {{ 'pass' if system.status == 'ok' else 'fail' }}">{{ system.status }}</span></h3>
-  <dl class="kv">
-    <dt>Database</dt><dd>
+<nav class="jumpnav" aria-label="Admin sections">
+  <a href="#system">System</a><a href="#faults">Fault switches</a><a href="#codes">Access codes</a><a href="#workflows">Workflows ({{ rows | length }})</a><a href="#audit">Audit log</a>
+</nav>
+
+<section class="card admin-sec" id="system" aria-labelledby="h-system">
+  <div class="card-head"><div class="grow"><h2 id="h-system">System</h2><p>The deployment right now: database, model key, agents.</p></div>
+    <span class="chip {{ 'pass' if system.status == 'ok' else 'fail' }}">{{ system.status }}</span></div>
+  <div class="sys-grid">
+    <div class="sys-item"><span class="k">Database</span><div class="v">
       {% if system.database.status == 'ok' %}<span class="chip pass">connected</span>
-        {% for k, n in system.database.rows.items() %}<span class="chip">{{ k }} {{ n }}</span> {% endfor %}
-      {% elif system.database.status == 'off' %}<span class="chip pending">off</span> {{ system.database.detail }}
-      {% else %}<span class="chip fail">down</span> {{ system.database.detail }}{% endif %}</dd>
-    <dt>Model</dt><dd><span class="mono">{{ system.model }}</span>
+        {% for k, n in system.database.rows.items() %}<span class="chip plain">{{ k }} {{ n }}</span>{% endfor %}
+      {% elif system.database.status == 'off' %}<span class="chip pending">off</span> <span class="small">{{ system.database.detail }}</span>
+      {% else %}<span class="chip fail">down</span> <span class="small">{{ system.database.detail }}</span>{% endif %}</div></div>
+    <div class="sys-item"><span class="k">Model</span><div class="v"><span class="mono small">{{ system.model }}</span>
       {% if system.key_status == 'valid' %}<span class="chip pass">key accepted by Google</span>
-      {% elif system.key_status == 'rejected' %}<span class="chip fail">key REJECTED by Google: fix GEMINI_API_KEY on the host (no quotes, no spaces, no "GEMINI_API_KEY=")</span>
-      {% elif system.key_status == 'missing' %}<span class="chip fail">no GEMINI_API_KEY: photo agents answer “pending”</span>
-      {% else %}<span class="chip pending">key set, not checked (Google did not answer)</span>{% endif %}</dd>
-    {% if system.public_url %}<dt>Public URL</dt><dd class="mono">{{ system.public_url }}</dd>{% endif %}
-    {% if system.commit %}<dt>Deployed commit</dt><dd class="mono">{{ system.commit }}</dd>{% endif %}
-    <dt>Agents</dt><dd>{% for s, a in system.agents.items() %}<span class="chip {{ 'pass' if a.status == 'ok' else 'fail' }}">{{ stages_meta[s][0] }} {{ s }}: {{ a.status }}{% if a.fault %} ({{ a.fault }}){% endif %}</span> {% endfor %}</dd>
-  </dl>
+      {% elif system.key_status == 'rejected' %}<span class="chip fail wrapok">key REJECTED by Google: fix GEMINI_API_KEY on the host (no quotes, no spaces, no "GEMINI_API_KEY=")</span>
+      {% elif system.key_status == 'missing' %}<span class="chip fail wrapok">no GEMINI_API_KEY: photo agents answer “pending”</span>
+      {% else %}<span class="chip pending wrapok">key set, not checked (Google did not answer)</span>{% endif %}</div></div>
+    {% if system.public_url %}<div class="sys-item"><span class="k">Public URL</span><div class="v mono small">{{ system.public_url }}</div></div>{% endif %}
+    {% if system.commit %}<div class="sys-item"><span class="k">Deployed commit</span><div class="v mono small">{{ system.commit }}</div></div>{% endif %}
+    <div class="sys-item" style="grid-column:1 / -1"><span class="k">Agents</span><div class="v">{% for s, a in system.agents.items() %}<span class="chip {{ 'pass' if a.status == 'ok' else 'fail' }}">{{ stages_meta[s][0] }} {{ s }}: {{ a.status }}{% if a.fault %} ({{ a.fault }}){% endif %}</span>{% endfor %}</div></div>
+  </div>
 </section>
 
-<section class="card" id="faults">
-  <h3 style="margin-top:0">Fault switches</h3>
-  <p class="small muted">Show what happens when an agent fails, live: switch one off, run a unit, see the stage error and the workflow end FAILED or INCOMPLETE (never CLEAN). Switch it back on, open the workflow, press Resume.</p>
+<section class="card admin-sec" id="faults" aria-labelledby="h-faults">
+  <div class="card-head"><div class="grow"><h2 id="h-faults">Fault switches</h2>
+    <p>Show what happens when an agent fails, live: switch one off, run a unit, see the stage error and the workflow end FAILED or INCOMPLETE (never CLEAN). Switch it back on, open the workflow, press Resume.</p></div></div>
   <div class="tablewrap"><table>
     <thead><tr><th>Agent</th><th>Now</th><th>Switch to</th></tr></thead>
     <tbody>
     {% for s in stages %}{% set f = faults.get(s) %}
-      <tr><td>{{ stages_meta[s][0] }} {{ stages_meta[s][1] }}</td>
+      <tr><td><b>{{ stages_meta[s][0] }} {{ stages_meta[s][1] }}</b></td>
         <td>{% if f %}<span class="chip fail">{{ modes[f.mode] }}</span> <span class="small muted">by {{ f.set_by }}</span>{% else %}<span class="chip pass">working</span>{% endif %}</td>
-        <td><form method="post" action="/admin/faults/{{ s }}" style="display:flex;gap:6px;flex-wrap:wrap;margin:0">
+        <td><form method="post" action="/admin/faults/{{ s }}" class="btn-row">
           {% if f %}<button class="btn small" name="mode" value="ok">✓ Restore</button>{% endif %}
           {% for m, label in modes.items() %}{% if not f or f.mode != m %}<button class="btn alt small" name="mode" value="{{ m }}" title="{{ label }}">{{ m }}</button>{% endif %}{% endfor %}
         </form></td></tr>
@@ -49,52 +60,56 @@
     </tbody></table></div>
 </section>
 
-<section class="card" id="codes">
-  <h3 style="margin-top:0">Access codes</h3>
-  <p class="small muted">A code for one org sees only that org: its units, workflows, evidence and photos. Anything of another org answers “not found”. Use one per judge or teammate.</p>
-  <form method="post" action="/admin/codes" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
-    <label class="stack small">Person (shown on every step they run)<input name="label" required maxlength="60" placeholder="Priya"></label>
-    <label class="stack small">Org<select name="org"><option value="*">every org</option>{% for o in orgs %}<option value="{{ o }}">{{ o }}</option>{% endfor %}</select></label>
-    <label class="stack small">Station<select name="stage"><option value="">any station</option>{% for s in stages %}<option value="{{ s }}">{{ stages_meta[s][0] }} {{ stages_meta[s][1] }} only</option>{% endfor %}</select></label>
-    <label class="stack small">Role<select name="role"><option value="operator">operator</option><option value="admin">admin</option></select></label>
-    <button class="btn" type="submit">Issue code</button>
+<section class="card admin-sec" id="codes" aria-labelledby="h-codes">
+  <div class="card-head"><div class="grow"><h2 id="h-codes">Access codes</h2>
+    <p>A code for one customer sees only that customer: its units, workflows, evidence and photos. Anything of another customer answers “not found”. Issue one per person.</p></div></div>
+  <form method="post" action="/admin/codes" class="form-grid">
+    <label><span>Person</span><input name="label" required maxlength="60" placeholder="Priya"><small>Shown on every step they run</small></label>
+    <label><span>Customer</span><select name="org"><option value="*">Every customer</option>{% for o in orgs %}<option value="{{ o }}">{{ o | org }} ({{ o }})</option>{% endfor %}</select><small>&nbsp;</small></label>
+    <label><span>Station</span><select name="stage"><option value="">Any station</option>{% for s in stages %}<option value="{{ s }}">{{ stages_meta[s][0] }} {{ stages_meta[s][1] }} only</option>{% endfor %}</select><small>&nbsp;</small></label>
+    <label><span>Role</span><select name="role"><option value="operator">operator</option><option value="admin">admin</option></select><small>&nbsp;</small></label>
+    <button class="btn" type="submit" style="margin-bottom:22px">Issue code</button>
   </form>
   {% if codes %}
-  <div class="tablewrap" style="margin-top:12px"><table>
-    <thead><tr><th>#</th><th>Person</th><th>Org</th><th>Station</th><th>Role</th><th>Issued</th><th></th></tr></thead>
+  <div class="tablewrap" style="margin-top:16px"><table>
+    <thead><tr><th>#</th><th>Person</th><th>Customer</th><th>Station</th><th>Role</th><th>Issued</th><th></th></tr></thead>
     <tbody>{% for c in codes %}
-      <tr><td>{{ c.id }}</td><td>{{ c.label }}</td><td class="mono">{{ c.org_id or 'every org' }}</td>
+      <tr><td class="mono small">{{ c.id }}</td><td><b>{{ c.label }}</b></td>
+        <td>{% if c.org_id %}{{ c.org_id | org }}<span class="sub mono">{{ c.org_id }}</span>{% else %}Every customer{% endif %}</td>
         <td>{% if c.stage %}{{ stages_meta[c.stage][0] }} {{ stages_meta[c.stage][1] }}{% else %}<span class="muted">any</span>{% endif %}</td><td>{{ c.role }}</td>
-        <td class="small">{{ c.created_at }} by {{ c.created_by }}</td>
-        <td>{% if c.revoked_at %}<span class="chip pending">revoked</span>{% else %}
+        <td class="small">{{ c.created_at }}<span class="sub">by {{ c.created_by }}</span></td>
+        <td class="actions-cell">{% if c.revoked_at %}<span class="chip pending">revoked</span>{% else %}
           <form method="post" action="/admin/codes/{{ c.id }}/revoke" style="margin:0"><button class="btn alt small">Revoke</button></form>{% endif %}</td></tr>
     {% endfor %}</tbody></table></div>
+  {% else %}
+  <div class="empty" style="margin-top:16px;padding:18px"><b>No codes issued yet</b>Issue one per person above.</div>
   {% endif %}
 </section>
 
-<section class="card" id="workflows">
-  <div class="page-head" style="margin:0"><div class="grow"><h3 style="margin:0">Every workflow ({{ rows | length }})</h3></div>
-    <input type="text" class="filter" data-filter="#workflows tbody tr" placeholder="Filter: unit, org, status…"></div>
+<section class="card admin-sec" id="workflows" aria-labelledby="h-workflows">
+  <div class="card-head"><div class="grow"><h2 id="h-workflows">Every workflow ({{ rows | length }})</h2><p>All customers, newest first. Start over runs every stage again; earlier evidence is kept.</p></div>
+    <label class="searchbox"><span class="sr-only">Filter workflows</span><input type="text" class="filter" data-filter="#workflows tbody tr" placeholder="Filter: unit, customer, status…"></label></div>
   <div class="tablewrap"><table>
-    <thead><tr><th>Workflow</th><th>Org</th><th>Stages</th><th>Status</th><th>Updated (UTC)</th><th></th></tr></thead>
+    <thead><tr><th>Workflow</th><th>Customer</th><th>Stages</th><th>Status</th><th>Updated (UTC)</th><th></th></tr></thead>
     <tbody>{% for r in rows %}
-      <tr><td class="mono"><a href="/ui/w/{{ r.id }}">{{ r.unit }}</a></td><td class="mono small">{{ r.org }}</td>
-        <td>{% for s, st, v in r.stages %}<span class="chip {{ 'pass' if st == 'completed' and v in ('PASS', 'CLEAN') else ('fail' if st == 'error' or v == 'FAIL' else ('needs' if v == 'UNCERTAIN' else 'pending')) }}" title="{{ s }}: {{ st }} {{ v or '' }}">{{ stages_meta[s][0] }}</span>{% endfor %}</td>
-        <td><span class="chip {{ (r.status or '') | lower }}">{{ (r.status or '—') | replace('_', ' ') }}</span>{% if r.outcome %} <span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}</td>
-        <td class="small">{{ r.updated }}</td>
-        <td><form method="post" action="/admin/w/{{ r.id }}/restart" style="margin:0" onsubmit="return confirm('Run every stage of {{ r.unit }} again? Earlier evidence is kept.')"><button class="btn alt small">Start over</button></form></td></tr>
-    {% else %}<tr><td colspan="6" class="muted">No workflow yet. Run a unit from the Units page.</td></tr>{% endfor %}</tbody></table></div>
+      <tr><td><a class="unit-id" href="/ui/w/{{ r.id }}">{{ r.unit }}</a></td><td>{{ r.org | org }}<span class="sub mono">{{ r.org }}</span></td>
+        <td><span class="chips">{% for s, st, v in r.stages %}<span class="chip {{ 'pass' if st == 'completed' and v in ('PASS', 'CLEAN') else ('fail' if st == 'error' or v == 'FAIL' else ('uncertain' if v == 'UNCERTAIN' else ('skipped' if st == 'skipped' else 'plain'))) }}" title="{{ s }}: {{ st }} {{ v or '' }}">{{ stages_meta[s][0] }}</span>{% endfor %}</span></td>
+        <td><span class="chips"><span class="chip {{ (r.status or '') | lower }}">{{ (r.status or '—') | replace('_', ' ') }}</span>{% if r.outcome %}<span class="chip {{ r.outcome | lower }}">{{ r.outcome | replace('_', ' ') }}</span>{% endif %}</span></td>
+        <td class="small mono nowrap">{{ r.updated }}</td>
+        <td class="actions-cell"><form method="post" action="/admin/w/{{ r.id }}/restart" style="margin:0" onsubmit="return confirm('Run every stage of {{ r.unit }} again? Earlier evidence is kept.')"><button class="btn alt small">Start over</button></form></td></tr>
+    {% else %}<tr><td colspan="6"><div class="empty" style="padding:18px"><b>No workflow yet</b>Run a unit from the Dashboard.</div></td></tr>{% endfor %}</tbody></table></div>
 </section>
 
-<section class="card" id="audit">
-  <h3 style="margin-top:0">Audit log</h3>
-  <p class="small muted">Every sign-in, every change and every admin action, newest first. {% if db_on %}Stored in the database (pod12.audit).{% else %}Kept in memory until the server stops (no database).{% endif %}</p>
+<section class="card admin-sec" id="audit" aria-labelledby="h-audit">
+  <div class="card-head"><div class="grow"><h2 id="h-audit">Audit log</h2>
+    <p>Every sign-in, every change and every admin action, newest first. {% if db_on %}Stored in the database.{% else %}Kept in memory until the server stops (no database).{% endif %}</p></div>
+    <label class="searchbox"><span class="sr-only">Filter the audit log</span><input type="text" class="filter" data-filter="#audit tbody tr" placeholder="Filter: who, what, customer…"></label></div>
   <div class="tablewrap"><table>
-    <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Org</th><th>Result</th></tr></thead>
+    <thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Customer</th><th>Result</th></tr></thead>
     <tbody>{% for a in audit %}
-      <tr><td class="small mono">{{ a.at }}</td><td class="small">{{ a.actor }} <span class="muted">({{ a.role }})</span></td>
+      <tr><td class="small mono nowrap">{{ a.at }}</td><td class="small">{{ a.actor }} <span class="muted">({{ a.role }})</span></td>
         <td class="small">{{ a.action }}{% if a.target %} · <span class="mono">{{ a.target }}</span>{% endif %}{% if a.detail %} <span class="muted">{% for k, v in a.detail.items() %}{{ k }}={{ v }} {% endfor %}</span>{% endif %}</td>
-        <td class="small mono">{{ a.org_id or '' }}</td><td class="small">{{ a.status or '' }}</td></tr>
-    {% else %}<tr><td colspan="5" class="muted">Nothing yet.</td></tr>{% endfor %}</tbody></table></div>
+        <td class="small">{% if a.org_id %}{{ a.org_id | org }}<span class="sub mono">{{ a.org_id }}</span>{% endif %}</td><td class="small mono">{{ a.status or '' }}</td></tr>
+    {% else %}<tr><td colspan="5"><div class="empty" style="padding:18px"><b>Nothing yet</b>Sign-ins, changes and admin actions appear here.</div></td></tr>{% endfor %}</tbody></table></div>
 </section>
 {% endblock %}

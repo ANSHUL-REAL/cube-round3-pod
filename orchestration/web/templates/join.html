@@ -1,15 +1,19 @@
 {% extends "phone_base.html" %}
-{% block title %}Join Pod 12{% endblock %}
+{% from "_ui.html" import logo %}
+{% block title %}Sign in{% endblock %}
 {% block body %}
 <section class="card hero-phone">
-  <h1>Join the demo</h1>
-  <p class="muted">Type your access code: the one on the laptop screen, or the one you were given.</p>
-  {% if locked %}<p class="flash bad">Too many wrong codes from this phone. Ask the presenter to restart the server.</p>{% else %}
+  <div class="signin-mark"><span class="logo">{{ logo() }}</span><b>{{ brand.name }}</b></div>
+  <h1>Sign in</h1>
+  <p class="muted">Enter your access code: the one on the presenter's screen, or the one you were given.</p>
+  {% if locked %}<p class="flash bad">Too many wrong codes from this device. Ask your administrator to reset sign-in.</p>{% else %}
   <form method="post" action="/join" class="stack">
     <input type="hidden" name="next" value="{{ next }}">
-    <input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" required autofocus placeholder="••••••">
-    <button class="btn big" type="submit">Join</button>
+    <label class="sr-only" for="code">Access code</label>
+    <input id="code" class="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" required autofocus placeholder="••••••••">
+    <button class="btn big" type="submit">Sign in</button>
   </form>{% endif %}
-  <p class="small muted" style="margin-top:14px"><a href="/login">Admin sign-in</a></p>
+  <p class="signin-alt">Administrator? <a href="/login">Sign in with the admin password</a></p>
 </section>
+<p class="muted small" style="text-align:center;margin-top:18px"><a href="/about">What is {{ brand.name }}?</a></p>
 {% endblock %}

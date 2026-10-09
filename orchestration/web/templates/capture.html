@@ -1,35 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Photos · {{ case.unit_id }}{% endblock %}
+{% block title %}Photos · {{ case.unit_id }} · {{ brand.name }}{% endblock %}
 {% block body %}
-<div class="crumbs"><a href="/">Units</a> / <span class="mono">{{ case.unit_id }}</span> / photos</div>
-<div class="page-head"><div class="grow"><h1 class="mono">{{ case.unit_id }}</h1>
-  <p class="muted">{{ case.org_id }} · route {{ case.route }}{% if case.returned %} · returned{% endif %}{% if story %} · {{ story }}{% endif %}</p></div>
-  <form method="post" action="/ui/run" style="margin:0"><input type="hidden" name="org" value="{{ case.org_id }}"><input type="hidden" name="unit" value="{{ case.unit_id }}"><button class="btn" type="submit">▶ Run this unit</button></form>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Dashboard</a><span class="sep">/</span><span class="mono">{{ case.unit_id }}</span><span class="sep">/</span><span>Photos</span></nav>
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>Photos · {{ case.org_id | org }}</p>
+    <h1 class="mono">{{ case.unit_id }}</h1>
+    <p class="lede">{{ 'FBA' if case.route == 'fba' else ('Merchant-fulfilled' if case.route == 'mfn' else 'Route ' ~ case.route) }}{% if case.returned %}, returned{% endif %}.{% if story %} {{ story }}{% endif %}</p>
+  </div>
+  <div class="ph-actions">
+    <form method="post" action="/ui/run"><input type="hidden" name="org" value="{{ case.org_id }}"><input type="hidden" name="unit" value="{{ case.unit_id }}"><button class="btn" type="submit">▶ Run this unit</button></form>
+  </div>
 </div>
-<div class="banner warn">Stage the photos yourselves with real objects. The sample products are fictional, so say so in the demo: it shows the pipeline, not accuracy on those products.
-  <b>No faces, addresses, real order labels or other people's images.</b> Photos are kept in <code>data/input/</code>; the first model call per photo is slow.</div>
+<div class="notice tip"><span class="tag">Photo tips</span><span>Shoot on a plain surface in good light, one clear angle per photo. <b>No faces, addresses, real order labels or other people's images.</b> The first check of a new photo takes a little longer.</span></div>
 
 {% if ref %}
-<section class="card" style="margin-top:22px">
-  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span class="icon">🧾</span>
-    <h2 style="margin-right:auto">Returns needs the product as sold</h2>
+<section class="card section">
+  <div class="card-head"><span class="icon" aria-hidden="true">🧾</span>
+    <h2 class="grow">Returns needs the product as sold</h2>
     <span class="chip {{ 'pass' if ref.images else 'fail' }}">{{ ref.images | length }} reference photo(s)</span></div>
   <p class="muted">Returns compares the returned parcel with a reference photo of <b>{{ ref.title }}</b> (<span class="mono">{{ ref.sku }}</span>) new, parts laid out. Without one it answers <span class="mono">no_product_reference</span> and calls no model. Photograph the real item once; the photo's SHA-256 is written into its product card.</p>
   {% if ref.images %}<p class="muted">On the card: {% for i in ref.images %}<span class="mono">{{ i }}</span>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
   <form class="drop" method="post" enctype="multipart/form-data" action="/ui/reference/{{ case.org_id }}/{{ case.unit_id }}">
     <input type="file" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
-    <p style="margin:10px 0 0"><button class="btn small" type="submit">Add reference photo</button>
+    <p class="btn-row" style="margin:12px 0 0"><button class="btn small" type="submit">Add reference photo</button>
       <button type="button" class="btn alt small" data-camera="/ui/reference/{{ case.org_id }}/{{ case.unit_id }}" data-max="4" data-title="🧾 {{ ref.title }} as sold" data-hint="The real item, new, with every part laid out on a plain surface.">📸 Use camera</button>
-      <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
+      <span class="muted small">JPG, PNG or WEBP, up to 12 MB each</span></p>
   </form>
 </section>
 {% endif %}
 
-<div class="grid cols-2" style="margin-top:22px">
+<div class="grid cols-2 section">
 {% for s in stages %}
   <section class="card">
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span class="icon">{{ s.icon }}</span>
-      <h2 style="margin-right:auto">{{ s.name }}</h2><span class="chip {{ 'pass' if s.photos else 'pending' }}">{{ s.photos | length }} / {{ s.max }}</span></div>
+    <div class="card-head"><span class="icon" aria-hidden="true">{{ s.icon }}</span>
+      <h2 class="grow">{{ s.name }}</h2><span class="chip {{ 'pass' if s.photos else 'pending' }}">{{ s.photos | length }} / {{ s.max }}</span></div>
     <p class="muted">{{ s.text }}</p>
     {% if s.photos %}<div class="photos" style="margin:12px 0">
       {% for p in s.photos %}<div>
@@ -39,10 +44,10 @@
     {% if s.photos | length < s.max %}
     <form class="drop" method="post" enctype="multipart/form-data" action="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}/{{ s.stage }}">
       <input type="file" name="files" accept="image/jpeg,image/png,image/webp" multiple required>
-      <p style="margin:10px 0 0"><button class="btn small" type="submit">Upload</button>
+      <p class="btn-row" style="margin:12px 0 0"><button class="btn small" type="submit">Upload</button>
         <button type="button" class="btn alt small" data-camera="/ui/capture/{{ case.org_id }}/{{ case.unit_id }}/{{ s.stage }}" data-max="{{ s.max - (s.photos | length) }}" data-title="{{ s.icon }} {{ s.name }} · {{ case.unit_id }}" data-hint="{{ s.text }}">📸 Use camera</button>
-        <span class="muted">JPG, PNG or WEBP, up to 12 MB each</span></p>
-    </form>{% else %}<p class="muted">Full: remove a photo to add another.</p>{% endif %}
+        <span class="muted small">JPG, PNG or WEBP, up to 12 MB each</span></p>
+    </form>{% else %}<div class="empty" style="padding:14px">Full: remove a photo to add another.</div>{% endif %}
   </section>
 {% endfor %}
 </div>

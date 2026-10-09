@@ -1,52 +1,62 @@
 <!doctype html>
+{%- from "_ui.html" import logo -%}
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>{% block title %}Pod 12 console{% endblock %}</title>
+<title>{% block title %}{{ brand.name }}{% endblock %}</title>
 <script>
   try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&display=swap">
 <link rel="stylesheet" href="/ui/static/ui.css?v={{ asset_v }}">
 <script src="/ui/static/camera.js?v={{ asset_v }}" defer></script>
 </head>
-<body>
+<body class="app">
+{%- set signed = who and who.role != 'anon' %}
 <header class="topbar">
   <div class="wrap">
-    <a class="brand" href="/"><span class="logo">📦</span><span>Pod 12 console</span></a>
-    <nav>
-      <a href="/ui/sim" class="{{ 'on' if nav == 'sim' }}">▶ Live simulator</a>
-      <a href="/" class="{{ 'on' if nav == 'home' }}">Units</a>
-      <a href="/ui/review" class="{{ 'on' if nav == 'review' }}">Review</a>
-      <a href="/health" class="{{ 'on' if nav == 'health' }}">Health</a>
+    <a class="brand" href="/" aria-label="{{ brand.name }}, dashboard"><span class="logo">{{ logo() }}</span><span class="brand-name">{{ brand.name }}</span></a>
+    <nav class="app-nav" aria-label="Main">
+      <a href="/" class="{{ 'on' if nav == 'home' }}"{% if nav == 'home' %} aria-current="page"{% endif %}>Dashboard</a>
+      <a href="/ui/review" class="{{ 'on' if nav == 'review' }}"{% if nav == 'review' %} aria-current="page"{% endif %}>Review</a>
+      <a href="/ui/station">Stations</a>
+      <a href="/ui/sim" class="{{ 'on' if nav == 'sim' }}"{% if nav == 'sim' %} aria-current="page"{% endif %}>Demo</a>
+      {% if who and who.is_admin %}<a href="/admin" class="{{ 'on' if nav == 'admin' }}"{% if nav == 'admin' %} aria-current="page"{% endif %}>Admin</a>{% endif %}
+      <span class="nav-sep" aria-hidden="true"></span>
       <a href="/docs">API</a>
-      {% if who and who.is_admin and guarded %}<a href="/admin" class="{{ 'on' if nav == 'admin' }}">Admin</a>{% endif %}
+      <a href="/health">Status</a>
     </nav>
-    <span class="spacer"></span>
-    {% if guarded and who and who.role != 'anon' %}<span class="small muted" title="Signed in">{{ who.actor }}{% if who.orgs is not none %} · {{ who.orgs | join(', ') }}{% endif %}</span>
-    <form method="post" action="/logout" style="margin:0"><button class="toggle" type="submit">Sign out</button></form>{% endif %}
-    <button class="toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">🌗 Theme</button>
+    <div class="top-right">
+      {% if signed %}
+      <div class="user-chip" title="Signed in as {{ who.name }}">
+        <span class="avatar" aria-hidden="true">{{ (who.name or '?')[:1] }}</span>
+        <span class="who"><b>{{ who.name }}</b><span>{% if who.orgs is none %}All customers{% else %}{{ who.orgs | map('org') | join(', ') }}{% endif %}{% if who.stage %} · {{ stages_meta[who.stage][1] }} station{% endif %}</span></span>
+      </div>
+      {% endif %}
+      {% if guarded and signed %}<form method="post" action="/logout"><button class="toggle" type="submit">Sign out</button></form>{% endif %}
+      <button class="toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">
+        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15Z" fill="currentColor"/></svg><span class="t-label">Theme</span></button>
+    </div>
   </div>
 </header>
 <main class="wrap">
   {% if stub_mode %}
-  <div class="banner stub"><b>Organiser stubs are answering</b> for Receiving, Prep, Pack and Returns: they replay the organisers' recorded evidence (CSV), not our agents, so no photo or model key is used.
-    <b>Recovery is our real agent</b>, deciding on that recorded evidence. Start the server without <code>--stubs</code> to run all five of our agents on your photos.</div>
+  <div class="notice replay" role="status"><span class="tag">Replay</span><span>Replay mode: recorded evidence answers for the photo agents (Receiving, Prep, Pack, Returns). Recovery decides live on that evidence.</span></div>
   {% endif %}
-  {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
+  {% if msg %}<div class="flash {{ 'bad' if bad }}" role="status">{{ msg }}</div>{% endif %}
   {% block body %}{% endblock %}
-  {% if guarded %}
-  <footer>Signed-in access only: every page, photo and API call is checked against the org(s) of your code, and every change is in the audit log.
-    {% if db_on %}State is kept in Postgres.{% else %}State is kept in files on this machine.{% endif %}</footer>
-  {% else %}
-  <footer>No sign-in: anyone who can reach this page can run workflows and record overrides. Keep it on this machine.
-    Photos added here are stored in <code>data/input/</code> and are public if you push them.</footer>
-  {% endif %}
 </main>
+<footer class="app-foot">
+  <div class="wrap">
+    <a class="foot-brand" href="/about"><span class="logo">{{ logo() }}</span>{{ brand.name }}</a>
+    <span>{{ brand.tagline }}</span>
+    <nav aria-label="Footer"><a href="/about">About</a><a href="/health">Status</a><a href="/docs">API</a></nav>
+  </div>
+</footer>
 <script>
   document.querySelectorAll("[data-theme-toggle]").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -57,11 +67,15 @@
     });
   });
   document.querySelectorAll("[data-filter]").forEach(function (box) {
+    var count = box.dataset.count ? document.querySelector(box.dataset.count) : null;
     box.addEventListener("input", function () {
-      var q = box.value.toLowerCase();
-      document.querySelectorAll(box.dataset.filter).forEach(function (row) {
-        row.style.display = row.textContent.toLowerCase().indexOf(q) === -1 ? "none" : "";
+      var q = box.value.toLowerCase(), shown = 0, rows = document.querySelectorAll(box.dataset.filter);
+      rows.forEach(function (row) {
+        var hit = row.textContent.toLowerCase().indexOf(q) !== -1;
+        row.style.display = hit ? "" : "none";
+        if (hit) shown++;
       });
+      if (count) count.textContent = q ? shown + " of " + rows.length + " shown" : "";
     });
   });
   // Running a unit calls the model once per stage (about 10 s each with real agents): say so, and stop double submits.
@@ -70,7 +84,7 @@
       var b = f.querySelector('button[type="submit"]');
       if (!b) return;
       setTimeout(function () { b.disabled = true; }, 0);
-      b.textContent = "Running the agents… (about 10 s per stage)";
+      b.textContent = "Running… about 10 s per stage";
     });
   });
 </script>

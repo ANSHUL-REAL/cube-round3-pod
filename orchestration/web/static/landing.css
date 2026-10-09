@@ -1,4 +1,4 @@
-/* Pod 12 · public landing page (GET / for visitors, /about for everyone).
+/* Public landing page (GET / for visitors, /about for everyone).
    Builds on ui.css: its tokens (--pink --yellow --cream --orange --ink --bg --card --text --muted --line --shadow --hero-*)
    and classes (.topbar .wrap .brand .logo .toggle .btn .card .chip .icon .flash). Everything here is scoped to body.landing. */
 
@@ -52,7 +52,7 @@ body.landing .btn:hover { transform: translate(2px, 2px); box-shadow: 3px 3px 0 
 body.landing .btn:active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--shadow); }
 body.landing .btn.small { box-shadow: 3px 3px 0 var(--shadow); padding: 8px 13px; }
 body.landing .btn.small:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--shadow); }
-body.landing .btn.alt { color: #17131a; }
+body.landing .btn.alt { color: #17131a; background: #fffdf8; border-color: #17131a; }
 body.landing .card { border-width: 3px; border-radius: 18px; box-shadow: 6px 6px 0 var(--shadow); color: var(--text); }
 body.landing .chip { font-size: 13px; padding: 4px 11px; border-width: 2.5px; }
 :root body.landing .chip.l-y { background: var(--yellow); color: #17131a; border-color: #17131a; }
@@ -82,8 +82,9 @@ body.landing .topbar .btn.alt { background: #fdf6e6; }
 .l-hero .flash { margin: 0 0 18px; }
 .l-eyebrow { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-weight: 800; font-size: 16px; margin: 0 0 14px !important; }
 .l-title { margin: 0; }
-.l-word { display: block; font: 900 clamp(96px, 13.6vw, 200px)/.8 var(--font); letter-spacing: -.075em; color: var(--hero-word);
-  -webkit-text-stroke: 3px var(--l-word-edge); text-shadow: .045em .045em 0 var(--l-word-edge); margin-left: -.03em; padding: .04em 0 .2em; }
+.l-word { display: block; font: 900 clamp(56px, min(13.6vw, calc(80vw / var(--len, 6))), 200px)/.8 var(--font); letter-spacing: -.04em; color: var(--hero-word);
+  /* an outline drawn with shadows: a text stroke would also outline the overlapping parts inside some letters */
+  text-shadow: -3px -3px 0 var(--l-word-edge), 0 -3.5px 0 var(--l-word-edge), 3px -3px 0 var(--l-word-edge), 3.5px 0 0 var(--l-word-edge), 3px 3px 0 var(--l-word-edge), 0 3.5px 0 var(--l-word-edge), -3px 3px 0 var(--l-word-edge), -3.5px 0 0 var(--l-word-edge), .045em .045em 0 var(--l-word-edge); margin-left: 0; padding: .04em 0 .2em .02em; }
 .l-headline { display: block; font: 900 clamp(32px, 3.7vw, 54px)/1.02 var(--font); letter-spacing: -.04em; margin-top: 0; color: var(--hero-ink); }
 .l-headline > span { display: block; }
 .l-headline mark { background: var(--yellow); color: #17131a; padding: 0 .16em; border: 3px solid #17131a; border-radius: 10px;
@@ -286,7 +287,7 @@ body.landing .l-panel { background: var(--panel); }
 
 /* ---------------------------------------------------------------- footer */
 body.landing footer.l-foot { margin: 0; background: var(--l-night); color: var(--l-night-ink); font-size: 16px; padding: 18px 0 44px; }
-.l-foot-word { font: 900 clamp(64px, 11vw, 150px)/.85 var(--font); letter-spacing: -.07em; color: var(--pink); margin: 0 0 14px !important; padding-bottom: .2em; }
+.l-foot-word { font: 900 clamp(48px, min(11vw, calc(1500px / var(--len, 6))), 150px)/.85 var(--font); letter-spacing: -.07em; color: var(--pink); margin: 0 0 14px !important; padding-bottom: .2em; }
 .l-foot-line { font-size: 18px; font-weight: 600; margin: 0 0 14px !important; }
 .l-foot-line b { font-weight: 900; }
 .l-foot-nav { display: flex; flex-wrap: wrap; gap: 10px 22px; }
@@ -320,7 +321,8 @@ body.landing footer.l-foot { margin: 0; background: var(--l-night); color: var(-
   body.landing .topbar .wrap { gap: 8px; }
   .l-hide-sm, .l-toggle-t { display: none; }
   .l-hero { padding: 34px 0 16px; }
-  .l-word { font-size: 27vw; -webkit-text-stroke-width: 2px; }
+  .l-word { font-size: min(27vw, calc(165vw / var(--len, 6))); }
+  .l-foot-word { font-size: min(18vw, calc(165vw / var(--len, 6))); }
   .l-headline { font-size: 34px; }
   .l-lead { font-size: 19px; }
   .l-cta { gap: 12px; }
@@ -364,3 +366,10 @@ body.landing footer.l-foot { margin: 0; background: var(--l-night); color: var(-
   .chip.pass .l-dot { animation: none; }
   body.landing .btn, .l-door { transition: none; }
 }
+
+/* ---------------------------------------------------------------- credits */
+.l-credit { margin: 18px 0 0 !important; font-size: 13px; font-weight: 600; color: var(--l-night-muted); opacity: .8; }
+body.landing .l-nav { display: flex; gap: 4px; margin-left: 8px; flex-wrap: nowrap; }
+body.landing .l-nav a { text-decoration: none; font-weight: 700; padding: 6px 12px; border-radius: 999px; font-size: 15px; white-space: nowrap; }
+body.landing .l-nav a:hover { background: #fdf6e6; color: #17131a; }
+body.landing .brand-name { text-transform: lowercase; }

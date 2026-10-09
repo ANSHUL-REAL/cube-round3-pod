@@ -1,0 +1,26 @@
+{#- Shared pieces for every page: the logo mark and the "connect station phones" panel.
+    Import with: {% from "_ui.html" import logo, phones_panel with context %} -#}
+
+{%- macro logo() -%}
+<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g stroke="#17131a" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M10 2.6 17 6.1 10 9.6 3 6.1Z" fill="#fdf6e6"/><path d="M3 6.1 10 9.6v7.6L3 13.7Z" fill="#f7c948"/><path d="M10 9.6l7-3.5v7.6l-7 3.5Z" fill="#ff7a1a"/>
+  <path d="M19.2 18.9l3 3" stroke-width="3"/><circle cx="15.6" cy="15.3" r="5" fill="#fffdf8"/><circle cx="15.6" cy="15.3" r="1.9" fill="#17131a" stroke="none"/></g></svg>
+{%- endmacro -%}
+
+{%- macro phones_panel() -%}
+{% if phones %}
+<section class="card phones-all">
+  <div class="section-head" style="margin:0">
+    <div class="grow"><h2>📱 Connect the station phones</h2>
+      <p>Each station scans its own code, enters {% if phones.code %}<b class="bigcode-inline">{{ phones.code }}</b>{% else %}<b>its own access code</b> (issue one per person on the <a href="/admin#codes">Admin page</a>){% endif %} once, and clears its step from the phone.</p></div>
+    <span class="chip">Open from anywhere: <span class="mono">{{ phones.url }}</span></span>
+  </div>
+  <div class="qr-row">
+    {% for s in phones.stations %}{% set m = stages_meta[s] %}
+    <figure><img src="/ui/phones.svg?stage={{ s }}" alt="QR code for the {{ m[1] }} station"><figcaption>{{ m[0] }} {{ m[1] }}</figcaption></figure>
+    {% endfor %}
+  </div>
+  <p class="muted small" style="margin:0">A unit reaches each station when the step before it is done. Pages here update when a phone clears a step.</p>
+</section>
+{% endif %}
+{%- endmacro -%}

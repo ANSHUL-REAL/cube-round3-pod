@@ -1,25 +1,36 @@
 <!doctype html>
+{%- from "_ui.html" import logo -%}
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>{% block title %}Pod 12 station{% endblock %}</title>
+<title>{% block title %}Station{% endblock %} · {{ brand.name }}</title>
 <script>try { var t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&display=swap">
 <link rel="stylesheet" href="/ui/static/ui.css?v={{ asset_v }}">
 </head>
 <body class="phone">
 <header class="topbar">
   <div class="wrap">
-    <a class="brand" href="/ui/station"><span class="logo">📦</span><span>Pod 12</span></a>
+    <a class="brand" href="/ui/station" aria-label="{{ brand.name }}, stations"><span class="logo">{{ logo() }}</span><span class="brand-name">{{ brand.name }}</span></a>
     <span class="spacer"></span>
-    {% block where %}{% endblock %}
+    <div class="station-where">
+      {% block where %}{% if who and who.stage and stages_meta and who.stage in stages_meta %}<a class="chip" href="/ui/station/{{ who.stage }}">{{ stages_meta[who.stage][0] }} {{ stages_meta[who.stage][1] }}</a>{% endif %}{% endblock %}
+      {% if who and who.role != 'anon' %}<span class="phone-who" title="Signed in as {{ who.name }}">👤 {{ who.name }}</span>{% endif %}
+    </div>
   </div>
 </header>
 <main class="wrap">
   {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
   {% block body %}{% endblock %}
 </main>
+<footer class="phone-foot wrap">
+  <span>{{ brand.name }} · {{ brand.tagline }}</span>
+  {% if guarded and who and who.role != 'anon' %}<form method="post" action="/logout"><button class="linkbtn" type="submit">Sign out</button></form>{% endif %}
+</footer>
 <script>
   // A step calls the real agent (a few seconds, up to about a minute): say so, and stop a double tap.
   document.querySelectorAll("form[data-busy]").forEach(function (f) {

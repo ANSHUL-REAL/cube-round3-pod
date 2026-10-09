@@ -60,9 +60,9 @@ def test_home_lists_the_five_demo_units_and_every_unit(ui):
 
 
 def test_stub_mode_is_announced_on_the_page_and_absent_otherwise(ui, monkeypatch):
-    assert "Organiser stubs are answering" in ui.get("/").text
+    assert "Replay mode: recorded evidence answers for the photo agents" in ui.get("/").text
     monkeypatch.delenv("POD_UI_STUBS")
-    assert "Organiser stubs are answering" not in ui.get("/").text
+    assert "Replay mode: recorded evidence answers for the photo agents" not in ui.get("/").text
 
 
 def test_running_a_unit_shows_one_card_per_stage_and_the_outcome(ui):
@@ -74,7 +74,7 @@ def test_running_a_unit_shows_one_card_per_stage_and_the_outcome(ui):
         assert stage in page.text
     states = {s["stage"]: s["state"] for s in api.STORE.load_workflow(WF)["stage_results"]}
     assert states["pack"] == "skipped" and states["recovery"] == "completed"  # an fba unit skips Pack; the page shows the rest
-    assert "Organiser stubs are answering" in page.text
+    assert "Replay mode: recorded evidence answers for the photo agents" in page.text
 
 
 def test_a_record_page_shows_the_checks_and_the_hash(ui):

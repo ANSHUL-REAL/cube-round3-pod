@@ -1,14 +1,15 @@
 {% extends "phone_base.html" %}
-{% block title %}Pick your station{% endblock %}
+{% block title %}Stations{% endblock %}
 {% block body %}
-<h1 class="phone-h">Which step is yours?</h1>
+<p class="eyebrow" style="margin-top:24px"><span class="tick" aria-hidden="true"></span>Stations</p>
+<h1 class="phone-h" style="margin-top:0">Which step is yours?</h1>
 <p class="muted">Each person clears one step from their own phone. A unit reaches you when the step before yours is done.</p>
 <div class="stations">
   {% for s in photo_stages %}{% set m = stages_meta[s] %}
   <a class="card station-pick" href="/ui/station/{{ s }}">
-    <span class="icon">{{ m[0] }}</span>
+    <span class="icon" aria-hidden="true">{{ m[0] }}</span>
     <span><b>{{ m[1] }}</b><span class="muted small">{{ m[2] }}</span></span>
-    {% if waiting[s] %}<span class="chip pending">{{ waiting[s] }} waiting</span>{% endif %}
+    {% if waiting[s] %}<span class="chip pending">{{ waiting[s] }} waiting</span>{% else %}<span class="go" aria-hidden="true">→</span>{% endif %}
   </a>
   {% endfor %}
 </div>
