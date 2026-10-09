@@ -248,6 +248,50 @@ def test_the_conflict_policy_can_be_switched_and_the_record_says_which_side_it_t
     assert out["evidence"]["payload"]["policy"]["receiving_defect_blocks_claim"] is False
 
 
+def _receiving_elsewhere():
+    return receiving(unit="UNIT-T9", rid="RCV-UNIT-T9")
+
+
+def _receiving_tampered():
+    rec = receiving("FAIL")
+    rec["decision"] = {**rec["decision"], "verdict": "PASS"}  # body changed, content_hash not: ignored
+    return rec
+
+
+@pytest.mark.parametrize("name, receiving_records", [
+    ("no Receiving record at all", []),
+    ("the only Receiving record is about another unit", [_receiving_elsewhere()]),
+    ("the only Receiving record fails its hash", [_receiving_tampered()]),
+])
+def test_a_prep_pass_without_a_receiving_record_is_not_claimed_but_sent_to_a_person(tmp_path, monkeypatch, name,
+                                                                                     receiving_records):
+    """A claim must rest on proof the unit arrived in good order. Prep PASS alone is not that proof: with no usable
+    Receiving record the line is not claimed ($0) and a person is asked to check it."""
+    out = run(tmp_path, monkeypatch, [fee(amount="2.00")], [*receiving_records, prep("PASS")])
+    ev, c, ch = out["evidence"], the_check(out), charges(out)["FEE-T1-1"]
+    assert (c["verdict"], c["observed"]) == ("UNCERTAIN", "SILENT"), name
+    assert ch["codes"] == ["no_receiving_evidence"] and ch["claim_usd"] == 0 and ch["needs_person"] is True, name
+    assert ch["reason"].startswith("No Receiving record: cannot show the unit arrived in good condition"), ch["reason"]
+    assert ch["evidence_record_ids"] == [f"PRP-{UNIT}"] and ch["what_would_settle_it"]
+    assert ev["decision"]["outcome"] == "pending_review" and ev["decision"]["needs_human"] is True
+    assert out["next_step_recommendation"]["action"] == "review"
+    assert ev["payload"]["unclaimable"][0]["needs_person"] is True
+    assert_no_claim(out)
+
+
+def test_the_receiving_record_requirement_does_not_depend_on_the_defect_switch(tmp_path, monkeypatch):
+    monkeypatch.setattr(policy_module, "POLICY", policy_module.Policy(receiving_defect_blocks_claim=False))
+    out = run(tmp_path, monkeypatch, [fee()], [prep("PASS")])
+    assert charges(out)["FEE-T1-1"]["codes"] == ["no_receiving_evidence"]
+    assert_no_claim(out)
+
+
+def test_no_receiving_record_on_a_zero_amount_line_does_not_bother_anyone(tmp_path, monkeypatch):
+    out = run(tmp_path, monkeypatch, [fee(amount="0.00")], [prep("PASS")])
+    assert out["evidence"]["decision"]["needs_human"] is False
+    assert_no_claim(out)
+
+
 # ================================================================ overrides: the latest one wins
 def test_overriding_prep_to_fail_flips_a_contradicted_charge_to_supported(tmp_path, monkeypatch):
     previous = [receiving(), prep("PASS")]

@@ -41,7 +41,7 @@ class Position:
     basis: list[dict] = field(default_factory=list)        # record, check, verdicts, and the role it played
     fee_refs: list[str] = field(default_factory=list)      # other fee-report rows this rests on (duplicates, credits)
     claim: Decimal = Decimal("0")
-    conflict: bool = False                                  # two records disagree: a person can settle it
+    conflict: bool = False                                  # a person must look (records disagree, or no Receiving)
     uncertain_reason: str = "insufficient_evidence"
     underlying: str | None = None                           # what the evidence said before the amount guard
     settle: str | None = None                               # what would turn this into a decision
@@ -237,6 +237,15 @@ def inbound_defect_fee(line: FeeLine, ctx: Ctx) -> Position:
         return silent(f"Prep record {prep.record_id} was captured {captured}, after the charge was posted "
                       f"({line.posted_date}), so it cannot show the unit's state when it was inspected.",
                       "evidence_after_charge", refs=[prep.record_id], basis=[_basis(prep, "consulted")])
+    if ctx.ev.latest("receiving") is None:
+        # A claim rests on proof the unit arrived in good order. Prep's pass alone is not that proof, so a person checks.
+        return silent(f"No Receiving record: cannot show the unit arrived in good condition ({ctx.why_no('receiving')}). "
+                      f"Prep record {prep.record_id} found it compliant{note}, but that alone does not show the inbound "
+                      f"defect fee of {_money(line.amount)} was wrong, so nothing is claimed and a person should check it.",
+                      "no_receiving_evidence", refs=[prep.record_id], basis=[_basis(prep, "consulted")], conflict=True,
+                      reason="insufficient_evidence",
+                      settle="a completed Receiving record for this unit with no damage or quality flag, or a person "
+                             "confirming the unit arrived in good condition")
     basis = [_basis(prep, "supports_claim")]
     refs = [prep.record_id]
     if ctx.policy.receiving_defect_blocks_claim:

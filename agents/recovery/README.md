@@ -31,7 +31,7 @@ A wrongly filed claim costs a seller standing; a missed one costs only money. So
 
 | Charge type in the sample | Rule | Claim only when |
 |---|---|---|
-| `inbound_defect_fee` | Prep says compliant -> contradicted; Prep says non-compliant -> supported; anything else -> silent | Prep **completed** and its (override-adjusted) verdict is PASS with at least one check, it names the same SKU / FNSKU / shipment as the line, it was taken before the charge posted, the line covers one unit, **and** Receiving recorded no damage or quality flag on the unit |
+| `inbound_defect_fee` | Prep says compliant -> contradicted; Prep says non-compliant -> supported; anything else -> silent | Prep **completed** and its (override-adjusted) verdict is PASS with at least one check, it names the same SKU / FNSKU / shipment as the line, it was taken before the charge posted, the line covers one unit, **and** a Receiving record for the unit exists and recorded no damage or quality flag on it (see "No Receiving record" below) |
 | `refund_issued_item_not_returned` | Returns `identity_match` PASS -> contradicted (the item came back); FAIL -> supported | Only on a merchant-fulfilled unit (see F-11, F-12 below) |
 | `fulfilment_fee_weight_tier` | Silent unless an earlier record carries `payload.measurements.weight_g` **and** the operator supplied a fee schedule with its source | A schedule puts the measured weight at a lower fee than billed (claims the **difference**) and the weight is not within the scale tolerance of a tier boundary |
 | `lost_inbound` | Always silent: nothing in this pod comes from the channel's side of the dock (F-10) | Never |
@@ -40,6 +40,10 @@ A wrongly filed claim costs a seller standing; a missed one costs only money. So
 | Charge already credited | `ALREADY_REIMBURSED` | Never. Matched by an explicit `related_line_id` / `original_line_id`, or by same SKU and exact amount credited on or after the charge |
 | Any other charge type | Silent: `no_rule` | Never |
 | Zero, negative, missing or unreadable amount | Silent, whatever the evidence says (F-09) | Never |
+
+### No Receiving record: a person checks, nothing is claimed
+
+An inbound-defect claim must rest on proof that the unit arrived in good order, and a Prep pass alone is not that proof. When Prep would otherwise contradict the fee but there is **no usable Receiving record** for the unit (none was supplied, or the only one is about another unit or fails its hash and is ignored), the charge is SILENT with code `no_receiving_evidence`, `claim_usd` 0, `needs_person: true`, and the reason starts *"No Receiving record: cannot show the unit arrived in good condition"*. On a non-zero line that makes the record `UNCERTAIN` / `pending_review` / `needs_human: true`, so the workflow waits for a person instead of filing money automatically. It is settled by a completed Receiving record with no damage or quality flag, or by a person confirming the unit arrived in good condition. This rule is not a policy switch and does not depend on `receiving_defect_blocks_claim`. It only changes a line that would otherwise have been claimed: a Prep FAIL, UNCERTAIN, mismatch or late record without Receiving gives the same answer as before, and every case with a Receiving record is unchanged. The sample has a Receiving record on every unit, so the replay and `docs/evaluation.md` numbers are unaffected.
 
 No Amazon policy and no fee schedule is written into this agent. The weight-tier path uses only a schedule you supply (`RECOVERY_TIER_TABLE=path.json`: `source_url`, `retrieved`, `tolerance_g`, `tiers[{up_to_g, fee_usd}]`); a schedule that does not say where it came from is not used. The repository ships none, so on the sample all 42 weight-tier fees are silent.
 
@@ -70,7 +74,7 @@ All switches are in [`policy.py`](policy.py); the active snapshot is copied into
 - `payload.claims[]`: per claim: amount, `evidence_record_ids`, `evidence_refs`, fee-row refs, rationale. `payload.claimable_usd` is their sum (exact decimal arithmetic).
 - `payload.unclaimable[]`: everything not claimed, with the reason.
 - `payload.upstream[]` (each record read, original and effective verdict, which override), `payload.overrides_applied[]`, `payload.findings`, `payload.policy`, `payload.rule_source`.
-- `decision`: any claim -> `FAIL` / `claim_recommended`. Otherwise a conflict between records over a non-zero amount -> `UNCERTAIN` / `pending_review` / `needs_human: true`. Otherwise any SILENT charge -> `UNCERTAIN` / `insufficient_evidence`, **`needs_human: false`** (nothing for a person to decide, so it never halts a workflow). Otherwise `PASS` / `no_claim`. A unit with no fee lines is `UNCERTAIN` / `no_claim`: the absence of lines is not evidence the unit was charged fairly.
+- `decision`: any claim -> `FAIL` / `claim_recommended`. Otherwise a conflict between records, or a Prep pass with no Receiving record, over a non-zero amount -> `UNCERTAIN` / `pending_review` / `needs_human: true`. Otherwise any SILENT charge -> `UNCERTAIN` / `insufficient_evidence`, **`needs_human: false`** (nothing for a person to decide, so it never halts a workflow). Otherwise `PASS` / `no_claim`. A unit with no fee lines is `UNCERTAIN` / `no_claim`: the absence of lines is not evidence the unit was charged fairly.
 
 ## Overrides
 
@@ -100,17 +104,17 @@ python -m agents.recovery.replay --write-md agents/recovery/REPLAY.md   # offlin
 ## Test it
 
 ```sh
-pytest tests/integration/test_recovery_agent.py     # 70 tests, no key, no network
+pytest tests/integration/test_recovery_agent.py     # 83 tests, no key, no network
 pytest tests/integration/test_agent_contracts.py
 ```
 
-The tests build their own fee lines and earlier-stage records and cover: each position and outcome; twelve precision cases where a claim would be wrong; the override flip (and the latest of several); the Specialist flow; F-07 to F-12; duplicates and refunds already made; wrong tenant (agent and HTTP); tampered evidence; idempotency; fail-open; contract validity and hash; reading all previous evidence; and whole workflows through `run_workflow`, including a person resolving Prep after a halt. Six mutations (ignore overrides, drop the Receiving guard, claim a zero amount, claim a duplicate without an order id, let an FBA return contradict, treat an UNCERTAIN Prep as compliant) were each applied by hand and caught by at least one test.
+The tests build their own fee lines and earlier-stage records and cover: each position and outcome; twelve precision cases where a claim would be wrong; a Prep pass with no usable Receiving record (none, another unit's, or a tampered one) going to a person with $0 claimed, whatever the defect switch says; the override flip (and the latest of several); the Specialist flow; F-07 to F-12; duplicates and refunds already made; wrong tenant (agent and HTTP); tampered evidence; idempotency; fail-open; contract validity and hash; reading all previous evidence; and whole workflows through `run_workflow`, including a person resolving Prep after a halt. Six mutations (ignore overrides, drop the Receiving guard, claim a zero amount, claim a duplicate without an order id, let an FBA return contradict, treat an UNCERTAIN Prep as compliant) were each applied by hand and caught by at least one test.
 
 ## Limits (read these)
 
 - **No accuracy has been measured.** There are no ground-truth labels, so false positives and false negatives are unknown. The Round 2 repository's "100% precision on 10 charges" was 8 self-written scenarios and is not reproduced here.
-- **Every claim in the replay rests on organiser-stub evidence** (`csv-replay-stub`). Nothing has been run against the pod's real Receiving, Prep, Pack or Returns agents.
-- **"Prep PASS contradicts an inbound-defect fee" is an assumption**, the organisers' own and the Round 2 author's. The sample fee line does not say which defect the channel cited, so the agent cannot check that Prep's checks cover it. The guards (Receiving damage, ref mismatch, timing, quantity) reduce the risk; they are our choices, not channel rules, and how many real claims they cost is not measured.
+- **Every claim in the replay rests on organiser-stub evidence** (`csv-replay-stub`). Behind the pod's real agents it has run in the tests (scripted models) and in the logged whole-workflow runs on UNIT-0016 (real Receiving, Pack and Returns), a unit with no fee lines, so it answered `no_claim` ([`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md)). No logged run has produced a claim from a real model's evidence: live photos are dated after the sample's charges.
+- **"Prep PASS contradicts an inbound-defect fee" is an assumption**, the organisers' own and the Round 2 author's. The sample fee line does not say which defect the channel cited, so the agent cannot check that Prep's checks cover it. The guards (missing Receiving record, Receiving damage, ref mismatch, timing, quantity) reduce the risk; they are our choices, not channel rules, and how many real claims they cost is not measured.
 - **No channel policy or fee schedule is encoded and none was looked up.** The weight-tier claim path has only been run against a test-only schedule in the tests; it has never seen a real one, and the sample fee lines carry neither a billed weight nor a tier.
 - **The fee source is the organisers' sample CSV** (dummy values). A real report with other columns is not supported without a change in `fees.py`. Unit existence (tenancy) is also taken from the sample CSVs.
 - Duplicates are looked for **within one unit**; ALREADY_REIMBURSED needs an explicit link or an exact amount match, and the sample has neither, so both paths are tested only on our fixtures.

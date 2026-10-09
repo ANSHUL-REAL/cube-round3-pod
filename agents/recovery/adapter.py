@@ -49,7 +49,8 @@ def _captured_at(lines: list[FeeLine], ctx: Ctx, fallback: str) -> str:
 
 
 def decide(lines: list[FeeLine], positions: list[Position]) -> tuple[str, str, bool]:
-    """(verdict, outcome, needs_human). Never claims on SILENT; asks a person only where records conflict over money."""
+    """(verdict, outcome, needs_human). Never claims on SILENT; asks a person only where records conflict over money,
+    or where a claim lacks the Receiving record it would rest on."""
     claims = [p for p in positions if p.claim > 0]
     conflicts = [p for p, ln in zip(positions, lines) if p.conflict and ln.amount is not None and ln.amount > 0]
     if claims:
