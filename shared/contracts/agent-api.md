@@ -30,7 +30,7 @@ Rules:
 3. **Read-only previous evidence.** Never modify it. Use the **latest override** in `context.overrides` as a record's effective verdict.
 4. **Tenancy.** `evidence.subject.org_id` must equal the request's, or the orchestrator discards the output as a security event.
 5. **Consistent.** `output.verdict`, `status` and `agent_id` must equal the evidence's; `content_hash` must verify.
-6. **Time budget.** Respect `timeout_s` (default 30 s). Batch your model calls: one per unit carrying all checks.
+6. **Time budget.** Respect `timeout_s` (the orchestrator's built-in default is 30 s; Pod 12's `flow.json` sets 75 s, D-O07). Batch your model calls: one per unit carrying all checks.
 7. **No secrets in responses or logs.**
 
 ## Quick check

@@ -37,7 +37,7 @@ A FAIL with something unresolved alongside it keeps the FAIL and sets `needs_hum
 | `carton_damage`, `unit_damage` | `none` | `crushing`, `water` or `tears` | model says it cannot tell |
 | `quality_flags` | colour, variant and required components match the spec and no obvious defect | any of `wrong_colour`, `wrong_variant`, `missing_components`, `obvious_defect` (named in `observed`) | could not confirm something the PO constrains |
 
-Colour and variant only count when the PO constrains them (`n/a` and `standard` do not). Words are compared order-insensitively ("pack of 3" equals "3-pack"; a trailing quantity such as "x2" is ignored for components). Checks never carry an invented `confidence`: they are deterministic, so it is null, and the model's own self-reported figures are kept in `payload.observation`.
+Colour and variant only count when the PO constrains them (`n/a` and `standard` do not). Words are compared order-insensitively and in the singular ("pack of 3" equals "3-pack", "candles" equals "candle"; a trailing quantity such as "x2" is ignored for components; `tokens()` in `models.py`). Checks never carry an invented `confidence`: they are deterministic, so it is null, and the model's own self-reported figures are kept in `payload.observation`.
 
 ## What the record contains
 
@@ -87,7 +87,7 @@ Settings (environment or `.env`): `GEMINI_API_KEY`, `GEMINI_MODEL` (default `gem
 ## Test it
 
 ```sh
-pytest tests/integration/test_receiving_agent.py     # 50 tests, no key needed
+pytest tests/integration/test_receiving_agent.py     # 52 tests, no key needed
 pytest tests/integration/test_agent_contracts.py
 ```
 
@@ -95,13 +95,13 @@ The tests replace the model with a scripted perceiver (and, for the Gemini wrapp
 
 ## Limits (read these)
 
-- **The real model has never been run through this agent.** There is no API key in this environment, and no real receiving photos exist. Nothing here measures how well Gemini reads cartons, labels or counts. The Gemini wrapper is tested only against a scripted client: it proves what we send (photo bytes, no PO data), retry and failure handling, and that the response schema converts offline; it does not prove the live API accepts it.
+- **The real model has been smoke-run, not evaluated.** [`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md) logs real Gemini calls through this agent on 2026-10-09, all on warehouse-bin photos from the Amazon Bin Image Dataset (not photos of a supplier delivery): UNIT-0044 through the checker (1 call, 7.7 s, every check UNCERTAIN: "clarity 0.40, minimum 0.50"), UNIT-0008 through the console's Snap & run window (1 call, 4.0 s, UNCERTAIN: too unclear for a delivery check, sent to a person), and as the first stage of two whole-workflow runs on UNIT-0016 (UNCERTAIN). So the live API accepts the request and an unclear photo goes to a person; nothing yet measures how well Gemini reads cartons, labels or counts. In the tests the Gemini wrapper meets only a scripted client: they prove what we send (photo bytes, no PO data), retry and failure handling, and that the response schema converts offline.
 - **No accuracy figure exists for this agent.** Round 2's evaluation harness (Cohen's kappa, confusion matrices) was built but never fed data: its own report says "NOT YET AVAILABLE". Nothing was carried over as a result and none is claimed.
-- **The prompt and model default are untested.** `gemini-3.5-flash-lite` is the model the pod used for Pack, not one chosen or measured for receiving.
+- **The prompt and model default are not evaluated.** `gemini-3.5-flash-lite` is the model the pod used for Pack, not one chosen or measured for receiving; the runs above show only that it answers.
 - **The thresholds are guesses.** `RCV_MIN_CLARITY` and `RCV_MIN_CONFIDENCE` are uncalibrated defaults. The model's self-reported clarity and confidence are not calibrated probabilities. They can only turn a verdict into UNCERTAIN, so a wrong value costs a human look rather than a wrong claim, but they have not been tuned on any data.
 - **A supplier claim built on a FAIL needs a person to look first.** A false FAIL is possible: colour and variant are matched by words after normalisation, so a true synonym ("navy" for "blue") reads as `wrong_colour`; a required component is looked for by name, and a quantity inside a name ("candle x3") is not counted separately. An exception is accepted with the evidence, not filed anywhere.
 - **Rules about suppliers or Amazon are not encoded.** What counts as acceptable damage, reject thresholds and claim windows are not looked up from any source, so they are not applied: every damage type is a FAIL, wrong goods are rejected, everything else is accepted with exceptions. The accept/reject mapping is our decision (D-V02), not an organiser or channel rule.
 - **`captured_at` comes from the organisers' sample row** (or `context.order`), because a file's own timestamp is not reliable after a copy. It is not the time a photo was taken.
 - **No reuse check.** Unlike Pack, nothing detects the same photo being used for two deliveries.
-- **Model time is bounded** to 2 attempts x 12 s (worst case 26 s) so it ends inside the orchestrator's 30 s stage timeout; a slower answer becomes a retryable pending record.
+- **Model time is bounded** to 28 s per attempt (`MODEL_TIMEOUT_S` in `vision.py`), with one retry after a 2 s back-off only when the API answers 429 or 5xx (a timeout, a connection failure or a malformed answer is not retried). Worst case 2 x 28 s + 2 s = 58 s, inside the orchestrator's 75 s stage timeout (`orchestration/flow.json`, `defaults.timeout_s`, D-O07); a test enforces it. A slower answer becomes a retryable pending record.
 - The Round 2 web UI, REST backend, demo-scenario seeding and evaluation harness were left in the Round 2 repository, not ported.

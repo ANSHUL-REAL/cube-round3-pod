@@ -33,4 +33,6 @@ For the handbook's other required scenarios (a deliberate failure shown as FAILE
 
 1. `GEMINI_API_KEY` in your own `.env` (never commit it), for the stages that use a model.
 2. `python scripts/capture_plan.py --check` exits 0.
-3. Run each unit once beforehand: the first model call per photo is slow, later calls hit the local cache.
+3. Run each unit once beforehand. Only Pack keeps a local cache of model answers (`.cache/pack-vlm`, keyed by everything
+   the model is sent), so a repeat Pack run on the same photo skips the model call; Receiving, Prep and Returns call the
+   model every time.

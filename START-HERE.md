@@ -69,6 +69,8 @@ make case UNIT=UNIT-0014 ORG=org_demo_alpha     # one workflow, in full
 
 It runs out of the box on **organiser stub agents** that replay the Round 2 sample data. They are not agents: they exist so you can see the whole system work before you plug yours in, and so you can tell whether a failure is yours or the plumbing's. Look at [`examples/`](examples/) to see a happy path, an UNCERTAIN path, a failure path and a full end-to-end run.
 
+> **Pod 12:** the starter ran on organiser stubs; in this repository all five agents are real (`agents/<stage>/`), and the stubs are kept in `tests/stubs/` for the plumbing tests and the console's labelled Replay mode. On 2026-10-10 the full suite (`make test`, or `python -m pytest`) gave 575 passed and 10 skipped (7 need a real Postgres via `TEST_DATABASE_URL`, 3 are pinned to the stubs), and `make run` on the photo-less sample ends every workflow `FAILED` / `INCOMPLETE` with `no_capture` (see [`README.md`](README.md)).
+
 ## What should I read?
 
 In this order:

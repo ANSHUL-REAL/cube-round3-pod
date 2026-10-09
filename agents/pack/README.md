@@ -84,6 +84,6 @@ The tests replace the model with scripted perceivers, so they check everything *
 - Those photos are bin photos, not packing-bench photos, and the labels come from Amazon's records, not human labellers.
 - The organisers' sample has **no photos**, so the sample flow shows Pack as pending until someone takes box photos.
 - The photo-reuse ledger is a local JSON file (`PACK_LEDGER_PATH`, default `out/pack-ledger.json`). It survives restarts but is not shared between machines; two servers would each see only their own history.
-- The model call is bounded to 2 attempts x 12 s (worst case 26 s) so it finishes inside the orchestrator's 30 s stage timeout. A slower answer becomes a retryable pending record. Round 2's measured p95 was 10.4 s.
+- The model call is bounded to 28 s per attempt (`MODEL_TIMEOUT_S` in `app.py`), with one retry after a 2 s back-off only when the API answers 429 or 5xx. Worst case 2 x 28 s + 2 s = 58 s, inside the orchestrator's 75 s stage timeout (`orchestration/flow.json`, `defaults.timeout_s`, D-O07); a test enforces it. A slower answer becomes a retryable pending record. Round 2's measured p95 was 10.4 s, but a real call in the 2026-10-09 rehearsal took longer than the old 12 s bound (comment in `app.py`).
 - Only the organisers' 10 sample products are in the catalogue. Add your own under `agents/pack/catalogue/<org_id>/` (see the Round 2 catalogue README for the format).
 - A Receiving exception is recorded, not acted on: Pack judges the box against the order.

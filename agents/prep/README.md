@@ -32,7 +32,7 @@ The eleven checks of the reference roll up (worst verdict wins) into the contrac
 | handling marks present | `handling_marks` |
 | bag thickness / material | not a check: `payload.not_verified` |
 
-`fnsku_text_match` compares the code the model transcribed with the FNSKU on the work order. A mismatch is a FAIL only when the transcription is high-confidence; a lower-confidence mismatch could be a misread character, so it goes to a person.
+`fnsku_text_match` compares the code the model transcribed with the FNSKU on the work order. The transcription is split into words and only code-shaped tokens (`X0...` or `B0...`, 10 to 12 characters) are compared, because a real label also carries the title and condition (`_codes_in` in `rules.py`); a transcription with no code-shaped token is UNCERTAIN (`insufficient_evidence`). A mismatch is a FAIL only when the transcription is high-confidence; a lower-confidence mismatch could be a misread character, so it goes to a person.
 
 ## What the record contains
 
@@ -63,7 +63,7 @@ A pending record has no checks (it is not a judgment), `status: pending` (or `er
 - Captures must sit under `<unit>/prep/` inside the capture root and must match their declared hash.
 - The same `request_id` gives the same `record_id` (`PRP-<request_id>`). A re-run of the stage has a new request id and gets a new record. Pending records use `PRP-PENDING-<request_id>`.
 - Status codes over HTTP: 200 for any output including pending, 404 for an unknown or other-tenant subject or a non-FBA route, 422 for input that does not match the schema or the wrong stage.
-- The model call is bounded to 2 attempts x 12 s plus a 2 s back-off (26 s worst case) so it finishes inside the orchestrator's 30 s stage timeout; a test enforces it.
+- The model call is bounded to 28 s per attempt (`prep_timeout_s` in `settings.py`), with one retry after a 2 s back-off only when the API answers 429 or 5xx (a timeout or connection failure is not retried). Worst case 2 x 28 s + 2 s = 58 s, inside the orchestrator's 75 s stage timeout (`orchestration/flow.json`, `defaults.timeout_s`, D-O07); a test enforces it.
 
 ## Where the work order comes from
 
@@ -90,7 +90,7 @@ Without a key, or without photos, every Prep unit comes back `pending_review` an
 ## Test it
 
 ```sh
-pytest tests/integration/test_prep_agent.py     # 66 tests, no key, no network
+pytest tests/integration/test_prep_agent.py     # 70 tests, no key, no network
 pytest tests/integration/test_agent_contracts.py
 ```
 
@@ -98,7 +98,7 @@ The tests replace the model with a scripted observer, so they check everything *
 
 ## Limits (read these)
 
-- **The vision model has never been run through this repository.** No API key was available. The Gemini adapter is exercised only against a fake client, so the real request format, the response schema handling and the real latency are untested. A live run with a key and real photos is still to do.
+- **The vision model has been smoke-run once, not evaluated.** [`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md) logs one real Gemini call through this agent (2026-10-09, UNIT-0014, work order WO-3002, a warehouse-bin photo from the Amazon Bin Image Dataset, not a prepped unit): 1 call, 8.5 s, `non_compliant` with `fnsku_text_match` FAIL on "3C" read off a label in the bin. That run predates the code-shape rule below; with today's `rules.py` a reading with no FNSKU-shaped code is UNCERTAIN, not FAIL. So the live request and schema work and one latency is known; a run on real prepped units is still to do. In the tests the Gemini adapter meets only a fake client.
 - **Real-model accuracy is unknown.** Nothing here measures how often the model's observations are right, how often it says `cant_tell`, or the false-positive and false-negative rate of any check. The confidence numbers are a fixed mapping of the model's own band, not measured probabilities. Do not quote an accuracy for this agent.
 - **The rule sources are unverified.** Amazon's published prep requirements were not retrieved, so the requirement wording is ours, and `payload.rule_source` is `{"status": "unverified", "url": null, "retrieved_at": null}`. Every check's `detail` ends with `[demo rule, source unverified]`. Which requirements apply to a unit comes from the work order flags, and the organisers' sample flags are dummy values, not Amazon's rules. The reference's invented clause numbers, quotes and thresholds (5 inch opening, 1.5 mil) are deliberately not used.
 - **Handling marks can give a false FAIL.** The model lists the marks it can see; if a required mark is on a face the photos do not show and the model still says it can see enough, the unit fails on that mark. The prompt tells the model to say `cant_tell` in that case, but this is untested with a real model.

@@ -46,7 +46,7 @@ Other deliberate differences:
 | `policy.py` | Where the open findings F-07 to F-12 are decided, in one place |
 | `adapter.py` | Builds the Evidence Record, the claims and the "cannot claim" list |
 | `replay.py`, `REPLAY.md` | Offline replay of the sample units through the orchestrator (not an accuracy measure) |
-| `tests/integration/test_recovery_agent.py` | 70 behaviour tests on our own fixtures |
+| `tests/integration/test_recovery_agent.py` | About 80 behaviour tests on our own fixtures |
 
 ## Not carried over, on purpose
 

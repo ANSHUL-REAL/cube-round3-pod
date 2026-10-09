@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     # The Round 2 default for the judgment model (RM_JUDGMENT_MODEL). Not verified against any key from this repo.
     returns_model: str = "gemini-3.8-flash"
-    # One attempt, bounded to finish inside the orchestrator's 30 s stage timeout (flow.json defaults.timeout_s).
+    # Each attempt is bounded by this; with the one retry below the stage still ends inside flow.json's timeout.
     returns_model_timeout_s: float = 28.0
     # One retry on a busy (429/5xx) or timed-out call; the retry uses the fallback model when it is set.
     # 2 x 28 s + 2 s back-off = 58 s, inside the stage timeout in flow.json (75 s, decision D-O07).

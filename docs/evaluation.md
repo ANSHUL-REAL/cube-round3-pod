@@ -98,6 +98,10 @@ claim than file a wrong one. Nothing is ever claimed on SILENT evidence.
 | Recovery | 0 (rules) | median 3 ms |
 | Orchestration, replayed evidence | 0 | 100 workflows in about 2 s (1.98 s in the committed run) |
 
+A photo stage makes a second call only when its one retry runs (Receiving, Prep and Pack on a 429/5xx answer;
+Returns also on a timeout, on its fallback model); `model.calls` records it. Each attempt is bounded to 28 s and the
+stage to 75 s (D-O07).
+
 Tokens per Pack call: 2,439 on average (Round 2 run). USD: the key is on Gemini's free tier, so the cost field is left
 empty (`cost_usd: null`) rather than guessed; it is filled from `COST_PER_1M_*` when those are set.
 

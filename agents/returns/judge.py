@@ -1,8 +1,9 @@
 """The one model call per return: Gemini looks at the photos and fills the `judgment/v1` schema.
 
 The model only OBSERVES (Round 2 design): the schema has no disposition field, and everything after this call is
-deterministic code (`core/`). One call per unit, no tools, no repair turn, one attempt bounded by
-`returns_model_timeout_s`, so the call finishes inside the orchestrator's stage timeout. Anything that goes wrong
+deterministic code (`core/`). One call per unit, no tools, no repair turn; each attempt is bounded by
+`returns_model_timeout_s`, and a busy, timed-out or unreachable call is retried once on the fallback model, so the
+stage still ends inside the orchestrator's stage timeout (2 x 28 s + 2 s inside 75 s, D-O07). Anything that goes wrong
 becomes a `JudgeError`, which `app.handle` turns into a pending record that keeps the captures.
 
 Tests replace `app.get_judge` with a scripted judge; nothing here is exercised without a key.

@@ -100,8 +100,10 @@ The questions that are yours to answer (and to write down): Should a Receiving s
              { "stage": "pack",    "when": { "route": ["mfn"] } },
              { "stage": "returns", "when": { "returned": [true] } },
              { "stage": "recovery" } ],
-  "defaults": { "timeout_s": 30, "retries": 1, "on_uncertain": "continue", "on_error": "continue" } }
+  "defaults": { "timeout_s": 75, "retries": 1, "on_uncertain": "continue", "on_error": "continue" } }
 ```
+
+(Pod 12: the starter shipped `"timeout_s": 30`; we raised it to 75 s so a slow model call and one retry fit inside a stage, decision D-O07. `orchestrator.py` still uses 30 s for a flow that sets none.)
 
 - **`when`** decides if a stage applies. A stage that does not apply is `skipped` **with the reason recorded**, decided when the workflow is created. A stage is **never** skipped because an agent was unavailable (that is an error, recorded as one).
 - **`on_uncertain`**: `continue` (the UNCERTAIN evidence travels on, a person is asked) or `block` (halt; remaining stages stay `pending`). Block only applies when the UNCERTAIN result actually asks for a person: Recovery's "no evidence, so no claim" does not halt anything.

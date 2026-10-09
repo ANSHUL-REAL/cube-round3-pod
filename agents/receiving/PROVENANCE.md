@@ -31,11 +31,11 @@ Nothing was copied byte for byte: the code was rewritten against the Round 3 con
 | `compare_carton_count` was written and tested but **never called** by `evaluate_all_checks`. | `carton_count` is a check. |
 | `image_clarity` was extracted and then ignored. | Clarity below a threshold turns the observation-based checks UNCERTAIN (`poor_image`); so does low self-reported confidence. Neither can ever produce a PASS or FAIL. |
 | Total quantity trusted either the model's total or cartons x units, silently. | If both are present and disagree: `conflicting_evidence`. |
-| Component matching tested `"mug x2" in "mug"`, so quantity-annotated spec names (`mug x2`, `candle x3`) always read as missing. | Order-insensitive word matching with a trailing `x<N>` ignored. |
+| Component matching tested `"mug x2" in "mug"`, so quantity-annotated spec names (`mug x2`, `candle x3`) always read as missing. | Order-insensitive word matching with a trailing `x<N>` ignored, and a plural read as its singular ("candles" is the ordered "candle x3"). |
 | Spec flags were `missing_<component>` and had no `obvious_defect`. | `quality_flags` uses the sample vocabulary, including `obvious_defect`. |
 | Outcome: PASS / FAIL / UNCERTAIN / PENDING_REVIEW with an operator override on the record. | Round 3 outcomes (`accept`, `accept_with_exceptions`, `reject`, `pending_review`), the six recommended check keys, workflow-level overrides honoured via `context.overrides`. |
 | `MockVisionExtractor` returned canned answers keyed on **unit-id text** (`FAIL`, `UNCERTAIN`, `PENDING`) and fell back to a clean match. The Round 2 backend's `VISION_PROVIDER` defaults to `mock`, so unless it was set otherwise its demo shows canned answers (we cannot tell what the deployed demo used). | No mock in the product code. Tests inject a scripted perceiver; with no key the agent returns a pending record. |
-| Gemini call: no timeout or retry configuration, timeout detected by string match on the error text. | 12 s per attempt, one retry on 429/5xx, `calls` counted honestly, total bounded inside the orchestrator's 30 s. |
+| Gemini call: no timeout or retry configuration, timeout detected by string match on the error text. | 28 s per attempt (`vision.py`, `MODEL_TIMEOUT_S`), one retry on 429/5xx after 2 s, `calls` counted honestly; worst case 58 s, inside the orchestrator's 75 s stage timeout (`orchestration/flow.json`, D-O07). |
 | `unit_id` treated as one thing. | `unit_scope = po_line` and the PO line keys in `subject.refs` (finding F-08). |
 
 ## What is new in Round 3 (written for this repository)
@@ -51,7 +51,7 @@ Nothing was copied byte for byte: the code was rewritten against the Round 3 con
 | `agents/receiving/captures.py` | Reads and prepares the photos named in `inputs`, hash-checked |
 | `agents/receiving/check.py` | Command-line checker |
 | `agents/receiving/config.py` | Settings |
-| `tests/integration/test_receiving_agent.py` | 50 behaviour tests with a scripted model |
+| `tests/integration/test_receiving_agent.py` | 52 behaviour tests with a scripted model |
 | `tests/stubs/receiving_stub.py` | The organiser's Receiving stub, kept verbatim as a test fixture for the plumbing tests |
 
 ## What was left behind

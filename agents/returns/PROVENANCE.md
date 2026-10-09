@@ -51,7 +51,7 @@ Round 2 wrote into its own decisions.
 | `agents/returns/upstream.py` | Reads Pack's and Receiving's evidence with the latest overrides; conflicts and context notes |
 | `agents/returns/returned.py` | The return and order, scoped to the caller's organisation |
 | `agents/returns/captures.py` | Reads the return photos named in `inputs`, safely and hash-checked (from the Pack agent's loader, plus a `returns/` folder check) |
-| `agents/returns/judge.py` | The single `generateContent` call, replacing Round 2's Interactions API session loop |
+| `agents/returns/judge.py` | One `generateContent` call (tried once more, on a fallback model, if the first is busy or times out), replacing Round 2's Interactions API session loop |
 | `agents/returns/config.py` | Settings (environment only) |
 | `agents/returns/core/refs.py` | Loads the card, rubric, policy and parameters from files, each hash-checked, replacing the Round 2 database loaders; keeps the "no reference, no model call" gate |
 | `agents/returns/core/context.py` (assembly) | See above |
@@ -77,4 +77,4 @@ Written by the pod after reading the code, for whoever integrates this next.
 
 - **Good, and kept:** the model only observes and a deterministic engine decides; identity needs product-body evidence, not just packaging or a barcode; "missing" requires a clear view of where the part would be; every model reference (alias, component id, rubric quote) is validated; the prompt is hash-locked; reference documents are hashed; UNCERTAIN is preferred and carries retake requests; the evaluation notes are honest about being self-graded and small.
 - **Overstated in its prose, not in its code:** the README and ARCHITECTURE describe "zero-hallucination" policy, an "enterprise-grade" system and tamper-evident chains. The code is a rules engine with synthetic prices and uncalibrated thresholds; ADR-007 itself says the chain is tamper-evident only inside its database. ARCHITECTURE describes consistency rule C02 differently from what `consistency.py` does. The README names Gemini 2.5 Flash while the settings default to a different model id. This pod relies on the code and its tests, not that prose.
-- **Needs the owner:** the condition scale source (ADR-006 and finding F-001 in that repository: the Amazon UK PDF used for amazon.in), the placeholder product cards (every sample SKU lacks reference images and has invented features), and a live run of the single-call path (`judge.py`).
+- **Needs the owner:** the condition scale source (ADR-006 and finding F-001 in that repository: the Amazon UK PDF used for amazon.in), the placeholder product cards (every sample SKU lacks reference images and has invented features), and a real evaluation of the single-call path (`judge.py`): so far it has one logged real call, on a warehouse-bin photo rather than a returned product, which answered UNCERTAIN on every check ([`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md)).

@@ -29,7 +29,7 @@
 | Only the first failed check named in the overall reason | Every failed and uncertain check named |
 | Photos beyond 6 silently sliced off | Reported in `payload.photos_not_used` and in `decision.reason` |
 | Every error returned as HTTP 400 | 200 (including pending), 404, 422 as the contract says |
-| README says parsing is "retried once"; the code makes one call per credential | One call, one retry on a busy server, bounded to fit the 30 s stage timeout |
+| README says parsing is "retried once"; the code makes one call per credential | One call, one retry on a busy server (429/5xx), 28 s per attempt (`settings.py`): worst case 58 s, inside the 75 s stage timeout (`orchestration/flow.json`, D-O07) |
 | README says `npm test` covers "the deterministic rules"; only the browser capture gates (`frameQuality`, `motion`) have tests | The rules, the vision step, the mapping, fail-open and tenancy are all tested (`tests/integration/test_prep_agent.py`) |
 | No cost or call count | `model.calls` and `model.cost_usd` (from configured prices) reported |
 | No previous-evidence handling | Receiving's record cited in `upstream_refs`, latest override applied, recorded in `payload.upstream` |
@@ -50,4 +50,4 @@ The web app and every page of it (including the OpsConsole branding and the plac
 | `agents/prep/workorders.py` | Finds the work order for a unit, scoped to the caller's organisation |
 | `agents/prep/captures.py` | Reads and prepares the photos named in `inputs`, safely and hash-checked |
 | `agents/prep/settings.py`, `check.py` | Settings; a command-line checker |
-| `tests/integration/test_prep_agent.py` | 66 behaviour tests on our own fixtures with a scripted model |
+| `tests/integration/test_prep_agent.py` | 70 behaviour tests on our own fixtures with a scripted model |

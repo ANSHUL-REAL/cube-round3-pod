@@ -23,6 +23,11 @@ on 2026-10-09: `gemini-3.5-flash-lite` (Receiving, Prep, Pack) and `gemini-3.8-f
 | Pack | UNIT-0008, live simulator in the console (Live mode, **Next step** pressed) | ABID bin photo | **STOP_AND_FIX**: "Not in the order: Nylon Dog Leash (#1); Nylon Dog Leash (#2)." | 1 | 4.2 s |
 | Receiving | UNIT-0008, console **Snap & run** window (file picker, the preview pane blocks cameras) | ABID bin photo | **UNCERTAIN**: photo too unclear for a delivery check, sent to a person | 1 | 4.0 s |
 
+The Prep row was run before a label-reading change made later the same day (`_codes_in` in `agents/prep/rules.py`):
+the rule now compares only FNSKU-shaped codes (`X0...` / `B0...`), so a reading such as "3C", with no such code in it,
+is UNCERTAIN (`insufficient_evidence`), not FAIL. The time limits then were 12 s per model attempt (24 s, one attempt, for Returns) and 30 s per stage;
+they are now 28 s and 75 s (D-O07).
+
 ## What the real runs found that the tests could not
 
 - **Prep's command-line checker crashed on Windows** printing an arrow (U+2191) that the model wrote. Fixed for every

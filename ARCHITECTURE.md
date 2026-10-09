@@ -127,7 +127,7 @@ Every failure is **recorded and never becomes success**: a degraded evidence rec
   API (orchestration/api.py) ─────────────────────────────┤
                           ▼
                  Orchestrator (orchestration/orchestrator.py)
-                 flow.json routing · timeout 30 s · 1 retry · validates every Agent Output
+                 flow.json routing · timeout 75 s · 1 retry · validates every Agent Output
                  status + final outcome derived from evidence (rollup.py)
                           │ Agent Input ▼   ▲ Agent Output        ┌──────────────────────────┐
      ┌────────────────────┼────────────────────────┐              │ Store (store.py)          │
@@ -147,7 +147,7 @@ Every failure is **recorded and never becomes success**: a degraded evidence rec
 | Receiving | @cherryy-x23 | `gemini-3.5-flash-lite`, 1 call per delivery, never shown the PO | rules in `agents/receiving/rules.py` | Sai charan's Round 2 agent, ported |
 | Prep | @Devisri-074 | `gemini-3.5-flash-lite`, 1 call per unit, never told the expected FNSKU | rules in `agents/prep/rules.py` (demo rules, sources unverified) | Manvith111's reference, re-implemented in Python |
 | Pack | @ANSHUL-REAL | `gemini-3.5-flash-lite`, 1 call per box, never shown the order | Round 2 rules, copied unchanged | Anshul's Round 2 agent |
-| Returns | @krishnababuprodduturu | `gemini-3.8-flash`, 1 call per return (0 without a product reference photo) | rules grade against a condition rubric snapshot | Krishna's Round 2 agent, adapted |
+| Returns | @krishnababuprodduturu | `gemini-3.8-flash`, 1 call per return (0 without a product reference photo; a second, on `gemini-3.5-flash-lite`, only if the first is busy or times out) | rules grade against a condition rubric snapshot | Krishna's Round 2 agent, adapted |
 | Recovery | @DaKaufeeBoii | none (0 calls) | rules per fee line, claims only on CONTRADICTS | Sai Tarun's rules, rebuilt on the organisers' fee report |
 
 **No stage is a stub.** Every model stage returns a `pending` record (not a guess) when there is no photo, no key, or
@@ -159,8 +159,10 @@ organisers' stubs are kept in `tests/stubs/` for the plumbing tests and for the 
 - **State:** one JSON document per workflow (`out/workflows/<id>.json`); each Evidence Record is its own immutable
   file (`out/evidence/<record_id>.json`) with a content hash. A record id that already exists with a different hash
   is refused (`EvidenceConflict`); a replay of the same request is accepted.
-- **Calls:** in-process (`mode: inproc`) by default; any agent can be an HTTP service instead. The 30 s timeout is
-  enforced for in-process agents too (a worker thread). One retry on a timeout or a retryable error.
+- **Calls:** in-process (`mode: inproc`) by default; any agent can be an HTTP service instead. The stage timeout is
+  75 s (`orchestration/flow.json`, `defaults.timeout_s`, D-O07; `orchestrator.py` falls back to 30 s only for a flow
+  that sets none) and is enforced for in-process agents too (a worker thread). One retry on a timeout or a retryable
+  error. Inside it, each photo agent bounds a model attempt to 28 s with one retry after 2 s (58 s worst case, tested).
 - **Validation:** every Agent Output is checked against the JSON schemas; verdicts are a closed set
   (PASS / FAIL / UNCERTAIN); an agent that returns nothing, crashes, or can't be built is a recorded stage error.
   The run counter and request id are saved before the agent is called, so a crash mid-stage can be resumed (D-O01).

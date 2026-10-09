@@ -105,10 +105,11 @@ _Add entries below._
 
 ### D-P05 · Pack: the model call must finish inside the stage timeout
 - Date / Owner: 2026-10-07 / @ANSHUL-REAL
-- Context: the orchestrator allows a stage 30 s (`flow.json` defaults). Round 2's model settings were 25 s per attempt with one retry, so a slow model could take about 52 s and be cut off, losing the capture's result.
+- Context: the orchestrator then allowed a stage 30 s (`flow.json` defaults). Round 2's model settings were 25 s per attempt with one retry, so a slow model could take about 52 s and be cut off, losing the capture's result.
 - Decision: 2 attempts x 12 s plus the 2 s back-off, 26 s worst case, enforced by a test. Measured p95 latency in Round 2 was 10.4 s.
 - Why: a model that is too slow should produce a retryable pending record that keeps the photo, not an orchestrator timeout.
 - Consequences: a rare slow-but-correct answer is abandoned at 12 s and retried. Revisit if the retry rate is high.
+- **Revised by D-O07 (2026-10-09):** a real call in rehearsal took longer than 12 s, so the code now uses 2 attempts x 28 s + 2 s = 58 s worst case (`agents/pack/app.py`, `MODEL_TIMEOUT_S`) inside a 75 s stage timeout. The rule itself (the model call must finish inside the stage timeout, enforced by a test) is unchanged.
 
 
 ### D-V01 · Receiving: the model reads the delivery and is never shown the purchase order
@@ -117,7 +118,7 @@ _Add entries below._
 - Options considered: A) keep the order in the prompt; B) hide the order and compare in code; C) two calls (read, then judge).
 - Decision: B. One batched call per delivery carries the photos as bytes and asks only what is visible (identifiers, counts, damage, colour, variant, parts, clarity). Rules in `rules.py` compare that with the PO line.
 - Why: a model told what to expect tends to confirm it, which is the failure that hurts a supplier claim most. A test asserts no PO value reaches the request.
-- Consequences: the model cannot use the order to disambiguate a poor label, so more cases end UNCERTAIN. Not measured: no real-model run exists yet.
+- Consequences: the model cannot use the order to disambiguate a poor label, so more cases end UNCERTAIN. Not measured: when this was written no real-model run existed; the smoke runs since (2026-10-09, warehouse-bin photos, every answer UNCERTAIN, [`REAL-RUNS.md`](REAL-RUNS.md)) do not measure it either.
 
 ### D-V02 · Receiving: how the checks become an outcome
 - Date / Owner: 2026-10-07 / @ANSHUL-REAL (owner to confirm)
@@ -148,7 +149,7 @@ _Add entries below._
 
 ### D-V06 · Receiving: model time budget and fail-open codes
 - Date / Owner: 2026-10-07 / @ANSHUL-REAL
-- Decision: 2 attempts x 12 s plus the 2 s back-off (26 s worst case, enforced by a test) inside the orchestrator's 30 s stage timeout; retry only on 429/5xx and connection errors, never on a malformed answer. `model.calls` counts requests actually sent. Missing capture, altered capture, no key, model failure and bad PO data each return a pending record with a distinct `error.code`, the photos kept, and no invented checks.
+- Decision: 2 attempts x 12 s plus the 2 s back-off (26 s worst case, enforced by a test) inside the orchestrator's then 30 s stage timeout; **now 2 x 28 s + 2 s = 58 s inside 75 s (D-O07, `agents/receiving/vision.py`, `MODEL_TIMEOUT_S`)**. Retry only when the API answers 429 or 5xx; a timeout, a connection failure or a malformed answer is not retried (`vision.py`). `model.calls` counts requests actually sent. Missing capture, altered capture, no key, model failure and bad PO data each return a pending record with a distinct `error.code`, the photos kept, and no invented checks.
 - Why: a slow model should produce a retryable pending record that keeps the capture, not an orchestrator timeout that loses it. Same reasoning as D-P05.
 ### D-PR01 · Prep: the reference is ported to Python, and the model only observes
 - Date / Owner: 2026-10-07 / @Devisri-074
@@ -156,7 +157,7 @@ _Add entries below._
 - Options considered: (A) keep the Next.js app as an HTTP service behind the contract; (B) port the decision core to Python and drop the product around it; (C) rewrite from scratch.
 - Decision: B. One batched vision call per unit reports what is visible (met / not_met / cant_tell, a confidence band, the photo, the evidence, a transcription of the label); fixed rules decide. The model is not told the expected FNSKU or the work order.
 - Why: A would carry a second runtime, the unauthenticated key routes and the Cloudflare config into the pod for no gain. A model that knows the answer tends to confirm it, so the comparison is made by rules.
-- Consequences: no UI from the reference (the pod's UI is separate). The vision model has not been run live (no key was available); every claim about real-model behaviour is open.
+- Consequences: no UI from the reference (the pod's UI is separate). When this was written the vision model had not been run live (no key was available). One real call has been logged since (2026-10-09, a warehouse-bin photo, [`REAL-RUNS.md`](REAL-RUNS.md)); every claim about real-model accuracy is still open.
 
 ### D-PR02 · Prep: the reference's eleven checks roll up into the contract's keys; one key is added
 - Date / Owner: 2026-10-07 / @Devisri-074
@@ -175,7 +176,7 @@ _Add entries below._
 
 ### D-PR04 · Prep: no photo, a bad capture or a model failure is a pending record
 - Date / Owner: 2026-10-07 / @Devisri-074
-- Decision: no photo (`no_capture`, retryable), an altered, foreign or unreadable photo (`capture_unreadable`, not retryable), no key (`model_not_configured`), a model error or timeout (`model_unavailable`) and an unusable model answer (`model_output_invalid`) all return a `pending` record: no checks, UNCERTAIN, the error, the photos kept, `model.calls` as made. The model call is bounded to 2 x 12 s + 2 s so it ends inside the 30 s stage timeout.
+- Decision: no photo (`no_capture`, retryable), an altered, foreign or unreadable photo (`capture_unreadable`, not retryable), no key (`model_not_configured`), a model error or timeout (`model_unavailable`) and an unusable model answer (`model_output_invalid`) all return a `pending` record: no checks, UNCERTAIN, the error, the photos kept, `model.calls` as made. The model call is bounded so it ends inside the stage timeout: first 2 x 12 s + 2 s inside 30 s, now 2 x 28 s + 2 s = 58 s inside 75 s (D-O07, `agents/prep/settings.py`, `prep_timeout_s`).
 - Why: the reference saved a model failure as eleven UNCERTAIN-looking checks, which reads as a normal judged result. A missing capture must not become evidence (D-003).
 - Consequences: on the organiser sample with no photos every FBA unit ends `FAILED` / `INCOMPLETE` with `no_capture` recorded. That is correct but looks bad in a demo, so the demo needs real photos in `data/input/<unit>/prep/`.
 
@@ -206,11 +207,12 @@ _Add entries below._
 
 ### D-RT02 · Returns: one model call, no tools, bounded to fit the stage timeout
 - Date / Owner: 2026-10-07 / @ANSHUL-REAL
-- Context: Round 2 ran a stateful Interactions API session with a crop tool and up to 2 round trips, a 180 s timeout and a 45 s p95 target. The orchestrator gives a stage 30 s, and engineering rule 2 says one batched call per unit.
+- Context: Round 2 ran a stateful Interactions API session with a crop tool and up to 2 round trips, a 180 s timeout and a 45 s p95 target. The orchestrator then gave a stage 30 s, and engineering rule 2 says one batched call per unit.
 - Options considered: (A) keep the session loop and raise the stage timeout; (B) one `generateContent` call, no tools, no repair turn, 24 s, and a pending record on any failure.
 - Decision: B. The system prompt is used unchanged (it is hash-locked and mentions tools); the user text says no tools are available. Thinking defaults to `low` (Round 2: `medium`). Output mode defaults to JSON in the prompt (`RETURNS_OUTPUT_MODE=json_prompted`), with constrained output available as `json_schema`.
 - Why: a slow answer that is cut off by the orchestrator loses the capture's result; a retryable pending record keeps it.
-- Consequences: the crop tool is gone, so small print and part identification rely on the photos as given. None of this is measured through the pod: no live run was made, the model id is Round 2's default and unchecked, and `low` thinking may grade worse than Round 2's `medium`. Revisit after a live run; raising `timeout_s` for this step in `flow.json` would allow `medium`.
+- Consequences: the crop tool is gone, so small print and part identification rely on the photos as given. None of this is measured through the pod (when this was written no live run had been made; see the revision below), and `low` thinking may grade worse than Round 2's `medium`. Revisit after a real evaluation; a longer stage timeout would allow `medium`.
+- **Revised 2026-10-09 (D-O07, after the first live runs):** each attempt is now bounded to 28 s, and a busy (408/429/5xx), timed-out or disconnected call is tried once more after 2 s on the fallback model `gemini-3.5-flash-lite`: 2 x 28 s + 2 s = 58 s inside the 75 s stage timeout (`agents/returns/config.py`, `judge.py`). The output mode default is now `json_schema`, because with `json_prompted` `gemini-3.8-flash` added fields the strict schema forbids and every answer was thrown away (comment in `config.py`). The default model id was checked as available to the pod's key, and one real call is logged ([`REAL-RUNS.md`](REAL-RUNS.md)). Thinking is still `low`.
 
 ### D-RT03 · Returns: the condition scale is Amazon's published one, from an unverified substitute source
 - Date / Owner: 2026-10-07 / @krishnababuprodduturu (source choice), @ANSHUL-REAL (recording it)
@@ -402,4 +404,12 @@ _Add entries below._
   Old results of such stages are shown struck through, marked out of date.
 - Consequences: camera photos are stored like uploads in `data/input/<unit>/<stage>/` (public if pushed). Re-running a
   stage costs a model call. Replay mode shows no camera buttons. Tests: `tests/integration/test_console_simulator.py`.
+
+### D-O07 · Stage timeout 75 s; each model attempt 28 s (2026-10-09)
+- Date / Owner: 2026-10-09 / @ANSHUL-REAL. Code comments in the four photo agents cite this entry; it was written up on 2026-10-10 because it was missing here.
+- Context: in the live rehearsal on 2026-10-09 a real model call took longer than the 12 s per-attempt bound (comment in `agents/pack/app.py`), so a demo step that would have answered became a pending record. With the stage timeout at 30 s, a longer per-attempt bound plus one retry would not fit.
+- Options considered: keep 30 s per stage and 12 s per attempt, and accept that slow-but-correct answers fail; or raise both and keep the rule that the model call must finish inside the stage timeout.
+- Decision: `defaults.timeout_s` is 75 in `orchestration/flow.json` and `flow.specialist.json` (`retries` stays 1). Each model attempt is bounded to 28 s: Receiving `MODEL_TIMEOUT_S` (`agents/receiving/vision.py`), Prep `prep_timeout_s` (`agents/prep/settings.py`), Pack `MODEL_TIMEOUT_S` (`agents/pack/app.py`), Returns `returns_model_timeout_s` (`agents/returns/config.py`, was 24 s). One retry after a 2 s back-off: Receiving, Prep and Pack retry only when the API answers 429 or 5xx; Returns also retries a timed-out or disconnected call, and its retry uses the fallback model `gemini-3.5-flash-lite`. Worst case 2 x 28 s + 2 s = 58 s, under 75 s; a test per agent asserts the worst case is below `flow.json`'s `timeout_s`.
+- Why: a slow answer that is correct should be kept; a call that still fails becomes a retryable pending record that keeps the capture, not an orchestrator timeout that loses it (D-P05, D-V06, D-PR04, D-RT02).
+- Consequences: a photo stage can spend up to 58 s on the model before it goes pending. An agent that hangs holds its stage for 75 s, and the orchestrator's one retry can make that 150 s; a timed-out in-process agent still runs on in its thread (D-O01). `orchestration/orchestrator.py` still falls back to 30 s for a flow that sets no `timeout_s`, which is the starter's original value.
 
