@@ -153,3 +153,15 @@ def test_units_added_from_the_app_live_in_the_database(pg):
     assert units.stored() == [case]
     assert db.ping()["rows"]["units"] == 1
     units._CACHE[1] = None
+
+
+def test_labels_given_in_the_app_live_in_the_database(pg):
+    from orchestration.web import labels
+
+    item = {"record_id": "PCK-1", "check_key": "items_match", "org_id": ALPHA}
+    labels.save(item, "Ana", "PASS", "")
+    labels.save(item, "Ana", "FAIL", "second look")  # a person changing their label replaces it
+    labels.save(item, "Ben", "FAIL", "")
+    rows = labels.all_labels({ALPHA})
+    assert [(r["labeller"], r["label"]) for r in rows] == [("Ana", "FAIL"), ("Ben", "FAIL")]
+    assert labels.all_labels({BRAVO}) == [], "another seller's labels are not read"

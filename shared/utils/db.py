@@ -100,6 +100,16 @@ create table if not exists {SCHEMA}.sellers (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+create table if not exists {SCHEMA}.labels (
+    record_id  text not null,
+    check_key  text not null,
+    labeller   text not null,
+    org_id     text not null,
+    label      text not null,
+    notes      text,
+    at         timestamptz not null default now(),
+    primary key (record_id, check_key, labeller)
+);
 create table if not exists {SCHEMA}.units (
     unit_id    text primary key,
     org_id     text not null,

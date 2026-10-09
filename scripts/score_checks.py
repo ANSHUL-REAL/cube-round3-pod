@@ -70,26 +70,32 @@ def kappa(pairs: list[tuple[str, str]]) -> float | None:
 
 def score(labels: Path, store: Path) -> dict:
     verdicts = {(r["record_id"], c["check_key"]): c["verdict"] for r in latest_records(store) for c in r.get("checks", [])}
+    with labels.open(encoding="utf-8") as f:
+        return score_rows(list(csv.DictReader(f)), verdicts)
+
+
+def score_rows(rows: list[dict], verdicts: dict[tuple[str, str], str]) -> dict:
+    """Score labelled rows (record_id, check_key, stage, unit_id, label_a, label_b, notes) against the agents'
+    verdicts {(record_id, check_key): verdict}. Shared by this script and the console's Accuracy page."""
     per = collections.defaultdict(lambda: collections.Counter())
     disagreements, unmatched, both = [], 0, []
-    with labels.open(encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            a, b = row["label_a"].strip().upper(), row["label_b"].strip().upper()
-            if a not in ("PASS", "FAIL") or b not in ("PASS", "FAIL"):
-                continue  # not labelled by both people
-            both.append((a, b))
-            if a != b:
-                disagreements.append({k: row[k] for k in ("unit_id", "stage", "check_key", "label_a", "label_b", "notes")})
-                continue
-            v = verdicts.get((row["record_id"], row["check_key"]))
-            if v is None:
-                unmatched += 1
-                continue
-            key = f"{row['stage']}:{row['check_key']}"
-            if v == "UNCERTAIN":
-                per[key][f"UNCERTAIN_when_{a}"] += 1
-            else:
-                per[key][{("FAIL", "FAIL"): "TP", ("FAIL", "PASS"): "FP", ("PASS", "FAIL"): "FN", ("PASS", "PASS"): "TN"}[(v, a)]] += 1
+    for row in rows:
+        a, b = (row.get("label_a") or "").strip().upper(), (row.get("label_b") or "").strip().upper()
+        if a not in ("PASS", "FAIL") or b not in ("PASS", "FAIL"):
+            continue  # not labelled by both people
+        both.append((a, b))
+        if a != b:
+            disagreements.append({k: row.get(k, "") for k in ("unit_id", "stage", "check_key", "label_a", "label_b", "notes")})
+            continue
+        v = verdicts.get((row["record_id"], row["check_key"]))
+        if v is None:
+            unmatched += 1
+            continue
+        key = f"{row['stage']}:{row['check_key']}"
+        if v == "UNCERTAIN":
+            per[key][f"UNCERTAIN_when_{a}"] += 1
+        else:
+            per[key][{("FAIL", "FAIL"): "TP", ("FAIL", "PASS"): "FP", ("PASS", "FAIL"): "FN", ("PASS", "PASS"): "TN"}[(v, a)]] += 1
     table = {}
     for key, c in sorted(per.items()):
         tp, fp, fn, tn = c["TP"], c["FP"], c["FN"], c["TN"]

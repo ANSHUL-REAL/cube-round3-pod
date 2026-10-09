@@ -60,6 +60,9 @@ app.include_router(_station_router)  # phone stations: /ui/station, /join (serve
 from .web.admin import router as _admin_router  # noqa: E402
 
 app.include_router(_admin_router)  # /admin (admin only) and /ui/review (the review queue)
+from .web.labels import router as _labels_router  # noqa: E402
+
+app.include_router(_labels_router)  # /ui/label (people label checks blind) and /ui/accuracy (the agents scored)
 app.middleware("http")(_lan_guard)  # sessions, access codes and tenancy (web/access.py); open on a laptop with no settings
 FLOW = os.environ.get("ORCH_FLOW") or default_flow_path()
 STORE = default_store()  # Postgres when DATABASE_URL is set, else JSON files under OUT_DIR

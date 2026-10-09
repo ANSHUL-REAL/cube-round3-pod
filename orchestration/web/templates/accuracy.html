@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Accuracy · {{ brand.name }}{% endblock %}
+{% block body %}
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>Accuracy · live from people's labels</p>
+    <h1>How often the agents are right</h1>
+    <p class="lede">People label each check from the photos alone, without seeing the agent's answer. Two different people per check; the agents are scored only where both agree. "Problem" (FAIL) is the positive class.</p>
+  </div>
+  <div class="ph-actions"><a class="btn" href="/ui/label">✍ Label checks</a><a class="btn alt" href="/ui/accuracy.json">⬇ JSON</a></div>
+</div>
+
+<section class="kpis section" aria-label="Labelling progress">
+  <div class="kpi is-pink"><span class="k">Labelled by two</span><span class="v">{{ acc.labelled_by_both }}</span><span class="s">of {{ acc.checks_to_label }} checks with photos · {{ acc.checks_labelled_once }} need a second person</span></div>
+  <div class="kpi is-blue"><span class="k">Units</span><span class="v">{{ acc.units_labelled_by_two }}</span><span class="s">with a check labelled by two, of {{ acc.units }} run on photos</span></div>
+  <div class="kpi is-pass"><span class="k">People agree (κ)</span><span class="v">{{ acc.human_kappa if acc.human_kappa is not none else '—' }}</span><span class="s">{{ acc.disagreements | length }} disagreement(s), not scored</span></div>
+  <div class="kpi is-orange"><span class="k">Labellers</span><span class="v">{{ acc.labellers | length }}</span><span class="s">{{ acc.labellers | join(', ') if acc.labellers else 'nobody yet' }}</span></div>
+</section>
+
+<section class="card section">
+  <div class="card-head"><div class="grow"><h2 style="margin:0">Per check</h2><p class="muted small" style="margin:0">TP: both found a problem · FP: the agent flagged a problem that was not there · FN: the agent missed a problem · UNCERTAIN: the agent asked a person (never counted as right or wrong).</p></div></div>
+  {% if acc.per_check %}
+  <div class="tablewrap"><table>
+    <thead><tr><th>Check</th><th>n</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th><th>UNCERTAIN</th><th>Precision on problems</th><th>Recall on problems</th></tr></thead>
+    <tbody>{% for key, v in acc.per_check.items() %}{% set st, ck = key.split(':', 1) %}
+      <tr><td>{{ stage_meta[st][0] if st in stage_meta }} <span class="mono">{{ ck }}</span><span class="sub">{{ stage_meta[st][1] if st in stage_meta else st }}</span></td>
+        <td>{{ v.n }}</td><td>{{ v.TP }}</td><td>{{ v.TN }}</td>
+        <td>{% if v.FP %}<b>{{ v.FP }}</b>{% else %}0{% endif %}</td><td>{% if v.FN %}<b>{{ v.FN }}</b>{% else %}0{% endif %}</td>
+        <td>{{ v.UNCERTAIN }} <span class="muted small">({{ '%d' | format(v.uncertain_rate * 100) }}%)</span></td>
+        <td>{{ '%.2f' | format(v.precision_on_FAIL) if v.precision_on_FAIL is not none else '—' }}</td>
+        <td>{{ '%.2f' | format(v.recall_on_FAIL) if v.recall_on_FAIL is not none else '—' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><span class="big-ico" aria-hidden="true">🧪</span><b>No check is labelled by two people yet</b>Run units on real photos, then have two people each <a href="/ui/label">label the checks</a>. The table fills in as they go.</div>
+  {% endif %}
+</section>
+
+{% if acc.disagreements %}
+<section class="card section">
+  <h2 style="margin-top:0">Where the two people disagreed</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Unit</th><th>Stage</th><th>Check</th><th>First</th><th>Second</th><th>Notes</th></tr></thead>
+    <tbody>{% for d in acc.disagreements %}<tr><td class="mono">{{ d.unit_id }}</td><td>{{ d.stage }}</td><td class="mono">{{ d.check_key }}</td><td>{{ d.label_a }}</td><td>{{ d.label_b }}</td><td>{{ d.notes }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<section class="card section">
+  <h2 style="margin-top:0">Method and limits</h2>
+  <p class="muted" style="margin:0">{{ acc.method }} Only the latest record of each photo step is scored, as the agent wrote it (a person's override is not the agent's answer). These are the units run in this deployment, not a held-out benchmark: small numbers say little, and the rubric asks for at least 50 unseen units.</p>
+</section>
+{% endblock %}

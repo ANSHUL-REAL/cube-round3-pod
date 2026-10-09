@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Label checks · {{ brand.name }}{% endblock %}
+{% block body %}
+<style>
+  .lb-photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 12px 0; }
+  .lb-photos img { width: 100%; max-height: 420px; object-fit: contain; border: 2.5px solid var(--line); border-radius: 12px; background: var(--card-2); }
+  .lb-q { font-size: 22px; font-weight: 900; margin: 6px 0; }
+  .lb-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  .lb-btns .btn { justify-content: center; font-size: 17px; padding: 14px 10px; }
+  @media (max-width: 560px) { .lb-btns { grid-template-columns: 1fr; } .lb-q { font-size: 19px; } }
+</style>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/ui/accuracy">Accuracy</a><span class="sep">/</span><span>Label checks</span></nav>
+<div class="page-header">
+  <div class="ph-text">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>Label checks · {{ who.name }}</p>
+    <h1>Is it right?</h1>
+    <p class="lede">Look only at the photos and answer the question. You never see what the agent said: that is what keeps the score honest. Each check needs two different people.</p>
+  </div>
+  <div class="ph-actions"><span class="chip plain">You: {{ progress.mine }} labelled</span><span class="chip plain">{{ progress.left }} left for you</span></div>
+</div>
+
+{% if item %}
+<section class="card section">
+  <div class="card-head"><span class="icon" aria-hidden="true">{{ stage_meta[item.stage][0] }}</span>
+    <div class="grow"><h2 style="margin:0">{{ stage_meta[item.stage][1] }} · <span class="mono">{{ item.unit_id }}</span></h2>
+      <p class="muted small" style="margin:0">{{ item.org_id | org }} · check <span class="mono">{{ item.check_key }}</span></p></div></div>
+  <p class="lb-q">{{ item.question }}</p>
+  {% if item.expected is not none %}<p style="margin:0"><b>What was ordered:</b> {{ item.expected }}</p>{% endif %}
+  <div class="lb-photos">{% for p in item.photos %}<a href="/ui/photo/{{ p }}" target="_blank" rel="noopener"><img src="/ui/photo/{{ p }}" alt="Photo {{ loop.index }} of {{ item.unit_id }} at {{ stage_meta[item.stage][1] }}"></a>{% endfor %}</div>
+  <form method="post" action="/ui/label">
+    <input type="hidden" name="record_id" value="{{ item.record_id }}"><input type="hidden" name="check_key" value="{{ item.check_key }}">
+    <label><span class="muted small">Note (optional)</span><input name="notes" maxlength="300" placeholder="What you saw, if it was close"></label>
+    <div class="lb-btns">
+      <button class="btn" name="label" value="PASS" type="submit">✓ {{ values.PASS }}</button>
+      <button class="btn pink" name="label" value="FAIL" type="submit">✗ {{ values.FAIL }}</button>
+      <button class="btn alt" name="label" value="UNSURE" type="submit">? {{ values.UNSURE }}</button>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="card section"><div class="empty"><span class="big-ico" aria-hidden="true">🎉</span><b>Nothing left for you to label</b>
+  {% if progress.total %}Every check with photos has your label, or two people's already.{% else %}No unit has been run on real photos yet. Take photos at a station, run the unit, then come back.{% endif %}
+  <p class="btn-row" style="justify-content:center;margin-top:14px"><a class="btn" href="/ui/accuracy">See the accuracy →</a></p></div></section>
+{% endif %}
+{% endblock %}

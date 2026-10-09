@@ -346,7 +346,7 @@ def station_may(stage: str, path: str) -> bool:
 
     s = re.escape(stage)
     allowed = (rf"^/ui/station/{s}/[^/]+/[^/]+(/reference)?$", rf"^/ui/capture/[^/]+/[^/]+/{s}(/delete)?$",
-               r"^/logout$", r"^/join$")
+               r"^/logout$", r"^/join$", r"^/ui/label$")  # labelling a check changes no unit
     if stage == "returns":
         allowed += (r"^/ui/reference/[^/]+/[^/]+$",)  # the product-as-sold photo Returns judges against
     return any(re.match(a, path) for a in allowed)
