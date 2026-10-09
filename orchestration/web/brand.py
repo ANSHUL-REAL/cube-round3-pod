@@ -8,8 +8,8 @@ from __future__ import annotations
 import json
 import os
 
-NAME = os.environ.get("BRAND_NAME") or "Relay"
-TAGLINE = os.environ.get("BRAND_TAGLINE") or "Every warehouse decision, with its proof."
+NAME = os.environ.get("BRAND_NAME") or "Snitch"
+TAGLINE = os.environ.get("BRAND_TAGLINE") or "It tells on every box, with receipts."
 CREDIT = os.environ.get("BRAND_CREDIT") or "Built by Pod 12"
 
 _DEFAULT_ORGS = {"org_demo_alpha": "Alpha Retail", "org_demo_bravo": "Bravo Supply"}
