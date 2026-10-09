@@ -25,8 +25,9 @@ from shared.utils.records import error_obj, pending_output, utcnow
 from shared.utils.schema import errors as schema_errors
 
 from .clients import AgentRejected, AgentTimeout, AgentUnavailable, client_for, load_manifest
+from . import faults
 from .rollup import derive_final_outcome, derive_status, effective
-from .store import MemoryStore, is_safe_id
+from .store import EvidenceConflict, MemoryStore, is_safe_id
 
 ROOT = Path(__file__).resolve().parents[1]
 logger = get_logger("orchestrator")
@@ -221,7 +222,16 @@ def _run_stage(wf: dict, sr: dict, idx: int, opts: dict, store, client) -> dict 
         # differs. The stored record stands; a genuinely different record under the same id is still refused below.
         ev = out["evidence"] = stored
         _log(wf, "evidence_replayed", stage, f"{ev['record_id']} already stored; only its timestamps differ")
-    store.put_evidence(ev)
+    try:
+        store.put_evidence(ev)
+    except EvidenceConflict as exc:
+        # The agent reused a record id for different content. The stored record stands (evidence is immutable), this
+        # answer is not used, and the stage is recorded as an error instead of the whole request failing.
+        err = error_obj("invalid_output", f"record id reused with different content: {exc}", retryable=False, stage=stage)
+        _log(wf, "invalid_output", stage, err["message"])
+        out = pending_output(request, code=err["code"], message=err["message"], retryable=False, agent_id=sr["agent_id"])
+        ev = out["evidence"]
+        store.put_evidence(ev)
     if ev["record_id"] not in wf["evidence_references"]:
         wf["evidence_references"].append(ev["record_id"])
     agent_err = ev.get("error") or err
@@ -305,6 +315,7 @@ def advance(wf: dict, flow: dict, store, clients: dict | None = None, *, max_sta
         opts = {**defaults, **{k: v for k, v in step.items() if k not in ("stage", "when")}}
         try:
             client = (clients or {}).get(sr["stage"]) or client_for(sr["stage"])
+            client = faults.wrap(sr["stage"], client)  # an admin's fault switch (orchestration/faults.py)
         except Exception as exc:  # missing agent.json, bad mode, import error: record it against the stage
             client = _Unreachable(f"{type(exc).__name__}: {exc}")
         halt = _run_stage(wf, sr, idx, opts, store, client)

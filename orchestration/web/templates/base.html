@@ -21,10 +21,14 @@
     <nav>
       <a href="/ui/sim" class="{{ 'on' if nav == 'sim' }}">▶ Live simulator</a>
       <a href="/" class="{{ 'on' if nav == 'home' }}">Units</a>
+      <a href="/ui/review" class="{{ 'on' if nav == 'review' }}">Review</a>
       <a href="/health" class="{{ 'on' if nav == 'health' }}">Health</a>
       <a href="/docs">API</a>
+      {% if who and who.is_admin and guarded %}<a href="/admin" class="{{ 'on' if nav == 'admin' }}">Admin</a>{% endif %}
     </nav>
     <span class="spacer"></span>
+    {% if guarded and who and who.role != 'anon' %}<span class="small muted" title="Signed in">{{ who.actor }}{% if who.orgs is not none %} · {{ who.orgs | join(', ') }}{% endif %}</span>
+    <form method="post" action="/logout" style="margin:0"><button class="toggle" type="submit">Sign out</button></form>{% endif %}
     <button class="toggle" type="button" data-theme-toggle aria-label="Switch light or dark mode">🌗 Theme</button>
   </div>
 </header>
@@ -35,8 +39,13 @@
   {% endif %}
   {% if msg %}<div class="flash {{ 'bad' if bad }}">{{ msg }}</div>{% endif %}
   {% block body %}{% endblock %}
+  {% if guarded %}
+  <footer>Signed-in access only: every page, photo and API call is checked against the org(s) of your code, and every change is in the audit log.
+    {% if db_on %}State is kept in Postgres.{% else %}State is kept in files on this machine.{% endif %}</footer>
+  {% else %}
   <footer>No sign-in: anyone who can reach this page can run workflows and record overrides. Keep it on this machine.
     Photos added here are stored in <code>data/input/</code> and are public if you push them.</footer>
+  {% endif %}
 </main>
 <script>
   document.querySelectorAll("[data-theme-toggle]").forEach(function (b) {

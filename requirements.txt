@@ -20,3 +20,6 @@ zxing-cpp>=2.0   # barcode decoding of return photos; optional at runtime (no de
 jinja2>=3.1
 python-multipart>=0.0.9
 segno>=1.6   # QR code on the console so teammates' phones can join (phone stations)
+# Deployment (shared/utils/db.py): Postgres for workflows, evidence, photos, audit log, access codes. Unused without DATABASE_URL.
+psycopg[binary]>=3.2
+psycopg-pool>=3.2

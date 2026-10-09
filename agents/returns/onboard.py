@@ -109,6 +109,11 @@ def onboard(org_id: str, sku: str, data: bytes, view: str = "contents_layout", a
     card = load_card(org_id, sku)  # the way Returns will read it: content hash and every image hash must check out
     if card is None or not any(i[0] == ref_id for i in reference_image_bytes(card)):
         raise OnboardError("the card did not verify after writing; nothing usable was produced")
+    from shared.utils import db
+
+    if db.enabled():  # a deployment's disk is wiped on restart: the photo and the re-sealed card live in the database
+        db.save_file("reference", folder / name, org_id)
+        db.save_file("reference", path, org_id)
     return {"card": str(path), "image": ref_id, "added": True}
 
 

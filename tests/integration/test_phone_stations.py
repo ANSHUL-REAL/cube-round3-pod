@@ -77,8 +77,9 @@ def test_with_lan_a_phone_needs_the_code_and_the_laptop_does_not(setup, monkeypa
     r = phone.get("/ui/station/prep")
     assert r.status_code == 303 and r.headers["location"].startswith("/join")
     assert snap(phone, "receiving").status_code == 403, "no upload or agent run without the code"
-    assert phone.post("/workflows", json={"org_id": ALPHA, "unit_id": FBA_RETURNED}).status_code == 403, "the API too"
-    assert phone.get(f"/workflows/WF-{ALPHA}-{FBA_RETURNED}").status_code == 303
+    # the JSON API answers 401 (sign in with a Bearer code), not a redirect to an HTML page
+    assert phone.post("/workflows", json={"org_id": ALPHA, "unit_id": FBA_RETURNED}).status_code == 401, "the API too"
+    assert phone.get(f"/workflows/WF-{ALPHA}-{FBA_RETURNED}").status_code == 401
     assert phone.get("/join").status_code == 200 and phone.get("/ui/static/ui.css").status_code == 200
     bad = phone.post("/join", data={"code": "000000"})
     assert "bad=1" in bad.headers["location"] and phone.get("/ui/station").status_code == 303
@@ -119,7 +120,7 @@ def test_through_a_cloudflare_tunnel_nobody_counts_as_the_laptop(setup, monkeypa
     via = {"cf-connecting-ip": "203.0.113.7", "cf-ray": "abc"}
     r = tunnel.get("/ui/station", headers=via)
     assert r.status_code == 303 and r.headers["location"].startswith("/join")
-    assert tunnel.post("/workflows", json={"org_id": ALPHA, "unit_id": FBA_RETURNED}, headers=via).status_code == 403
+    assert tunnel.post("/workflows", json={"org_id": ALPHA, "unit_id": FBA_RETURNED}, headers=via).status_code == 401
     assert tunnel.get("/ui/phones.svg", headers=via).status_code == 303
     for _ in range(station.MAX_WRONG):
         tunnel.post("/join", data={"code": "000000"}, headers=via)

@@ -317,9 +317,15 @@ def test_a_different_record_under_the_same_id_is_still_refused(tmp_path):
             return out
 
     store = FileStore(tmp_path / "out")
-    run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+    first = run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+    rid = next(s["record_id"] for s in first["stage_results"] if s["stage"] == "receiving")
+    original = store.get_evidence(rid)
     for p in (tmp_path / "out" / "workflows").glob("*.json"):
         p.unlink()
-    with pytest.raises(EvidenceConflict):
-        run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+    # Refused, and recorded as the stage's error rather than taking the whole request down: the stored record stands.
+    wf = run_workflow(CASE, store=store, clients={"receiving": Tamper()})
+    rcv = next(s for s in wf["stage_results"] if s["stage"] == "receiving")
+    assert rcv["state"] == "error" and rcv["error"]["code"] == "invalid_output" and "reused" in rcv["error"]["message"]
+    assert store.get_evidence(rid) == original, "evidence is immutable"
+    assert (wf.get("final_outcome") or {}).get("outcome") != "CLEAN"
 

@@ -4,7 +4,7 @@
 {% if phones %}
 <section class="card phones-all">
   <h2 style="margin:0 0 4px">📱 Five agents, five phones</h2>
-  <p class="small">Each teammate scans <b>their own agent's</b> code, types <b class="bigcode-inline">{{ phones.code }}</b> once, and clears that step from their phone.
+  <p class="small">Each teammate scans <b>their own agent's</b> code, types {% if phones.code %}<b class="bigcode-inline">{{ phones.code }}</b>{% else %}<b>their own access code</b> (issue one each on the <a href="/admin#codes">admin page</a>){% endif %} once, and clears that step from their phone.
     Open from anywhere: <b class="mono">{{ phones.url }}</b></p>
   <div class="qr-row">
     {% for s in phones.stations %}{% set m = stages_meta[s] %}

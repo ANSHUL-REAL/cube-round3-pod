@@ -1,0 +1,14 @@
+{% extends "phone_base.html" %}
+{% block title %}Admin sign-in · Pod 12{% endblock %}
+{% block body %}
+<section class="card hero-phone">
+  <h1>Admin sign-in</h1>
+  <p class="muted">For the person running the deployment. Teammates and judges use an access code at <a href="/join">/join</a>.</p>
+  {% if locked %}<p class="flash bad">Too many wrong attempts from here. Signing in is closed until the server restarts.</p>{% else %}
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="next" value="{{ next }}">
+    <input name="password" type="password" autocomplete="current-password" required autofocus placeholder="Admin password">
+    <button class="btn big" type="submit">Sign in</button>
+  </form>{% endif %}
+</section>
+{% endblock %}

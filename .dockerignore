@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+.env
+.env.*
+!.env.example
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.cache
+out
+node_modules
+docs/*.pptx
+docs/*.mp4
+docs/media
+*.log

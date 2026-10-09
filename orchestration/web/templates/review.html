@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Pod 12 console · review queue{% endblock %}
+{% block body %}
+<div class="page-head"><div class="grow"><h2>Review queue</h2>
+  <p class="muted">Workflows waiting for a person: blocked for review (an UNCERTAIN result), failed, or incomplete.
+    Open one, read the evidence, and record an override (the original record is kept) or fix the cause and resume.
+    {% if who.orgs is not none %}You see <b>{{ who.orgs | join(', ') }}</b> only.{% endif %}</p></div></div>
+<div class="card tablewrap">
+  <table>
+    <thead><tr><th>Unit</th><th>Org</th><th>Status</th><th>Why</th><th>Updated (UTC)</th><th></th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr><td class="mono">{{ r.unit }}</td><td class="mono small">{{ r.org }}</td>
+        <td><span class="chip {{ (r.status or '') | lower }}">{{ (r.status or '') | replace('_', ' ') }}</span></td>
+        <td class="small">{{ r.reason or '' }}</td><td class="small">{{ r.updated }}</td>
+        <td><a class="btn small" href="/ui/w/{{ r.id }}">Review</a></td></tr>
+    {% else %}<tr><td colspan="6" class="muted">Nothing is waiting for a person.</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

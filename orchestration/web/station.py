@@ -20,7 +20,6 @@ server restarts. This is a demo guard on a trusted Wi-Fi, not an account system 
 """
 from __future__ import annotations
 
-import hmac
 import io
 import os
 import socket
@@ -36,26 +35,20 @@ from . import (STAGES, WorkflowConflict, _api, _case, _cases, _photos, _referenc
 
 PHOTO_STAGES = ("receiving", "prep", "pack", "returns")
 STATIONS = PHOTO_STAGES + ("recovery",)  # every agent has its own station; Recovery needs no photo, only a press
-COOKIE = "pod12_code"
-LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
-_WRONG: dict[str, int] = defaultdict(int)
-MAX_WRONG = 10
-MAX_WRONG_TOTAL = 50  # from anywhere: a forwarded address can be faked, so the total is capped too
+from .access import (COOKIE, LOOPBACK, MAX_WRONG, MAX_WRONG_TOTAL, PROXY_HEADERS, _WRONG, check_code, current,  # noqa: F401
+                     admin_password, guard as lan_guard, is_local, lan_code, locked, set_session, visitor, wrong)
 
 router = APIRouter(dependencies=[Depends(_same_origin)])
 
 
 # ---------------------------------------------------------------- access code (only with --lan)
-def lan_code() -> str | None:
-    return os.environ.get("POD_LAN_CODE") or None
-
-
 def lan_url() -> str | None:
     """The join page phones open: the public link when served through a tunnel (POD_PUBLIC_URL, set by
-    serve.py --tunnel), else http://<this laptop's Wi-Fi address>:<port>/join. None when not serving to phones."""
-    if not lan_code():
+    serve.py --tunnel) or deployed (RENDER_EXTERNAL_URL, set by Render), else http://<this laptop's Wi-Fi
+    address>:<port>/join. None when not serving to phones."""
+    public = (os.environ.get("POD_PUBLIC_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if not lan_code() and not (public and admin_password()):
         return None
-    public = os.environ.get("POD_PUBLIC_URL", "").rstrip("/")
     return f"{public}/join" if public else f"http://{lan_ip()}:{os.environ.get('POD_LAN_PORT', '8100')}/join"
 
 
@@ -70,66 +63,66 @@ def lan_ip() -> str:
         s.close()
 
 
-PROXY_HEADERS = ("cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-real-ip", "forwarded")
-
-
-def is_local(request: Request) -> bool:
-    """The laptop itself: a loopback connection that no proxy forwarded. A Cloudflare tunnel (or any reverse proxy)
-    also connects from 127.0.0.1, so without the header check every visitor to the public link would count as local
-    and skip the access code."""
-    if any(h in request.headers for h in PROXY_HEADERS):
-        return False
-    return (request.client.host if request.client else "") in LOOPBACK
-
-
-def visitor(request: Request) -> str:
-    """Who is asking, for the wrong-code lockout: the address the tunnel or proxy reports, else the socket's."""
-    for h in ("cf-connecting-ip", "x-real-ip"):
-        if request.headers.get(h):
-            return request.headers[h].strip()
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return request.client.host if request.client else ""
-
-
-def _has_code(request: Request) -> bool:
-    code = lan_code()
-    return bool(code) and hmac.compare_digest(request.cookies.get(COOKIE, ""), code)
-
-
-async def lan_guard(request: Request, call_next):
-    """With --lan, everything except the join page and the stylesheet needs the code, unless it comes from the laptop."""
-    if not lan_code() or is_local(request) or _has_code(request):
-        return await call_next(request)
-    path = request.url.path
-    if path == "/join" or path.startswith("/ui/static/"):
-        return await call_next(request)
-    if request.method == "GET":
-        return RedirectResponse(f"/join?next={quote(path)}", status_code=303)
-    return Response("access code required", status_code=403)
+def _safe_next(next: str, default: str = "/ui/station") -> str:
+    """Only a path on this site: never another host ("//evil", "https://...", a backslash trick)."""
+    ok = next.startswith("/") and not next.startswith(("//", "/\\")) and not any(c in next for c in "\r\n")
+    return next if ok and next not in ("/join", "/login") else default
 
 
 @router.get("/join", response_class=HTMLResponse)
 def join_page(request: Request, next: str = "/ui/station"):
-    return _render(request, "join.html", phone=True, next=next if next.startswith("/ui/station") else "/ui/station",
-                   locked=_WRONG[visitor(request)] >= MAX_WRONG)
+    return _render(request, "join.html", phone=True, next=_safe_next(next), locked=locked(request))
 
 
 @router.post("/join")
 def join(request: Request, code: str = Form(...), next: str = Form("/ui/station")):
-    ip = visitor(request)
-    want = lan_code()
-    if not want:
-        return RedirectResponse("/ui/station", status_code=303)
-    if _WRONG[ip] >= MAX_WRONG or sum(_WRONG.values()) >= MAX_WRONG_TOTAL:
+    """The team code (POD_LAN_CODE) or a code the admin issued for one org. A session cookie follows; the code itself
+    is never stored in the browser."""
+    from .access import audit, guard_on
+
+    if not guard_on():
+        return RedirectResponse(_safe_next(next), status_code=303)
+    if locked(request):
         raise HTTPException(429, "too many wrong codes; restart the server to reset")
-    if not hmac.compare_digest(code.strip(), want):
-        _WRONG[ip] += 1
-        return RedirectResponse(f"/join?msg={quote('Wrong code. It is on the laptop screen.')}&bad=1", status_code=303)
-    _WRONG.pop(ip, None)
-    resp = RedirectResponse(next if next.startswith("/ui/station") else "/ui/station", status_code=303)
-    resp.set_cookie(COOKIE, want, httponly=True, samesite="lax", max_age=12 * 3600)
+    acc = check_code(code)
+    if acc is None:
+        wrong(request)
+        audit("sign_in_failed", "access code", status=303, ip=visitor(request))
+        return RedirectResponse(f"/join?msg={quote('Wrong code. Ask whoever runs the demo.')}&bad=1", status_code=303)
+    _WRONG.pop(visitor(request), None)
+    audit("signed_in", "access code", acc=acc, org=None if acc.orgs is None else ",".join(sorted(acc.orgs)))
+    resp = RedirectResponse(_safe_next(next), status_code=303)
+    set_session(resp, acc, request)
+    return resp
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str = "/admin"):
+    return _render(request, "login.html", next=_safe_next(next, "/admin"), locked=locked(request))
+
+
+@router.post("/login")
+def login(request: Request, password: str = Form(...), next: str = Form("/admin")):
+    from .access import audit, check_admin
+
+    if locked(request):
+        raise HTTPException(429, "too many wrong attempts; restart the server to reset")
+    acc = check_admin(password)
+    if acc is None:
+        wrong(request)
+        audit("admin_sign_in_failed", "admin", status=303, ip=visitor(request))
+        return RedirectResponse(f"/login?msg={quote('Wrong password.')}&bad=1", status_code=303)
+    _WRONG.pop(visitor(request), None)
+    audit("admin_signed_in", "admin", acc=acc)
+    resp = RedirectResponse(_safe_next(next, "/admin"), status_code=303)
+    set_session(resp, acc, request)
+    return resp
+
+
+@router.post("/logout")
+def logout():
+    resp = RedirectResponse("/join", status_code=303)
+    resp.delete_cookie(COOKIE)
     return resp
 
 
@@ -138,7 +131,7 @@ def phones_qr(request: Request, stage: str = ""):
     """The QR code for the join page (or straight to one agent's station), shown to the presenter: the laptop
     itself, or anyone who already entered the code (a tunnelled laptop is not local)."""
     url = lan_url()
-    if not url or not (is_local(request) or _has_code(request)):
+    if not url or not current().team:
         raise HTTPException(404, "not serving to phones (start serve.py with --lan)")
     if stage in STATIONS:
         url += f"?next=/ui/station/{stage}"

@@ -53,10 +53,14 @@ def _save(path: Path, data: dict) -> None:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(data, fh, sort_keys=True)
             os.replace(tmp, path)
+            from shared.utils import db
+
+            if db.enabled():  # survives a deployment's restart; copied back to disk on start
+                db.save_file("ledger", path)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
             raise
-    except OSError as exc:
+    except Exception as exc:  # disk or database: the ledger weakens the reuse check, it must never stop packing
         log.warning("reuse ledger not saved, kept in memory only", extra={"ctx": {"path": str(path), "error": str(exc)}})
 
 

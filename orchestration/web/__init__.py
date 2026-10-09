@@ -108,8 +108,16 @@ def _wf_clients(wf_id: str) -> dict | None:
 
 
 @lru_cache(maxsize=1)
-def _cases() -> list[dict]:
+def _all_cases() -> list[dict]:
     return json.loads((ROOT / "data" / "sample" / "cases.json").read_text())
+
+
+def _cases() -> list[dict]:
+    """The units the person asking may see: every org for the admin and the team code, one org for an org's code."""
+    from .access import current
+
+    who = current()
+    return [c for c in _all_cases() if who.sees(c["org_id"])]
 
 
 def _case(org: str, unit: str) -> dict:
@@ -153,17 +161,11 @@ def _what_to_shoot(stage: str, unit: str, org: str) -> str:
 
 
 def _workflows() -> dict[tuple[str, str], dict]:
-    store = _api().STORE
-    if not hasattr(store, "root"):  # an in-memory store keeps its workflows in a dict
-        return {(w["org_id"], w["subject_id"]): w for w in store.workflows.values()}
-    root, out = Path(store.root) / "workflows", {}
-    for p in sorted(root.glob("*.json")) if root.is_dir() else []:
-        try:
-            wf = json.loads(p.read_text(encoding="utf-8"))
-            out[(wf["org_id"], wf["subject_id"])] = wf
-        except (OSError, ValueError, KeyError):
-            continue
-    return out
+    """(org, unit) -> workflow, for the orgs the person asking may see. The store does the filtering (a database query
+    names the orgs), so another org's workflows are never even read."""
+    from .access import current
+
+    return {(w["org_id"], w["subject_id"]): w for w in _api().STORE.list_workflows(current().scope)}
 
 
 def _unit_row(case: dict, workflows: dict) -> dict:
@@ -181,11 +183,17 @@ def _render(request: Request, name: str, **ctx):
     ctx.setdefault("msg", request.query_params.get("msg"))
     ctx.setdefault("bad", request.query_params.get("bad") == "1")
     ctx["stages_meta"] = STAGES
-    from .station import STATIONS, _has_code, is_local, lan_code, lan_url  # late: station imports this module
+    from shared.utils import db
 
-    # The join QR codes and the code are for the presenter's screen: the laptop itself, or (through a tunnel, where the
-    # laptop is not "local") a browser that already entered the code. Never shown to anyone without it.
-    show = lan_code() and (is_local(request) or _has_code(request))
+    from .access import current, guard_on
+    from .station import STATIONS, lan_code, lan_url  # late: station imports this module
+
+    # The join QR codes and the code are for the presenter's screen: the laptop itself, the admin, or (through a
+    # tunnel, where the laptop is not "local") a browser that entered the team code. Never anyone with an org's code.
+    show = lan_url() is not None and current().team
+    ctx.setdefault("who", current())
+    ctx.setdefault("guarded", guard_on())
+    ctx.setdefault("db_on", db.enabled())
     ctx.setdefault("phones", {"url": lan_url(), "code": lan_code(), "stations": STATIONS} if show else None)
     ctx["asset_v"] = int((HERE / "static" / "ui.css").stat().st_mtime)  # a new stylesheet is never served from a stale cache
     return templates.TemplateResponse(request, name, ctx)
@@ -193,8 +201,15 @@ def _render(request: Request, name: str, **ctx):
 
 def _wf_id(workflow_id: str) -> str:
     """A workflow id from the URL is a file name in the store: refuse anything else before it is read, echoed or redirected to."""
+    from .access import current
+
     if not is_safe_id(workflow_id):
         raise HTTPException(404, "no such workflow")
+    who = current()
+    if who.orgs is not None:  # an org's code: another org's workflow is answered exactly like a missing one
+        wf = _api().STORE.load_workflow(workflow_id)
+        if wf is not None and not who.sees(wf["org_id"]):
+            raise HTTPException(404, "no such workflow")
     return workflow_id
 
 
@@ -306,7 +321,8 @@ def override(workflow_id: str, record_id: str = Form(...), new_verdict: str = Fo
     url = f"/ui/w/{_wf_id(workflow_id)}"
     api = _api()
     try:
-        wf = apply_override(workflow_id, api.STORE, record_id=record_id, new_verdict=new_verdict, actor=actor, reason=reason)
+        wf = apply_override(workflow_id, api.STORE, record_id=record_id, new_verdict=new_verdict, actor=api.actor_for(actor),
+                            reason=reason)
     except (ValueError, KeyError) as exc:
         return _back(url, str(exc), bad=True)
     stale = stale_stages(wf)  # later stages that decided on the verdict that was just overridden
@@ -510,7 +526,17 @@ async def save_photos(unit: str, stage: str, files: list[UploadFile], *, replace
             stem += "_"
             target = folder / f"{i:02d}-{stem}{ext}"
         target.write_bytes(data)
+    _keep(unit, stage)
     return len(ready), None
+
+
+def _keep(unit: str, stage: str, org: str | None = None) -> None:
+    """Copy this stage's photos into the database (a deployment's disk does not survive a restart)."""
+    from shared.utils import db
+
+    if db.enabled():
+        org = org or next((c["org_id"] for c in _all_cases() if c["unit_id"] == unit), None)
+        db.sync_folder("input", _input_root() / unit / stage, org)
 
 
 @router.post("/ui/capture/{org}/{unit}/{stage}/delete")
@@ -524,11 +550,14 @@ def delete_photo(org: str, unit: str, stage: str, name: str = Form(...)):
         raise HTTPException(400, str(exc)) from exc
     if path.suffix.lower() in PHOTO_EXT and path.is_file():
         path.unlink()
+        _keep(unit, stage, org)
     return _back(f"/ui/capture/{org}/{unit}", "Photo removed.")
 
 
 @router.get("/ui/photo/{unit}/{stage}/{name}")
 def photo(unit: str, stage: str, name: str):
+    if not any(c["unit_id"] == unit for c in _cases()):  # another org's unit: as if there were no such photo
+        raise HTTPException(404, "no such photo")
     try:
         path = resolve_capture(_input_root(), f"{unit}/{stage}/{name}", unit, stage)
     except CapturePathError:

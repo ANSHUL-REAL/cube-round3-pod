@@ -3,12 +3,13 @@
 {% block body %}
 <section class="card hero-phone">
   <h1>Join the demo</h1>
-  <p class="muted">Type the 6-digit code shown on the laptop screen.</p>
+  <p class="muted">Type your access code: the one on the laptop screen, or the one you were given.</p>
   {% if locked %}<p class="flash bad">Too many wrong codes from this phone. Ask the presenter to restart the server.</p>{% else %}
   <form method="post" action="/join" class="stack">
     <input type="hidden" name="next" value="{{ next }}">
-    <input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required autofocus placeholder="••••••">
+    <input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" required autofocus placeholder="••••••">
     <button class="btn big" type="submit">Join</button>
   </form>{% endif %}
+  <p class="small muted" style="margin-top:14px"><a href="/login">Admin sign-in</a></p>
 </section>
 {% endblock %}
