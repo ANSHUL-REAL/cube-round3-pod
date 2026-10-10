@@ -1,17 +1,20 @@
 {% extends "phone_base.html" %}
 {% block title %}Stations{% endblock %}
 {% block body %}
-<p class="eyebrow" style="margin-top:24px"><span class="tick" aria-hidden="true"></span>Stations</p>
+<nav class="backbar" aria-label="Back"><a class="back" href="/"><span aria-hidden="true">←</span> Dashboard</a></nav>
+<p class="eyebrow" style="margin-top:18px"><span class="tick" aria-hidden="true"></span>Stations</p>
 <h1 class="phone-h" style="margin-top:0">Which step is yours?</h1>
 <p class="muted">Each person clears one step from their own phone. A unit reaches you when the step before yours is done.</p>
 <div class="stations">
   {% for s in photo_stages %}{% set m = stages_meta[s] %}
   <a class="card station-pick" href="/ui/station/{{ s }}">
     <span class="icon" aria-hidden="true">{{ m[0] }}</span>
-    <span><b>{{ m[1] }}</b><span class="muted small">{{ m[2] }}</span></span>
-    {% if waiting[s] %}<span class="chip pending">{{ waiting[s] }} waiting</span>{% else %}<span class="go" aria-hidden="true">→</span>{% endif %}
+    <span><b>{{ m[1] }}</b><span class="muted small">{{ m[2] }}</span>
+      {% if waiting[s] %}<span class="chip pending" style="align-self:flex-start;margin-top:4px">{{ waiting[s] }} waiting</span>{% endif %}</span>
+    <span class="go" aria-hidden="true">→</span>
   </a>
   {% endfor %}
 </div>
 <p class="muted small">💸 Recovery needs no photo: its person presses one button once the photo steps are done.</p>
+<div data-refresh="8000" hidden></div>
 {% endblock %}

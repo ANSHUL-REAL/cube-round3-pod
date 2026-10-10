@@ -3,35 +3,40 @@
 {% block title %}{{ m[1] }} station{% endblock %}
 {% block where %}<span class="chip">{{ m[0] }} {{ m[1] }}</span>{% endblock %}
 {% block body %}
-<p class="eyebrow" style="margin-top:24px"><span class="tick" aria-hidden="true"></span>Station</p>
+<nav class="backbar" aria-label="Back"><a class="back" href="/ui/station"><span aria-hidden="true">←</span> All stations</a></nav>
+<p class="eyebrow" style="margin-top:18px"><span class="tick" aria-hidden="true"></span>Station</p>
 <h1 class="phone-h" style="margin-top:0">{{ m[0] }} {{ m[1] }}</h1>
 <p class="muted">{{ m[2] }}.</p>
 
-<h2>Your turn</h2>
+{% set shown = mine|rejectattr('more')|list %}
+<h2>Your turn{% if shown %} <span class="n">{{ shown|length }}</span>{% endif %}</h2>
 {% if stage == 'receiving' %}<label class="searchbox" style="display:block;margin:0 0 14px"><span class="sr-only">Find a unit</span><input class="filter" placeholder="Find any unit, e.g. 0014" data-find=".mine .unit-row"></label>{% endif %}
 <div class="mine">
 {% for r in mine %}
-  <a class="card unit-row {{ '' if r.demo or stage != 'receiving' else 'more' }}" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
-    <b>{{ r.unit }}</b>{% if r.story %}<span class="muted small">{{ r.story }}</span>{% endif %}
-    <span class="go">📸</span>
+  <a class="card unit-row {{ 'more' if r.more }}{{ ' retake' if r.retake }}" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
+    <span class="unit-main"><b>{{ r.unit }}</b>
+      {% if r.retake %}<span class="small">The last check did not run. Open it and try again.</span>
+      {% elif r.story %}<span class="muted small">{{ r.story }}</span>{% endif %}</span>
+    <span class="act">{% if r.retake %}Try again{% elif stage == 'recovery' %}Open{% else %}Take photos{% endif %} <span aria-hidden="true">→</span></span>
   </a>
-{% else %}
-  <div class="empty"><b>Nothing for you yet</b>This page refreshes itself: a unit appears when the step before yours is done.</div>
 {% endfor %}
+{% if not shown %}
+  <div class="empty"><b>Nothing waiting for {{ m[1] }}</b>{% if stage == 'receiving' %}Every unit starts here. Type a unit number above to find one.{% else %}A unit shows up here by itself when the step before {{ m[1] }} is done. Units start at <a href="/ui/station/receiving">Receiving</a>.{% endif %}</div>
+{% endif %}
 </div>
+{% if hidden %}<p class="muted small">{{ hidden }} more sample unit(s) not started yet: type a number in the box to find one.</p>{% endif %}
 
-{% if later %}<h2>Coming to you</h2>
-{% for r in later %}<div class="card unit-row dim"><b>{{ r.unit }}</b><span class="muted small">{{ r.why }}</span></div>{% endfor %}{% endif %}
+{% if later %}<h2>Coming to you <span class="n">{{ later|length }}</span></h2>
+{% for r in later %}<a class="card unit-row dim" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
+  <span class="unit-main"><b>{{ r.unit }}</b><span class="muted small">{{ r.why[:1]|upper }}{{ r.why[1:] }}.</span></span>
+  <span class="act quiet">See <span aria-hidden="true">→</span></span></a>{% endfor %}{% endif %}
 
-{% if done %}<h2>Done here</h2>
+{% if done %}<h2>Done here <span class="n">{{ done|length }}</span></h2>
 {% for r in done %}
-  <a class="card unit-row" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}"><b>{{ r.unit }}</b>
-    {% if r.state == 'error' %}<span class="chip error">retake needed</span>{% endif %}
-    {% if r.verdict %}<span class="chip {{ r.verdict|lower }}">{{ r.verdict|lower }}</span>{% endif %}
-    {% if r.outcome %}<span class="chip {{ r.outcome|lower }}">{{ r.outcome|replace('_',' ') }}</span>{% endif %}</a>
+  <a class="card unit-row" href="/ui/station/{{ stage }}/{{ r.org }}/{{ r.unit }}">
+    <span class="unit-main"><b>{{ r.unit }}</b>
+      {% if r.plain %}<span class="status {{ r.plain.tone }}"><span class="dot" aria-hidden="true"></span>{{ r.plain.label|capitalize }}</span>{% endif %}</span>
+    <span class="act quiet">View <span aria-hidden="true">→</span></span></a>
 {% endfor %}{% endif %}
-<script>
-  // New work arrives when someone else clears a step: refresh while nobody is typing in the search box.
-  setInterval(function () { var f = document.querySelector(".filter"); if (!f || !f.value) location.reload(); }, 5000);
-</script>
+<div data-refresh="5000" hidden></div>
 {% endblock %}

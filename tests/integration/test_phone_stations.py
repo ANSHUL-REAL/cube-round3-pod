@@ -240,3 +240,39 @@ def test_the_returns_phone_asks_for_the_product_photo_first(laptop, refdir):
     r = laptop.post(f"/ui/station/returns/{ALPHA}/UNIT-0016/reference", files=[("files", ("new.jpg", jpg(), "image/jpeg"))])
     assert "bad=1" not in r.headers["location"]
     assert "First, the product as sold" not in laptop.get(f"/ui/station/returns/{ALPHA}/UNIT-0016").text
+
+
+# ---------------------------------------------------------------- finding your way around a station
+def test_every_station_page_has_a_way_back(laptop):
+    snap(laptop, "receiving")
+    assert 'class="back" href="/"' in laptop.get("/ui/station").text, "the station list goes back to the dashboard"
+    assert 'class="back" href="/ui/station"' in laptop.get("/ui/station/prep").text
+    page = laptop.get(f"/ui/station/receiving/{ALPHA}/{FBA_RETURNED}").text
+    assert 'class="back" href="/ui/station/receiving"' in page
+    assert "Back to the Receiving station" in page, "after a result, the next tap is offered"
+
+
+def test_a_step_that_did_not_run_is_still_that_stations_to_do(laptop, monkeypatch):
+    class _Down:
+        def run(self, request, timeout_s):
+            raise RuntimeError("agent down")
+
+    monkeypatch.setattr(station, "station_clients", lambda: {s: _Down() for s in ("receiving", "prep", "pack", "returns")})
+    snap(laptop, "receiving")
+    assert states()["receiving"] == "error"
+    page = laptop.get("/ui/station/receiving").text
+    mine = page.split("Your turn")[1].split("Done here")[0]
+    assert FBA_RETURNED in mine and "Try again" in mine, "an errored step is not listed as done"
+    waiting = laptop.get("/ui/station/prep").text
+    assert FBA_RETURNED in waiting.split("Coming to you")[1], "Prep sees it as waiting, with the reason"
+    unit = laptop.get(f"/ui/station/prep/{ALPHA}/{FBA_RETURNED}").text
+    assert "Not your turn yet" in unit and f"/ui/station/receiving/{ALPHA}/{FBA_RETURNED}" in unit, "and a link to where it is"
+
+
+def test_a_result_is_said_in_plain_words_and_uncertain_is_never_a_pass():
+    assert station.plain({"state": "completed", "verdict": "PASS", "outcome": "ACCEPT"}) == {"tone": "pass", "label": "accept"}
+    assert station.plain({"state": "completed", "verdict": "FAIL", "outcome": "STOP_AND_FIX"})["tone"] == "fail"
+    unsure = station.plain({"state": "completed", "verdict": "UNCERTAIN", "outcome": "PENDING_REVIEW"})
+    assert unsure == {"tone": "uncertain", "label": "a person checks"}
+    assert station.plain({"state": "error", "verdict": "UNCERTAIN"})["tone"] == "error"
+    assert station.plain({"state": "pending"}) is None and station.plain(None) is None

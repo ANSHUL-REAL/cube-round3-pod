@@ -28,39 +28,78 @@
   {% block body %}{% endblock %}
 </main>
 <footer class="phone-foot wrap">
+  {% if who and who.role != 'anon' %}<nav class="phone-nav" aria-label="Go to">
+    <a href="/ui/station">All stations</a><a href="/">Dashboard</a>
+    {% if guarded %}<form method="post" action="/logout"><button class="linkbtn" type="submit">Sign out</button></form>{% endif %}
+  </nav>{% endif %}
   <span>{{ brand.name }} · {{ brand.tagline }}</span>
-  {% if guarded and who and who.role != 'anon' %}<form method="post" action="/logout"><button class="linkbtn" type="submit">Sign out</button></form>{% endif %}
 </footer>
 <script>
-  // A step calls the real agent (a few seconds, up to about a minute): say so, and stop a double tap.
-  document.querySelectorAll("form[data-busy]").forEach(function (f) {
-    f.addEventListener("submit", function () {
-      f.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
-      var o = document.getElementById("busy"); if (o) { o.hidden = false; var t0 = Date.now(), s = o.querySelector("[data-secs]");
-        setInterval(function () { if (s) s.textContent = ((Date.now() - t0) / 1000).toFixed(0); }, 250); }
-    });
-  });
-  // A photo picked from the camera submits at once when the form says so: one tap to snap, one to confirm in the camera app.
-  // Each tap of the camera button replaces the input's files, so keep every photo taken: several angles go up together.
-  document.querySelectorAll("input[data-autosubmit]").forEach(function (i) {
-    var kept = (typeof DataTransfer === "function") ? new DataTransfer() : null;
-    i.addEventListener("change", function () {
-      if (kept) { for (var k = 0; k < i.files.length; k++) kept.items.add(i.files[k]); i.files = kept.files; }
-      var p = document.getElementById("picked");
-      if (p && i.multiple) p.textContent = i.files.length + " new photo(s) ready. Tap 📸 again for another angle, or ✅ Check now.";
-      if (!i.multiple && i.files.length) i.form.requestSubmit();  // the one-photo forms (product as sold) send at once
-    });
-  });
-  // Station search: the demo stories show first; typing finds any other unit.
-  document.querySelectorAll("[data-find]").forEach(function (box) {
-    box.addEventListener("input", function () {
-      var q = box.value.toLowerCase().trim();
-      document.querySelectorAll(box.dataset.find).forEach(function (row) {
-        var hit = row.textContent.toLowerCase().indexOf(q) !== -1;
-        row.style.display = q ? (hit ? "flex" : "none") : "";
+  function bind(root) {
+    // A step calls the real agent (a few seconds, up to about a minute): say so, and stop a double tap.
+    root.querySelectorAll("form[data-busy]").forEach(function (f) {
+      f.addEventListener("submit", function () {
+        f.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+        var o = document.getElementById("busy"); if (o) { o.hidden = false; var t0 = Date.now(), s = o.querySelector("[data-secs]");
+          setInterval(function () { if (s) s.textContent = ((Date.now() - t0) / 1000).toFixed(0); }, 250); }
       });
     });
+    // A photo picked from the camera submits at once when the form says so: one tap to snap, one to confirm in the camera app.
+    // Each tap of the camera button replaces the input's files, so keep every photo taken: several angles go up together.
+    root.querySelectorAll("input[data-autosubmit]").forEach(function (i) {
+      var kept = (typeof DataTransfer === "function") ? new DataTransfer() : null;
+      i.addEventListener("change", function () {
+        if (kept) { for (var k = 0; k < i.files.length; k++) kept.items.add(i.files[k]); i.files = kept.files; }
+        var p = document.getElementById("picked");
+        if (p && i.multiple) p.textContent = i.files.length + " new photo(s) ready. Tap 📸 again for another angle, or ✅ Check now.";
+        if (!i.multiple && i.files.length) i.form.requestSubmit();  // the one-photo forms (product as sold) send at once
+      });
+    });
+    // Station search: the demo stories show first; typing finds any other unit.
+    root.querySelectorAll("[data-find]").forEach(function (box) {
+      box.addEventListener("input", function () {
+        var q = box.value.toLowerCase().trim();
+        document.querySelectorAll(box.dataset.find).forEach(function (row) {
+          var hit = row.textContent.toLowerCase().indexOf(q) !== -1;
+          row.style.display = q ? (hit ? "flex" : "none") : "";
+        });
+      });
+    });
+  }
+  bind(document);
+  // Coming back with the browser's Back button can show this page as it was left: mid-check, buttons off. Undo that.
+  window.addEventListener("pageshow", function (e) {
+    if (!e.persisted) return;
+    var o = document.getElementById("busy"); if (o) o.hidden = true;
+    document.querySelectorAll("form[data-busy] button").forEach(function (b) { b.disabled = false; });
   });
+
+  // New work arrives when someone else clears a step. A page that waits for it (it carries data-refresh) asks the server
+  // in the background and swaps its content only when something changed: no blank flash every few seconds, the scroll
+  // position stays, and a tap is never lost to a reload.
+  (function () {
+    var main = document.querySelector("main");
+    function every() { var el = main.querySelector("[data-refresh]"); return el ? (parseInt(el.dataset.refresh, 10) || 5000) : 0; }
+    function inUse() {
+      var a = document.activeElement, o = document.getElementById("busy"), f = main.querySelector(".filter");
+      return document.hidden || (o && !o.hidden) || (f && f.value) || (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+    }
+    function wait() {
+      var ms = every();
+      if (!ms) return;
+      setTimeout(function () {
+        if (inUse()) return wait();
+        fetch(location.href, { credentials: "same-origin" }).then(function (r) {
+          if (r.redirected) { location.href = r.url; return null; }  // signed out meanwhile: go where the server sends us
+          return r.ok ? r.text() : null;
+        }).then(function (html) {
+          var next = html && new DOMParser().parseFromString(html, "text/html").querySelector("main");
+          if (next && next.innerHTML !== main.innerHTML && !inUse()) { main.innerHTML = next.innerHTML; bind(main); }
+        }).catch(function () {}).then(wait);
+      }, ms);
+    }
+    wait();
+  })();
 </script>
 <div id="busy" class="busy" hidden><div class="card"><div class="spin"></div><b>The agent is checking…</b>
   <div class="muted small"><span data-secs>0</span> s · a real model call, usually 3–25 s</div></div></div>

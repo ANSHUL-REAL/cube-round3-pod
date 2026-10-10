@@ -3,19 +3,30 @@
 {% block title %}{{ unit }} · {{ m[1] }}{% endblock %}
 {% block where %}<a class="chip" href="/ui/station/{{ stage }}">{{ m[0] }} {{ m[1] }}</a>{% endblock %}
 {% block body %}
-<p class="crumbs"><a href="/ui/station/{{ stage }}">← {{ m[1] }} station</a></p>
-<h1 class="phone-h mono" style="font-size:30px;margin-top:10px">{{ unit }}</h1>
+<nav class="backbar" aria-label="Back"><a class="back" href="/ui/station/{{ stage }}"><span aria-hidden="true">←</span> {{ m[1] }} station</a></nav>
+<h1 class="phone-h mono" style="font-size:30px;margin-top:14px">{{ unit }}</h1>
 {% if story %}<p class="muted">{{ story }}</p>{% endif %}
 
-{% if rec %}{% set d = rec.decision %}
-<section class="card result {{ d.verdict|lower }}{{ ' just' if done }}">
+{% if rec %}{% set d = rec.decision %}{% set v = d.verdict %}
+<section class="card result {{ v|lower }}{{ ' just' if done }}">
+  {# The same decision in a station person's words first; the exact verdict and outcome stay on the chips below. #}
+  {% if rec.error %}<h2 class="result-title">⚠️ The check did not run</h2>
+    <p class="result-do">Nothing was decided for this unit. Try again below.</p>
+  {% elif stage == 'recovery' %}<h2 class="result-title">{{ (d.outcome or v)|replace('_',' ')|capitalize }}</h2>
+  {% elif v == 'PASS' %}<h2 class="result-title">✅ Passed</h2>
+    <p class="result-do">Nothing more to do here.{% if nxt %} Next: <b>{{ nxt }}</b>.{% endif %}</p>
+  {% elif v == 'FAIL' %}<h2 class="result-title">🛑 Problem found</h2>
+    <p class="result-do">Fix the unit and retake the photos below, or leave it: a person reviews it on the dashboard.</p>
+  {% else %}<h2 class="result-title">🤔 Could not tell from these photos</h2>
+    <p class="result-do">Retake clearer photos below, or leave it: a person reviews it on the dashboard. It is never counted as a pass.</p>
+  {% endif %}
   <div class="result-head">
-    <span class="chip {{ d.verdict|lower }}">{{ d.verdict|lower }}</span>
+    <span class="chip {{ v|lower }}">{{ v|lower }}</span>
     {% if d.outcome %}<span class="chip {{ d.outcome|lower }}">{{ d.outcome|replace('_',' ') }}</span>{% endif %}
     {% if d.needs_human %}<span class="chip pending_review">a person decides</span>{% endif %}
   </div>
-  {% if rec.error %}<p><b>{{ rec.error.code|replace('_',' ') }}:</b> {{ rec.error.message }}</p>
-  {% else %}<p>{{ d.reason }}</p>{% endif %}
+  {% if rec.error %}<p class="small"><b>{{ rec.error.code|replace('_',' ') }}:</b> {{ rec.error.message }}</p>
+  {% else %}<p class="small">{{ d.reason }}</p>{% endif %}
   {% if stage == 'recovery' %}{% set pl = rec.payload or {} %}
     {% for cl in pl.claims or [] %}<div class="check-line"><span class="chip claim_recommended">claim</span>
       <b>${{ '%.2f'|format(cl.claim_usd or 0) }}</b> {{ (cl.charge_type or '')|replace('_',' ') }} <span class="mono small">{{ cl.line_id }}</span></div>{% endfor %}
@@ -30,8 +41,13 @@
   {% endif %}
   <p class="muted small">{{ rec.model.name }} · {{ rec.model.calls }} call(s){% if sr and sr.duration_ms is not none %} · {{ '%.1f'|format(sr.duration_ms / 1000) }} s{% endif %}
     · record <span class="mono">{{ rec.record_id }}</span></p>
-  {% if nxt %}<p class="small">Next: <b>{{ nxt }}</b>.</p>{% elif wf %}<p class="small">This unit's flow is finished: <b>{{ (wf.final_outcome or {}).outcome|replace('_',' ') }}</b>. The dashboard shows the whole trail.</p>{% endif %}
+  {% if nxt and (rec.error or v != 'PASS' or stage == 'recovery') %}<p class="small">Next: <b>{{ nxt }}</b>.</p>
+  {% elif wf and not nxt %}<p class="small">This unit's flow is finished: <b>{{ (wf.final_outcome or {}).outcome|replace('_',' ') }}</b>.</p>{% endif %}
 </section>
+<nav class="next-actions" aria-label="Where next">
+  <a class="btn big {{ 'go' if v == 'PASS' and not rec.error else 'alt' }}" href="/ui/station/{{ stage }}"><span aria-hidden="true">←</span> Back to the {{ m[1] }} station</a>
+  {% if wf %}<a class="linkbtn" href="/ui/w/{{ wf.workflow_id }}">See this unit's whole trail</a>{% endif %}
+</nav>
 {% endif %}
 
 {% if ok and stage == 'recovery' %}
@@ -55,21 +71,29 @@
     </form>
   </section>
   {% endif %}
-  <section class="card">
-    <h2>{{ 'Retake' if rec else 'Take' }} the photos</h2>
+  {# After a pass there is nothing left to do, so the retake stays folded away; otherwise it is the next thing to do. #}
+  {% set folded = rec and not rec.error and rec.decision.verdict == 'PASS' %}
+  <details class="card fold"{{ '' if folded else ' open' }}>
+    <summary>{{ 'Retake' if rec else 'Take' }} the photos</summary>
     <p class="small">{{ what }}</p>
     <form method="post" action="/ui/station/{{ stage }}/{{ org }}/{{ unit }}" enctype="multipart/form-data" data-busy>
-      <label class="btn big cam">📸 Open camera
+      <label class="btn big cam"><span class="step-n" aria-hidden="true">1</span> 📸 Add a photo
         <input type="file" name="files" accept="image/*" capture="environment" multiple data-autosubmit hidden></label>
-      <p id="picked" class="muted small">{% if photos %}{{ photos|length }} photo(s) already here{% else %}No photo yet{% endif %}. Tap again to add another angle before checking.</p>
-      <button class="btn big go" type="submit">✅ Check now</button>
+      <p id="picked" class="muted small">{% if photos %}{{ photos|length }} photo(s) already here.{% else %}No photo yet.{% endif %} Tap again to add another angle.</p>
+      <button class="btn big go" type="submit"><span class="step-n" aria-hidden="true">2</span> ✅ Check now</button>
     </form>
     {% if photos %}<div class="photos small-photos">{% for p in photos %}<img src="/ui/photo/{{ unit }}/{{ stage }}/{{ p }}" alt="{{ p }}" loading="lazy">{% endfor %}</div>
     <p class="muted small">New photos replace these. Every record keeps the SHA-256 of the photos it checked.</p>{% endif %}
-  </section>
+  </details>
 {% else %}
-  <section class="card dim"><b>Not your turn yet.</b> <span class="muted">{{ why }}.</span>
-    <p class="small">This page refreshes itself.</p></section>
-  <script>setInterval(function () { location.reload(); }, 4000);</script>
+  <section class="card waitcard">
+    <h2>Not your turn yet</h2>
+    <p>{{ why[:1]|upper }}{{ why[1:] }}.</p>
+    {% if blocker and not (who and who.stage and who.stage != blocker) %}
+    <a class="btn big go" href="/ui/station/{{ blocker }}/{{ org }}/{{ unit }}">Go to {{ stages_meta[blocker][1] }} for this unit <span aria-hidden="true">→</span></a>
+    {% endif %}
+    <p class="small muted">This page updates by itself when the step before is done.</p>
+  </section>
+  <div data-refresh="4000" hidden></div>
 {% endif %}
 {% endblock %}

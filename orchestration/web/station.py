@@ -173,6 +173,33 @@ def _stage_result(wf: dict | None, stage: str) -> dict | None:
     return next((sr for sr in (wf or {}).get("stage_results", []) if sr["stage"] == stage), None)
 
 
+def waiting_on(wf: dict | None, stage: str) -> str | None:
+    """The earlier step this one waits for (its station is where the unit is now), or None."""
+    if wf is None:
+        return "receiving" if stage != "receiving" else None
+    for sr in wf["stage_results"]:
+        if sr["stage"] == stage:
+            return None
+        if sr["state"] in ("pending", "error"):
+            return sr["stage"]
+    return None
+
+
+def plain(sr: dict | None) -> dict | None:
+    """A step's result in a station person's words: one label and its colour. The record keeps the exact verdict and
+    outcome; this never turns an UNCERTAIN into anything better."""
+    if not sr or sr["state"] not in ("completed", "error"):
+        return None
+    if sr["state"] == "error":
+        return {"tone": "error", "label": "did not run"}
+    verdict, outcome = sr.get("verdict"), (sr.get("outcome") or "").replace("_", " ").lower()
+    if verdict == "PASS":
+        return {"tone": "pass", "label": outcome or "passed"}
+    if verdict == "FAIL":
+        return {"tone": "fail", "label": outcome or "problem found"}
+    return {"tone": "uncertain", "label": outcome if outcome and outcome != "pending review" else "a person checks"}
+
+
 def _station_stages(case: dict) -> list[str]:
     """The steps of this unit that a person clears at a station: its photo steps, then Recovery."""
     return [*_stages_for(case), "recovery"]
@@ -207,17 +234,20 @@ def station(request: Request, stage: str):
         ok, why = turn(wf, stage)
         row = {"org": c["org_id"], "unit": c["unit_id"], "story": DEMO.get(c["unit_id"]), "why": why,
                "state": sr["state"] if sr else None, "verdict": sr.get("verdict") if sr else None,
-               "outcome": sr.get("outcome") if sr else None, "demo": c["unit_id"] in DEMO}
-        if ok and (sr is None or sr["state"] == "pending"):
-            mine.append(row)
-        elif sr and sr["state"] in ("completed", "error"):
+               "outcome": sr.get("outcome") if sr else None, "demo": c["unit_id"] in DEMO, "plain": plain(sr),
+               "retake": bool(sr) and sr["state"] == "error",
+               # Receiving can start any unit: the demo stories, the units someone added and the ones already started
+               # are listed; the other sample units stay one search away
+               "more": stage == "receiving" and not (c["unit_id"] in DEMO or c.get("added") or sr is not None)}
+        if ok and (sr is None or sr["state"] in ("pending", "error")):
+            mine.append(row)  # a step that did not run is still this station's to do: it is not "done"
+        elif sr and sr["state"] == "completed":
             done.append(row)
         elif wf is not None:
             later.append(row)
-    mine.sort(key=lambda r: (not r["demo"], r["unit"]))
-    if stage == "receiving":  # anyone can start a unit at Receiving; the demo stories come first, the rest stay one search away
-        mine = [r for r in mine if r["demo"] or r["state"] == "pending"] + [r for r in mine if not r["demo"] and r["state"] != "pending"]
-    return _render(request, "station_stage.html", phone=True, stage=stage, mine=mine, later=later, done=done)
+    mine.sort(key=lambda r: (r["more"], not r["retake"], r["state"] is None, not r["demo"], r["unit"]))
+    return _render(request, "station_stage.html", phone=True, stage=stage, mine=mine, later=later, done=done,
+                   hidden=sum(r["more"] for r in mine))
 
 
 @router.get("/ui/station/{stage}/{org}/{unit}", response_class=HTMLResponse)
@@ -236,6 +266,7 @@ def station_unit(request: Request, stage: str, org: str, unit: str):
     ref = _reference(org, unit) if stage == "returns" else None
     return _render(request, "station_unit.html", phone=True, stage=stage, org=org, unit=unit, story=DEMO.get(unit),
                    ok=ok, why=why, sr=sr, rec=rec, wf=wf, nxt=nxt, photos=_photos(unit, stage), ref=ref,
+                   blocker=None if ok or (wf and mode_of(wf) != "live") else waiting_on(wf, stage),
                    what=_what_to_shoot(stage, unit, org), done=request.query_params.get("done") == "1")
 
 

@@ -443,10 +443,47 @@ body.phone .card h2 { margin-top: 0; }
 .station-pick > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .station-pick b { font: 900 22px/1.1 var(--font); }
 .station-pick .go { font-size: 22px; font-weight: 900; }
-.unit-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 14px 16px; text-decoration: none; color: inherit; }
+/* a way back on every station page: the logo alone was not one */
+.backbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 16px; }
+.back { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 16px 8px 13px; border: 2.5px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--text); font: 800 15px/1 var(--font); text-decoration: none; box-shadow: 0 3px 0 var(--shadow); transition: transform .08s, box-shadow .08s; }
+.back:hover { transform: translateY(1px); box-shadow: 0 2px 0 var(--shadow); }
+.back:active { transform: translateY(3px); box-shadow: 0 0 0 var(--shadow); }
+body.phone h2 .n { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; margin-left: 4px; border-radius: 999px; background: var(--card-2);
+  border: 2px solid var(--rule); font: 800 13px/1 var(--font); letter-spacing: 0; vertical-align: 3px; }
+/* a unit in a station list: what it is on the left, the one thing a tap does on the right */
+.unit-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 14px 16px; text-decoration: none; color: inherit; transition: transform .08s, box-shadow .08s; }
+a.unit-row:hover { transform: translateY(2px); box-shadow: 0 4px 0 var(--shadow); }
+a.unit-row:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--shadow); }
 .unit-row b { font: 900 20px/1.1 var(--font); }
-.unit-row .small { flex-basis: 100%; }
-.unit-row .go { margin-left: auto; font-size: 26px; }
+.unit-main { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+.unit-row .act { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border: 2.5px solid #17131a; border-radius: 999px; background: var(--yellow);
+  color: #17131a; font: 800 14px/1 var(--font); white-space: nowrap; }
+.unit-row .act.quiet { background: transparent; color: var(--text); border-color: var(--rule); }
+.unit-row.retake { border-color: var(--fail); }
+.unit-row.retake .act { background: var(--pink); }
+.status { display: inline-flex; align-items: center; gap: 7px; font: 800 14px/1.2 var(--font); }
+.status .dot { width: 10px; height: 10px; }
+.status.pass .dot { color: var(--pass); }
+.status.fail .dot, .status.error .dot { color: var(--fail); }
+.status.uncertain .dot { color: var(--unsure); }
+.station-pick { transition: transform .08s, box-shadow .08s; }
+.station-pick:hover { transform: translateY(2px); box-shadow: 0 4px 0 var(--shadow); }
+/* one unit at a station: the decision in plain words, then where to go */
+body.phone main > .card, body.phone main > details.card { margin-top: 14px; }
+body.phone .result-title { font: 900 24px/1.15 var(--font); margin: 0 0 6px; }
+.result-do { font-weight: 700; margin-bottom: 12px; }
+.next-actions { display: grid; justify-items: center; gap: 2px; margin: 14px 0 6px; }
+.next-actions .btn.big { margin: 0 0 10px; }
+a.linkbtn { text-decoration: none; }
+details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font: 800 20px/1.2 var(--font); letter-spacing: -.03em; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: "+"; font: 900 24px/1 var(--font); }
+details.fold[open] > summary::after { content: "−"; }
+details.fold[open] > summary { margin-bottom: 10px; }
+.step-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #17131a; color: #fdf6e6; font: 900 14px/1 var(--font); flex: none; }
+.waitcard .btn.big { margin-top: 12px; }
 .mine .unit-row.more { display: none; }
 .unit-row.dim, .card.dim { opacity: .62; box-shadow: none; }
 .btn.big { width: 100%; justify-content: center; padding: 18px; font-size: 20px; border-radius: 14px; margin: 8px 0; white-space: normal; text-align: center; }
@@ -478,6 +515,7 @@ input.code { width: 100%; font: 900 40px/1 var(--font); letter-spacing: .3em; te
 .spin { width: 46px; height: 46px; margin: 4px auto 12px; border: 6px solid var(--yellow); border-top-color: var(--pink); border-radius: 50%;
   animation: spin .9s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .spin, .result.just { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .back, .unit-row, .station-pick { transition: none; } }
 /* the "connect the station phones" panel */
 .phones { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
 .phones img { width: 168px; height: 168px; border: 2.5px solid var(--line); border-radius: 12px; background: #fffdf8; }
@@ -558,6 +596,8 @@ input.code { width: 100%; font: 900 40px/1 var(--font); letter-spacing: .3em; te
 .phone-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 18px !important; padding-bottom: 28px !important;
   border-top: 2px dashed var(--rule); color: var(--muted); font-size: 13px; font-weight: 600; }
 .phone-foot form { margin: 0; }
+.phone-nav { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; flex-basis: 100%; }
+.phone-nav a { color: var(--text); font: 800 14px var(--font); text-decoration: none; border-bottom: 2px solid var(--pink); }
 .linkbtn { background: none; border: 0; padding: 0; font: 800 14px var(--font); color: var(--text); border-bottom: 2px solid var(--pink); cursor: pointer; }
 
 /* ---------------------------------------------------------------- demo scenario groups */
