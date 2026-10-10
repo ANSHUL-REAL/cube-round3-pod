@@ -14,7 +14,7 @@ receipt you can trace back to its photos.
 - **Live:** <https://pod12-console.onrender.com> (Render + Supabase Postgres). Sign in with an access code from the team;
   [`/health`](https://pod12-console.onrender.com/health) is public. How judges can try it: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - **Videos:** the demo (`snitch-demo-v2.mp4`, real Gemini calls, about 4 min) and a 21 s launch clip are attached to the
-  [`media-2026-10-10` release](https://github.com/ANSHUL-REAL/cube-pod12-round3/releases/tag/media-2026-10-10), not
+  [`media-2026-10-10` release](https://github.com/ANSHUL-REAL/cube-round3-pod/releases/tag/media-2026-10-10), not
   committed, to keep the repo light (rule R9).
 
 Honest note: the demo scenarios use AI-generated photos, labelled as such on screen; the verdicts are real runs of our

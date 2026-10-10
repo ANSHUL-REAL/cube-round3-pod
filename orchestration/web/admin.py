@@ -127,7 +127,7 @@ def new_code(request: Request, label: str = Form(...), org: str = Form("*"), rol
 
 
 @router.post("/admin/sellers")
-def add_seller(name: str = Form(...)):
+def add_seller(name: str = Form("")):  # an empty name gets the same message on the page as any other bad name
     """A new seller starts with no units: its units arrive with its orders. Codes can be issued for it at once."""
     try:
         name = brand.clean_name(name)
@@ -142,7 +142,7 @@ def add_seller(name: str = Form(...)):
 
 
 @router.post("/admin/sellers/{org_id}/rename")
-def rename_seller(org_id: str, name: str = Form(...)):
+def rename_seller(org_id: str, name: str = Form("")):
     if org_id not in _orgs():
         raise HTTPException(404, "no such seller")
     try:
