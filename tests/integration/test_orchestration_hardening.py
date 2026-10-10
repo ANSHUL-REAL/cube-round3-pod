@@ -15,12 +15,13 @@ from __future__ import annotations
 import json
 import time
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 import orchestration.api as api
 import orchestration.orchestrator as orch
-from orchestration.clients import AgentRejected, AgentTimeout, InProcClient
+from orchestration.clients import AgentRejected, AgentTimeout, AgentUnavailable, HttpClient, InProcClient
 from orchestration.orchestrator import apply_override, discover_inputs, run_workflow
 from orchestration.store import FileStore, MemoryStore, is_safe_id
 from shared.utils.server import make_app
@@ -173,6 +174,21 @@ def test_an_in_process_agent_that_is_too_slow_times_out():
 
 def test_an_in_process_agent_that_answers_in_time_is_unaffected():
     assert _inproc(lambda req: {"ok": 1}).run({"stage": "x"}, 5) == {"ok": 1}
+
+
+@pytest.mark.parametrize("raised, expected", [
+    (httpx.ConnectTimeout("no route"), AgentUnavailable),  # never reached the agent: it is not there (PR #2)
+    (httpx.ConnectError("refused"), AgentUnavailable),
+    (httpx.ReadTimeout("still thinking"), AgentTimeout),   # reached it, and it did not answer in time
+])
+def test_an_http_agent_that_cannot_be_reached_is_unavailable_and_a_slow_one_timed_out(monkeypatch, raised, expected):
+    def post(*args, **kwargs):
+        raise raised
+
+    monkeypatch.setattr(httpx, "post", post)
+    with pytest.raises(AgentUnavailable) as caught:
+        HttpClient({"stage": "pack", "url": "http://127.0.0.1:9"}).run({"stage": "pack"}, 1)
+    assert type(caught.value) is expected
 
 
 def test_a_wrong_tenant_is_a_refusal_but_a_bug_is_not():
