@@ -6,6 +6,7 @@
 | **Commit read** | `422067fbf09e8ec13c31e3e5c3bac6b09f0eb711` (branch `main`, "fix: allow deployed frontend origin") |
 | **Author** | Sai charan (`@cherryy-x23`), built solo for CUBE Buildathon Round 2, Pod 01 (Receiving Manager) |
 | **Ported by** | Anshul Nautiyal (`@ANSHUL-REAL`), for the pod's Round 3 integration, with Sai charan as owner of the agent |
+| **Also in this folder** | `core/` and `app_pr1.py`: Sai charan's own Round 3 implementation (commit `e1ce387`), unchanged and not wired in (decision D-V07) |
 
 ## What was kept (the design and the logic)
 

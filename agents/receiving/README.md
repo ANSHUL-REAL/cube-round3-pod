@@ -93,6 +93,15 @@ pytest tests/integration/test_agent_contracts.py
 
 The tests replace the model with a scripted perceiver (and, for the Gemini wrapper, a scripted client), so they check everything **except what a real model sees in a real photo**: every outcome, UNCERTAIN with its reason, the clarity and confidence gates, model failure, no key, no capture, wrong tenant, altered and out-of-folder captures, idempotency, the request sent to the model (one call, all photos, no purchase-order data), the model block, override citation, and whole orchestrated workflows. The organiser's orchestration tests run Receiving on the organiser stub kept in `tests/stubs/receiving_stub.py` (see D-V05 in `docs/decisions.md`).
 
+## Two code trees in this folder
+
+The agent the flow runs is `app.py` with `rules.py`, `vision.py`, `models.py`, `orders.py` and `adapter.py`
+(`agent.json` names `agents.receiving.app`). Everything above describes it.
+
+`core/` and `app_pr1.py` are @cherryy-x23's own Round 3 implementation (pull request #1 on the Pod's fork, commit
+`e1ce387`), kept unchanged and not wired in. Decision D-V07 in [`docs/decisions.md`](../../docs/decisions.md) says why
+and what switching would take.
+
 ## Limits (read these)
 
 - **The real model has been smoke-run, not evaluated.** [`docs/REAL-RUNS.md`](../../docs/REAL-RUNS.md) logs real Gemini calls through this agent on 2026-10-09, all on warehouse-bin photos from the Amazon Bin Image Dataset (not photos of a supplier delivery): UNIT-0044 through the checker (1 call, 7.7 s, every check UNCERTAIN: "clarity 0.40, minimum 0.50"), UNIT-0008 through the console's Snap & run window (1 call, 4.0 s, UNCERTAIN: too unclear for a delivery check, sent to a person), and as the first stage of two whole-workflow runs on UNIT-0016 (UNCERTAIN). So the live API accepts the request and an unclear photo goes to a person; nothing yet measures how well Gemini reads cartons, labels or counts. In the tests the Gemini wrapper meets only a scripted client: they prove what we send (photo bytes, no PO data), retry and failure handling, and that the response schema converts offline.

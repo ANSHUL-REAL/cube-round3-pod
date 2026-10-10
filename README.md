@@ -22,6 +22,8 @@ agents. To run it yourself, see [docs/LIVE-DEMO.md](docs/LIVE-DEMO.md).
 
 ## Pod 12: what is built, and what is not
 
+Who built what, with each person's commits and pull requests: [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
+
 Five agents plus the orchestrator, one `agents/<stage>/` folder each. Every stage is a real agent that reads photos (or, for Recovery, the fee report and all earlier evidence) and returns a Round 3 Evidence Record. **No stage is a stub.**
 
 | Stage | Owner | Built from | What it does | Tests |

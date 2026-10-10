@@ -29,6 +29,6 @@
       "github": "DaKaufeeBoii"
     }
   ],
-  "notes": "Pod 12. Standard flow: the organisers supplied a reference Prep Manager (Manvith111/cube26-prp-0319-manvith111), ported to Python here and owned by @Devisri-074. Handles and the coordinator are proposed from the Pod's plan: confirm them together and with the organisers (pod type, Prep owner). A coordinator, not an owner: the Pod owns the orchestration jointly.",
+  "notes": "Pod 12. Standard flow. The organisers supplied a reference Prep Manager (Manvith111/cube26-prp-0319-manvith111), ported to Python here and owned by @Devisri-074. @ANSHUL-REAL coordinates the orchestration; a coordinator, not an owner: the Pod owns it jointly. Who built what: CONTRIBUTORS.md.",
   "orchestration_coordinator": "ANSHUL-REAL"
 }
