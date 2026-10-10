@@ -15,3 +15,6 @@ out/
 # Products sellers add from the app: live data, kept in the database (web/units.py)
 agents/pack/catalogue/*
 !agents/pack/catalogue/sample/
+
+# Local assistant settings
+.claude/
